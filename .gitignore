@@ -1,0 +1,102 @@
+# ============================================================
+#  SPRINGBOOT (Maven)
+# ============================================================
+
+# Build output - quan trọng nhất, PHẢI ignore
+target/
+*.jar
+*.war
+*.ear
+*.class
+
+# Maven wrapper cache
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# ============================================================
+#  NESTJS (Node)
+# ============================================================
+
+# Dependencies - nặng nhất, PHẢI ignore
+node_modules/
+
+# Build output
+dist/
+build/
+
+# NestJS cache
+.nest/
+
+# ============================================================
+#  BIẾN MÔI TRƯỜNG - KHÔNG BAO GIỜ PUSH LÊN GIT
+# ============================================================
+
+.env
+.env.local
+.env.development
+.env.production
+.env.staging
+*.env
+
+# ============================================================
+#  IDE
+# ============================================================
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# Eclipse
+.eclipse/
+.classpath
+.project
+.settings/
+bin/
+
+# ============================================================
+#  WINDOWS
+# ============================================================
+
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# ============================================================
+#  LOGS
+# ============================================================
+
+*.log
+logs/
+log/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ============================================================
+#  MISC
+# ============================================================
+
+# Package lock (tuỳ team, có thể bỏ dòng này nếu muốn giữ)
+# package-lock.json
+# yarn.lock
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Temp files
+*.tmp
+*.temp
+*.swp
+*.swo
