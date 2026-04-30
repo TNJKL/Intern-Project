@@ -1,4 +1,59 @@
 services:
+  eureka-server:
+    build:
+      context: ./Springboot/eureka-server
+    container_name: beverage_eureka
+    ports:
+      - "8761:8761"
+    restart: always
+    networks:
+      - beverage_net
+
+  api-gateway:
+    build:
+      context: ./Springboot/api-gateway
+    container_name: beverage_gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      - eureka-server
+    restart: always
+    networks:
+      - beverage_net
+
+  auth-service:
+    build:
+      context: ./Springboot/auth-service
+    container_name: beverage_auth_service
+    ports:
+      - "8081:8081"
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    depends_on:
+      - eureka-server
+      - postgres
+    restart: always
+    networks:
+      - beverage_net
+
+  nestjs-cluster:
+    build:
+      context: ./NestJS/realtime-service
+    container_name: beverage_nestjs_cluster
+    ports:
+      - "3001:3001"
+    depends_on:
+      - redis
+      - kafka
+    restart: always
+    networks:
+      - beverage_net
+
   nginx-gateway:
     image: nginx:latest
     container_name: beverage_nginx
