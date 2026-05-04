@@ -11,14 +11,19 @@ spring:
           enabled: true
           lower-case-service-id: true
       routes:
-        # Route mẫu cho auth-service (Nginx chuyển /api/auth/* vào SCG, SCG gỡ bỏ chữ /api và forward cho auth-service)
+        # Route cho auth-service (users management)
         - id: auth-service
-          uri: lb://auth-service
+          uri: http://host.docker.internal:8081
+          #sau này cần thì đổi thành uri: lb://auth-service Thi đã note dòng này
+
           predicates:
-            - Path=/api/auth/**
-          filters:
-            - StripPrefix=1
-        
+            - Path=/api/v1/users/**
+        # Route cho auth-service (login/auth endpoints)
+        - id: auth-service-auth
+          uri: http://host.docker.internal:8081
+          predicates:
+            - Path=/api/v1/auth/**
+
 eureka:
   client:
     service-url:
