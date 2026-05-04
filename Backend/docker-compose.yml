@@ -1,4 +1,7 @@
 services:
+  # ============================================================
+  # SERVICE REGISTRY
+  # ============================================================
   eureka-server:
     build:
       context: ./Springboot/eureka-server
@@ -9,6 +12,9 @@ services:
     networks:
       - beverage_net
 
+  # ============================================================
+  # API GATEWAY
+  # ============================================================
   api-gateway:
     build:
       context: ./Springboot/api-gateway
@@ -23,6 +29,29 @@ services:
     networks:
       - beverage_net
 
+  # ============================================================
+  # SHARED POSTGRESQL INSTANCE (6 Databases)
+  # Chỉ tạo databases rỗng, schema sẽ được tạo bởi Code-First Migration
+  # ============================================================
+  postgres-common:
+    image: postgres:15-alpine
+    container_name: beverage_postgres
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - ./db-scripts/01-init-databases.sql:/docker-entrypoint-initdb.d/01-init-databases.sql
+      - postgres_common_data:/var/lib/postgresql/data
+    restart: always
+    networks:
+      - beverage_net
+
+  # ============================================================
+  # AUTH SERVICE
+  # ============================================================
   auth-service:
     build:
       context: ./Springboot/auth-service
@@ -31,22 +60,160 @@ services:
       - "8081:8081"
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
-      - POSTGRES_HOST=postgres
+      - POSTGRES_HOST=postgres-common
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=auth_db
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     depends_on:
       - eureka-server
-      - postgres
+      - postgres-common
     restart: always
     networks:
       - beverage_net
 
+  # ============================================================
+  # PRODUCT SERVICE
+  # ============================================================
+  # product-service:
+  #   build:
+  #     context: ./Springboot/product-service
+  #   container_name: beverage_product_service
+  #   ports:
+  #     - "8082:8082"
+  #   environment:
+  #     - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+  #     - POSTGRES_HOST=postgres-common
+  #     - POSTGRES_PORT=5432
+  #     - POSTGRES_DB=product_db
+  #     - POSTGRES_USER=${POSTGRES_USER}
+  #     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+  #   depends_on:
+  #     - eureka-server
+  #     - postgres-common
+  #   restart: always
+  #   networks:
+  #     - beverage_net
+
+  # # ============================================================
+  # # ORDER SERVICE
+  # # ============================================================
+  # order-service:
+  #   build:
+  #     context: ./Springboot/order-service
+  #   container_name: beverage_order_service
+  #   ports:
+  #     - "8083:8083"
+  #   environment:
+  #     - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+  #     - POSTGRES_HOST=postgres-common
+  #     - POSTGRES_PORT=5432
+  #     - POSTGRES_DB=order_db
+  #     - POSTGRES_USER=${POSTGRES_USER}
+  #     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+  #     - PRODUCT_SERVICE_URL=http://product-service:8082
+  #   depends_on:
+  #     - eureka-server
+  #     - postgres-common
+  #   restart: always
+  #   networks:
+  #     - beverage_net
+
+  # # ============================================================
+  # # PAYMENT SERVICE
+  # # ============================================================
+  # payment-service:
+  #   build:
+  #     context: ./Springboot/payment-service
+  #   container_name: beverage_payment_service
+  #   ports:
+  #     - "8084:8084"
+  #   environment:
+  #     - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+  #     - POSTGRES_HOST=postgres-common
+  #     - POSTGRES_PORT=5432
+  #     - POSTGRES_DB=payment_db
+  #     - POSTGRES_USER=${POSTGRES_USER}
+  #     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+  #     - VNPAY_TMN_CODE=${VNPAY_TMN_CODE}
+  #     - VNPAY_HASH_SECRET=${VNPAY_HASH_SECRET}
+  #     - VNPAY_URL=${VNPAY_URL:-https://sandbox.vnpayment.vn}
+  #     - MOMO_ENDPOINT=${MOMO_ENDPOINT:-https://test-payment.momo.vn}
+  #     - MOMO_PARTNER_CODE=${MOMO_PARTNER_CODE}
+  #     - MOMO_ACCESS_KEY=${MOMO_ACCESS_KEY}
+  #     - MOMO_SECRET_KEY=${MOMO_SECRET_KEY}
+  #   depends_on:
+  #     - eureka-server
+  #     - postgres-common
+  #   restart: always
+  #   networks:
+  #     - beverage_net
+
+  # # ============================================================
+  # # INVENTORY SERVICE
+  # # ============================================================
+  # inventory-service:
+  #   build:
+  #     context: ./Springboot/inventory-service
+  #   container_name: beverage_inventory_service
+  #   ports:
+  #     - "8085:8085"
+  #   environment:
+  #     - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+  #     - POSTGRES_HOST=postgres-common
+  #     - POSTGRES_PORT=5432
+  #     - POSTGRES_DB=inventory_db
+  #     - POSTGRES_USER=${POSTGRES_USER}
+  #     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+  #     - PRODUCT_SERVICE_URL=http://product-service:8082
+  #   depends_on:
+  #     - eureka-server
+  #     - postgres-common
+  #   restart: always
+  #   networks:
+  #     - beverage_net
+
+  # ============================================================
+  # NOTIFICATION SERVICE
+  # ============================================================
+  # notification-service:
+  #   build:
+  #     context: ./Springboot/notification-service
+  #   container_name: beverage_notification_service
+  #   ports:
+  #     - "8086:8086"
+  #   environment:
+  #     - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+  #     - POSTGRES_HOST=postgres-common
+  #     - POSTGRES_PORT=5432
+  #     - POSTGRES_DB=notification_db
+  #     - POSTGRES_USER=${POSTGRES_USER}
+  #     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+  #     - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+  #     - SMTP_PORT=${SMTP_PORT:-587}
+  #     - SMTP_USERNAME=${SMTP_USERNAME}
+  #     - SMTP_PASSWORD=${SMTP_PASSWORD}
+  #   depends_on:
+  #     - eureka-server
+  #     - postgres-common
+  #   restart: always
+  #   networks:
+  #     - beverage_net
+
+  # ============================================================
+  # NESTJS CLUSTER (Chat/Realtime Service)
+  # ============================================================
   nestjs-cluster:
     build:
       context: ./NestJS/realtime-service
     container_name: beverage_nestjs_cluster
     ports:
       - "3001:3001"
+    environment:
+      - MONGODB_URI=${MONGODB_URI:-mongodb://localhost:27017/chat_db}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=${JWT_SECRET}
     depends_on:
       - redis
       - kafka
@@ -54,6 +221,9 @@ services:
     networks:
       - beverage_net
 
+  # ============================================================
+  # NGINX GATEWAY
+  # ============================================================
   nginx-gateway:
     image: nginx:latest
     container_name: beverage_nginx
@@ -67,6 +237,9 @@ services:
     networks:
       - beverage_net
 
+  # ============================================================
+  # REDIS
+  # ============================================================
   redis:
     image: redis:alpine
     container_name: beverage_redis
@@ -78,6 +251,9 @@ services:
     networks:
       - beverage_net
 
+  # ============================================================
+  # APACHE KAFKA
+  # ============================================================
   kafka:
     image: apache/kafka:3.7.0
     container_name: beverage_kafka
@@ -101,26 +277,17 @@ services:
     networks:
       - beverage_net
 
-  postgres:
-    image: postgres:15-alpine
-    container_name: beverage_postgres
-    ports:
-      - "${POSTGRES_PORT}:5432"
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: always
-    networks:
-      - beverage_net
-
+# ============================================================
+# NETWORKS
+# ============================================================
 networks:
   beverage_net:
     driver: bridge
 
+# ============================================================
+# VOLUMES - Data persists until explicitly removed
+# ============================================================
 volumes:
+  postgres_common_data:
   redis_data:
   kafka_data:
-  postgres_data:
