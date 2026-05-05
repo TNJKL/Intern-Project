@@ -40,6 +40,11 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/api/v1/users/**"
                 ).permitAll()
+                .requestMatchers(
+                    "/swagger-ui.html/**",
+                    "/v3/api-docs/**"
+                    // mở cửa cho con hàng Swagger vào :DD
+                ).permitAll()
                 // Tất cả các endpoint khác cần authentication
                 .anyRequest().authenticated()
             );
