@@ -1,9 +1,12 @@
 package com.beverage.auth.presentation.controller;
 
 import com.beverage.auth.application.dto.request.CreateUserRequest;
+import com.beverage.auth.application.dto.request.ChangePasswordRequest;
 import com.beverage.auth.application.dto.request.UpdateUserRequest;
 import com.beverage.auth.application.dto.response.UserResponse;
 import com.beverage.auth.common.ApiResponse;
+import com.beverage.auth.domain.exception.AuthException;
+import com.beverage.auth.infrastructure.security.JwtUserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -16,6 +19,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -108,6 +112,32 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success(user, "Cập nhật người dùng thành công"));
     }
 
+    @PutMapping("/me")
+    @Operation(summary = "Người dùng tự cập nhật thông tin cá nhân", description = "Cập nhật thông tin cá nhân của chính mình qua JWT")
+    public ResponseEntity<ApiResponse<UserResponse>> updateMyProfile(
+            Authentication authentication,
+            @Valid @RequestBody UpdateUserRequest request) {
+        UUID userId = extractCurrentUserId(authentication);
+
+        // Người dùng tự cập nhật profile không được tự đổi password/role/trạng thái tài khoản
+        request.setPassword(null);
+        request.setRole(null);
+        request.setIsActive(null);
+
+        UserResponse user = userUseCase.updateUser(userId, request);
+        return ResponseEntity.ok(ApiResponse.success(user, "Cập nhật thông tin cá nhân thành công"));
+    }
+
+    @PutMapping("/me/password")
+    @Operation(summary = "Người dùng tự đổi mật khẩu", description = "Đổi mật khẩu bằng oldPassword/newPassword và thu hồi toàn bộ session, refresh token")
+    public ResponseEntity<ApiResponse<Void>> changeMyPassword(
+            Authentication authentication,
+            @Valid @RequestBody ChangePasswordRequest request) {
+        UUID userId = extractCurrentUserId(authentication);
+        userUseCase.changeMyPassword(userId, request.getOldPassword(), request.getNewPassword());
+        return ResponseEntity.ok(ApiResponse.success(null, "Đổi mật khẩu thành công. Vui lòng đăng nhập lại."));
+    }
+
     @DeleteMapping("/{id}")
     @Operation(summary = "Xóa người dùng", description = "Xóa người dùng khỏi hệ thống")
     @ApiResponses(value = {
@@ -118,5 +148,22 @@ public class UserController {
             @Parameter(description = "ID người dùng") @PathVariable UUID id) {
         userUseCase.deleteUser(id);
         return ResponseEntity.ok(ApiResponse.success(null, "Xóa người dùng thành công"));
+    }
+
+    private UUID extractCurrentUserId(Authentication authentication) {
+        if (authentication == null || authentication.getPrincipal() == null) {
+            throw new AuthException("Token không hợp lệ hoặc thiếu token", "ACCESS_TOKEN_INVALID");
+        }
+
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof JwtUserPrincipal jwtPrincipal) {
+            return jwtPrincipal.getUserId();
+        }
+
+        try {
+            return UUID.fromString(authentication.getName());
+        } catch (IllegalArgumentException ex) {
+            throw new AuthException("Token không hợp lệ", "ACCESS_TOKEN_INVALID");
+        }
     }
 }

@@ -5,16 +5,22 @@ import com.beverage.auth.application.dto.request.UpdateUserRequest;
 import com.beverage.auth.application.dto.response.UserResponse;
 import com.beverage.auth.application.mapper.UserMapper;
 import com.beverage.auth.domain.entity.User;
+import com.beverage.auth.domain.exception.AuthException;
 import com.beverage.auth.domain.exception.BusinessException;
 import com.beverage.auth.domain.exception.ResourceNotFoundException;
+import com.beverage.auth.domain.repository.RefreshTokenRepository;
+import com.beverage.auth.domain.repository.SessionRepository;
 import com.beverage.auth.domain.repository.UserRepository;
 import com.beverage.auth.infrastructure.cache.RedisCacheService;
+import com.beverage.auth.infrastructure.security.AuthRedisService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.UUID;
 
@@ -26,10 +32,16 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Slf4j
 public class UserUseCase {
+    private static final long CHANGE_PASSWORD_LIMIT_MAX_REQUESTS = 5;
+    private static final long CHANGE_PASSWORD_LIMIT_WINDOW_SECONDS = 900;
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final RedisCacheService redisCacheService;
+    private final PasswordEncoder passwordEncoder;
+    private final SessionRepository sessionRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final AuthRedisService authRedisService;
 
     @Transactional
     public UserResponse createUser(CreateUserRequest request) {
@@ -38,6 +50,7 @@ public class UserUseCase {
         }
 
         User user = userMapper.toDomain(request);
+        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         User savedUser = userRepository.save(user);
 
         log.info("Created new user with id: {}", savedUser.getId());
@@ -107,6 +120,9 @@ public class UserUseCase {
         }
 
         userMapper.updateDomain(user, request);
+        if (StringUtils.hasText(request.getPassword())) {
+            user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        }
         User updatedUser = userRepository.save(user);
 
         // Invalidate cache
@@ -115,6 +131,50 @@ public class UserUseCase {
 
         log.info("Updated user with id: {}", id);
         return userMapper.toResponse(updatedUser);
+    }
+
+    @Transactional
+    public void changeMyPassword(UUID userId, String oldPassword, String newPassword) {
+        String changePasswordRateLimitKey = "auth:change-password:" + userId;
+        if (authRedisService.isRateLimitExceeded(changePasswordRateLimitKey, CHANGE_PASSWORD_LIMIT_MAX_REQUESTS, CHANGE_PASSWORD_LIMIT_WINDOW_SECONDS)) {
+            throw new AuthException("Bạn đổi mật khẩu quá nhiều lần trong thời gian ngắn, vui lòng thử lại sau", "RATE_LIMIT_EXCEEDED");
+        }
+
+        if (oldPassword.equals(newPassword)) {
+            throw new AuthException("Mật khẩu mới không được trùng mật khẩu hiện tại", "PASSWORD_UNCHANGED");
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+
+        if (!passwordEncoder.matches(oldPassword, user.getPasswordHash())) {
+            throw new AuthException("Mật khẩu hiện tại không chính xác", "INVALID_CREDENTIALS");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setUpdatedAt(java.time.LocalDateTime.now());
+        userRepository.save(user);
+
+        // Thu hồi toàn bộ access token còn sống bằng cách blacklist theo session tokenHash (JTI)
+        var sessions = sessionRepository.findByUserId(userId);
+        for (var session : sessions) {
+            if (session.getExpiresAt() == null || session.getTokenHash() == null) {
+                continue;
+            }
+            long remainingTtl = java.time.Duration.between(java.time.LocalDateTime.now(), session.getExpiresAt()).getSeconds();
+            if (remainingTtl > 0) {
+                authRedisService.blacklistToken(session.getTokenHash(), remainingTtl);
+            }
+        }
+
+        // Thu hồi toàn bộ phiên đăng nhập + refresh token sau khi đổi mật khẩu
+        sessionRepository.deleteByUserId(userId);
+        refreshTokenRepository.deleteByUserId(userId);
+        authRedisService.removeAllUserSessions(userId);
+        redisCacheService.delete(redisCacheService.getUserCacheKey(userId.toString()));
+        redisCacheService.delete(redisCacheService.getUserByEmailCacheKey(user.getEmail()));
+
+        log.info("Password changed successfully for user: {}", userId);
     }
 
     @Transactional

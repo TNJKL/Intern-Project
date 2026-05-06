@@ -1,5 +1,7 @@
 package com.beverage.auth.infrastructure.config;
 
+import com.beverage.auth.infrastructure.security.JwtAuthenticationFilter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -10,16 +12,21 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .authorizeHttpRequests(auth -> auth
                 // Swagger/OpenAPI endpoints - công khai
                 .requestMatchers(
@@ -34,17 +41,20 @@ public class SecurityConfig {
                 ).permitAll()
                 // Auth endpoints - công khai (chưa có JWT token)
                 .requestMatchers(
-                    "/api/v1/auth/**"
+                    "/api/v1/auth/register",
+                    "/api/v1/auth/login",
+                    "/api/v1/auth/refresh",
+                    "/api/v1/auth/logout"
                 ).permitAll()
-                // User endpoints - công khai (dev mode - tất cả HTTP methods)
-                .requestMatchers(
-                    "/api/v1/users/**"
-                ).permitAll()
-                .requestMatchers(
-                    "/swagger-ui.html/**",
-                    "/v3/api-docs/**"
-                    // mở cửa cho con hàng Swagger vào :DD
-                ).permitAll()
+                // User self-service endpoints - yêu cầu JWT
+                .requestMatchers(HttpMethod.PUT, "/api/v1/users/me").hasAnyRole("ADMIN", "CUSTOMER")
+                .requestMatchers(HttpMethod.PUT, "/api/v1/users/me/password").hasAnyRole("ADMIN", "CUSTOMER")
+                // User CRUD endpoints - yêu cầu JWT và role ADMIN
+                .requestMatchers(HttpMethod.GET, "/api/v1/users/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/v1/users/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/v1/users/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PATCH, "/api/v1/users/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/v1/users/**").hasRole("ADMIN")
                 // Tất cả các endpoint khác cần authentication
                 .anyRequest().authenticated()
             );

@@ -252,7 +252,7 @@ services:
     image: redis:alpine
     container_name: beverage_redis
     ports:
-      - "6379:6379"
+      - "6379:6379" # 6380 là port để kết nối từ client lưu ý do máy vừa có redis local nên không dùng port 6379  
     volumes:
       - redis_data:/data
     restart: always

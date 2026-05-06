@@ -1,5 +1,6 @@
 package com.beverage.auth.presentation.config;
 
+import com.beverage.auth.domain.exception.AuthException;
 import com.beverage.auth.domain.exception.BusinessException;
 import com.beverage.auth.domain.exception.ResourceNotFoundException;
 import com.beverage.auth.common.ApiResponse;
@@ -32,6 +33,22 @@ public class GlobalExceptionHandler {
         HttpStatus status = switch (ex.getErrorCode()) {
             case "EMAIL_EXISTED" -> HttpStatus.CONFLICT;
             case "VALIDATION_ERROR" -> HttpStatus.BAD_REQUEST;
+            default -> HttpStatus.BAD_REQUEST;
+        };
+
+        return ResponseEntity.status(status)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(AuthException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAuthException(AuthException ex) {
+        log.error("Auth error: {} [{}]", ex.getMessage(), ex.getErrorCode());
+
+        HttpStatus status = switch (ex.getErrorCode()) {
+            case "INVALID_CREDENTIALS", "USER_BANNED", "USER_INACTIVE" -> HttpStatus.FORBIDDEN;
+            case "TOKEN_EXPIRED", "TOKEN_BLACKLISTED", "REFRESH_TOKEN_USED", "REFRESH_TOKEN_INVALID", "ACCESS_TOKEN_INVALID" -> HttpStatus.UNAUTHORIZED;
+            case "RATE_LIMIT_EXCEEDED" -> HttpStatus.TOO_MANY_REQUESTS;
+            case "PASSWORD_UNCHANGED" -> HttpStatus.BAD_REQUEST;
             default -> HttpStatus.BAD_REQUEST;
         };
 
