@@ -23,6 +23,8 @@ services:
       - "8080:8080"
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - eureka-server
     restart: always
@@ -47,6 +49,7 @@ services:
     volumes:
       - ./db-scripts/01-init-databases.sql:/docker-entrypoint-initdb.d/01-init-databases.sql
       - postgres_common_data:/var/lib/postgresql/data
+    command: sh -c "echo 'host all all 0.0.0.0/0 scram-sha-256' >> /var/lib/postgresql/data/pg_hba.conf && docker-entrypoint.sh postgres"
     restart: always
     networks:
       - beverage_net
@@ -54,25 +57,28 @@ services:
   # ============================================================
   # AUTH SERVICE
   # ============================================================
-  auth-service:
-    build:
-      context: ./Springboot/auth-service
-    container_name: beverage_auth_service
-    ports:
-      - "8081:8081"
-    environment:
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
-      - POSTGRES_HOST=postgres-common
-      - POSTGRES_PORT=5432
-      - POSTGRES_DB=auth_db
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-    depends_on:
-      - eureka-server
-      - postgres-common
-    restart: always
-    networks:
-      - beverage_net
+  # auth-service:
+  #   build:
+  #     context: ./Springboot/auth-service
+  #   container_name: beverage_auth_service
+  #   ports:
+  #     - "8081:8081"
+  #   environment:
+  #     - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+  #     - POSTGRES_HOST=postgres-common
+  #     - POSTGRES_PORT=5432
+  #     - POSTGRES_DB=auth_db
+  #     - POSTGRES_USER=${POSTGRES_USER}
+  #     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
+  #   depends_on:
+  #     - eureka-server
+  #     - postgres-common
+  #     - redis
+  #   restart: always
+  #   networks:
+  #     - beverage_net
 
   # ============================================================
   # PRODUCT SERVICE
@@ -246,7 +252,7 @@ services:
     image: redis:alpine
     container_name: beverage_redis
     ports:
-      - "6379:6379"
+      - "6379:6379" # 6380 là port để kết nối từ client lưu ý do máy vừa có redis local nên không dùng port 6379  
     volumes:
       - redis_data:/data
     restart: always
