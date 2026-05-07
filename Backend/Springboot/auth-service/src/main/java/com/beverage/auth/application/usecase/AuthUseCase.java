@@ -126,7 +126,7 @@ public class AuthUseCase {
             sessionRepository.deleteById(session.getId());
         });
 
-        if (jwtService.validateToken(refreshToken)) {
+        if (refreshToken != null && !refreshToken.isBlank() && jwtService.validateToken(refreshToken)) {
             String refreshJti = jwtService.extractJti(refreshToken);
             long refreshTtl = jwtService.extractRemainingTtlSeconds(refreshToken);
             authRedisService.markRefreshTokenUsed(refreshJti, refreshTtl);

@@ -13,14 +13,16 @@ spring:
       routes:
         # Route cho auth-service (users management)
         - id: auth-service
-          uri: http://host.docker.internal:8081
-          #sau này cần thì đổi thành uri: lb://auth-service Thi đã note dòng này
+          # SWITCH POINT:
+          # - auth local  -> http://host.docker.internal:8081
+          # - auth docker -> http://auth-service:8081
+          uri: ${AUTH_SERVICE_URI:http://host.docker.internal:8081}
 
           predicates:
             - Path=/api/v1/users/**
         # Route cho auth-service (login/auth endpoints)
         - id: auth-service-auth
-          uri: http://host.docker.internal:8081
+          uri: ${AUTH_SERVICE_URI:http://host.docker.internal:8081}
           predicates:
             - Path=/api/v1/auth/**
 
