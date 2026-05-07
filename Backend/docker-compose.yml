@@ -23,6 +23,10 @@ services:
       - "8080:8080"
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      # SWITCH POINT:
+      # - auth local  -> http://host.docker.internal:8081
+      # - auth docker -> http://auth-service:8081
+      - AUTH_SERVICE_URI=http://host.docker.internal:8081
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
