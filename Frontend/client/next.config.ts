@@ -17,6 +17,14 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'https://morbidity-stucco-grower.ngrok-free.dev/api/:path*',
+      },
+    ];
+  },
 };
 
 export default nextConfig;

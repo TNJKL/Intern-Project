@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Quicksand } from "next/font/google";
 import "@/styles/globals.css";
 import { CustomerLayout } from "@/components/layout/CustomerLayout";
+import { Toaster } from "react-hot-toast";
 
 const quicksand = Quicksand({
   subsets: ["latin", "vietnamese"],
@@ -24,6 +25,7 @@ export default function RootLayout({
         <CustomerLayout>
           {children}
         </CustomerLayout>
+        <Toaster position="top-right" />
       </body>
     </html>
   );

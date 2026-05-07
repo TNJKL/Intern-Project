@@ -3,14 +3,41 @@
 import { Navbar } from "@/components/layout/Navbar";
 import { FloatingNav } from "@/components/layout/FloatingNav";
 import { ChatWidget } from "@/components/layout/ChatWidget";
-import { usePathname } from "next/navigation";
- 
+import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect } from "react";
+import { useAuthStore } from "@/store/useAuthStore";
+import toast from "react-hot-toast";
+
 export function CustomerLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { logout } = useAuthStore();
+
+  useEffect(() => {
+    const authDataParam = searchParams.get('auth');
+    if (authDataParam) {
+      try {
+        const authData = JSON.parse(decodeURIComponent(authDataParam));
+        useAuthStore.getState().setAuth(authData.user, authData.accessToken, authData.refreshToken);
+        // Success toast to confirm sync
+        toast.success(`Đã đồng bộ tài khoản: ${authData.user.fullName}`);
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } catch (e) {
+        console.error('Failed to sync auth data', e);
+      }
+    }
+
+    if (searchParams.get('logout') === 'true') {
+      logout();
+      toast.success("Đã đăng xuất khỏi hệ thống");
+    }
+  }, [searchParams, logout]);
+
   const isAuthPage = pathname === "/login" || pathname === "/register";
 
   if (isAuthPage) {
-    return <div className="min-h-screen bg-[#fdfaf5]">{children}</div>;
+    return <div className="h-screen overflow-hidden bg-[#fdfaf5]">{children}</div>;
   }
 
   return (
