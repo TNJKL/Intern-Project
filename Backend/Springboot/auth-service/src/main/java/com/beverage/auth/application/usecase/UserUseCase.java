@@ -137,6 +137,8 @@ public class UserUseCase {
     public void changeMyPassword(UUID userId, String oldPassword, String newPassword) {
         String changePasswordRateLimitKey = "auth:change-password:" + userId;
         if (authRedisService.isRateLimitExceeded(changePasswordRateLimitKey, CHANGE_PASSWORD_LIMIT_MAX_REQUESTS, CHANGE_PASSWORD_LIMIT_WINDOW_SECONDS)) {
+            log.warn("SECURITY_EVENT type=RATE_LIMIT_EXCEEDED action=CHANGE_PASSWORD key={} userId={} limit={} windowSeconds={}",
+                    changePasswordRateLimitKey, userId, CHANGE_PASSWORD_LIMIT_MAX_REQUESTS, CHANGE_PASSWORD_LIMIT_WINDOW_SECONDS);
             throw new AuthException("Bạn đổi mật khẩu quá nhiều lần trong thời gian ngắn, vui lòng thử lại sau", "RATE_LIMIT_EXCEEDED");
         }
 
@@ -164,6 +166,8 @@ public class UserUseCase {
             long remainingTtl = java.time.Duration.between(java.time.LocalDateTime.now(), session.getExpiresAt()).getSeconds();
             if (remainingTtl > 0) {
                 authRedisService.blacklistToken(session.getTokenHash(), remainingTtl);
+                log.info("SECURITY_EVENT type=TOKEN_REVOKED tokenType=ACCESS reason=PASSWORD_CHANGED jti={} userId={} ttlSeconds={}",
+                        session.getTokenHash(), userId, remainingTtl);
             }
         }
 
@@ -174,7 +178,7 @@ public class UserUseCase {
         redisCacheService.delete(redisCacheService.getUserCacheKey(userId.toString()));
         redisCacheService.delete(redisCacheService.getUserByEmailCacheKey(user.getEmail()));
 
-        log.info("Password changed successfully for user: {}", userId);
+        log.info("SECURITY_EVENT type=PASSWORD_CHANGED userId={} sessionsRevoked={} refreshRevoked=ALL", userId, sessions.size());
     }
 
     @Transactional

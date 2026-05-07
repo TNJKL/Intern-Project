@@ -47,6 +47,7 @@ public class SecurityConfig {
                     "/api/v1/auth/logout"
                 ).permitAll()
                 // User self-service endpoints - yêu cầu JWT
+                .requestMatchers(HttpMethod.GET, "/api/v1/users/me").hasAnyRole("ADMIN", "CUSTOMER")
                 .requestMatchers(HttpMethod.PUT, "/api/v1/users/me").hasAnyRole("ADMIN", "CUSTOMER")
                 .requestMatchers(HttpMethod.PUT, "/api/v1/users/me/password").hasAnyRole("ADMIN", "CUSTOMER")
                 // User CRUD endpoints - yêu cầu JWT và role ADMIN

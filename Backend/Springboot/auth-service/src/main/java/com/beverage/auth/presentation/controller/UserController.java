@@ -46,6 +46,14 @@ public class UserController {
                 .body(ApiResponse.success(user, "Tạo người dùng thành công"));
     }
 
+    @GetMapping("/me")
+    @Operation(summary = "Người dùng tự xem thông tin cá nhân", description = "Lấy thông tin tài khoản hiện tại qua JWT")
+    public ResponseEntity<ApiResponse<UserResponse>> getMyProfile(Authentication authentication) {
+        UUID userId = extractCurrentUserId(authentication);
+        UserResponse user = userUseCase.getUserById(userId);
+        return ResponseEntity.ok(ApiResponse.success(user, "Lấy thông tin cá nhân thành công"));
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Lấy thông tin người dùng theo ID", description = "Truy xuất thông tin người dùng bằng ID")
     @ApiResponses(value = {

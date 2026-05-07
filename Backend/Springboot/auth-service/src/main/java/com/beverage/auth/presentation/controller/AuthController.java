@@ -67,7 +67,7 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    @Operation(summary = "Get current user info")
+    @Operation(summary = "Get current user info (deprecated)", deprecated = true)
     public ResponseEntity<ApiResponse<UserResponse>> getCurrentUser(Authentication authentication) {
         if (authentication == null || authentication.getPrincipal() == null) {
             throw new AuthException("Token không hợp lệ hoặc thiếu token", "REFRESH_TOKEN_INVALID");

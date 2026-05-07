@@ -72,6 +72,8 @@ public class AuthUseCase {
     public AuthResponse login(LoginRequest request, String ipAddress, String deviceInfo) {
         String loginRateLimitKey = "auth:login:" + request.getEmail().toLowerCase();
         if (authRedisService.isRateLimitExceeded(loginRateLimitKey, LOGIN_LIMIT_MAX_REQUESTS, LOGIN_LIMIT_WINDOW_SECONDS)) {
+            log.warn("SECURITY_EVENT type=RATE_LIMIT_EXCEEDED action=LOGIN key={} limit={} windowSeconds={}",
+                    loginRateLimitKey, LOGIN_LIMIT_MAX_REQUESTS, LOGIN_LIMIT_WINDOW_SECONDS);
             throw new AuthException("Bạn thao tác đăng nhập quá nhanh, vui lòng thử lại sau", "RATE_LIMIT_EXCEEDED");
         }
 
@@ -116,6 +118,8 @@ public class AuthUseCase {
         long remainingTtl = jwtService.extractRemainingTtlSeconds(accessToken);
 
         authRedisService.blacklistToken(accessJti, remainingTtl);
+        log.info("SECURITY_EVENT type=TOKEN_REVOKED tokenType=ACCESS reason=LOGOUT jti={} ttlSeconds={}",
+                accessJti, remainingTtl);
 
         sessionRepository.findByTokenHash(accessJti).ifPresent(session -> {
             authRedisService.removeSessionFromUser(session.getUserId(), session.getId().toString());
@@ -126,6 +130,8 @@ public class AuthUseCase {
             String refreshJti = jwtService.extractJti(refreshToken);
             long refreshTtl = jwtService.extractRemainingTtlSeconds(refreshToken);
             authRedisService.markRefreshTokenUsed(refreshJti, refreshTtl);
+            log.info("SECURITY_EVENT type=TOKEN_REVOKED tokenType=REFRESH reason=LOGOUT jti={} ttlSeconds={}",
+                    refreshJti, refreshTtl);
 
             refreshTokenRepository.findByTokenHash(refreshJti).ifPresent(refresh -> {
                 refresh.revoke();
@@ -150,6 +156,7 @@ public class AuthUseCase {
 
         String refreshJti = jwtService.extractJti(refreshToken);
         if (authRedisService.isRefreshTokenUsed(refreshJti)) {
+            log.warn("SECURITY_EVENT type=REFRESH_REPLAY_BLOCKED jti={} reason=ALREADY_USED", refreshJti);
             throw new AuthException.RefreshTokenUsedException();
         }
 
@@ -162,6 +169,8 @@ public class AuthUseCase {
         UUID userId = jwtService.extractUserId(refreshToken);
         String refreshRateLimitKey = "auth:refresh:" + userId;
         if (authRedisService.isRateLimitExceeded(refreshRateLimitKey, REFRESH_LIMIT_MAX_REQUESTS, REFRESH_LIMIT_WINDOW_SECONDS)) {
+            log.warn("SECURITY_EVENT type=RATE_LIMIT_EXCEEDED action=REFRESH key={} userId={} limit={} windowSeconds={}",
+                    refreshRateLimitKey, userId, REFRESH_LIMIT_MAX_REQUESTS, REFRESH_LIMIT_WINDOW_SECONDS);
             throw new AuthException("Bạn làm mới token quá nhanh, vui lòng thử lại sau", "RATE_LIMIT_EXCEEDED");
         }
 
@@ -178,6 +187,8 @@ public class AuthUseCase {
 
         long refreshTtl = jwtService.extractRemainingTtlSeconds(refreshToken);
         authRedisService.markRefreshTokenUsed(refreshJti, refreshTtl);
+        log.info("SECURITY_EVENT type=TOKEN_ROTATED tokenType=REFRESH oldJti={} ttlSeconds={} userId={}",
+                refreshJti, refreshTtl, userId);
 
         storedRefreshToken.revoke();
         refreshTokenRepository.save(storedRefreshToken);
