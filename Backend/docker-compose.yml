@@ -23,6 +23,14 @@ services:
       - "8080:8080"
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      # SWITCH POINT:
+      # - Docker auth-service  -> http://auth-service:8081
+      # - Local auth-service   -> http://host.docker.internal:8081
+      - AUTH_SERVICE_URI=http://auth-service:8081
+      # SWITCH POINT:
+      # - Docker product-service -> http://product-service:8082
+      # - Local product-service  -> http://host.docker.internal:8082
+      - PRODUCT_SERVICE_URI=http://host.docker.internal:8082
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -57,28 +65,31 @@ services:
   # ============================================================
   # AUTH SERVICE
   # ============================================================
-  # auth-service:
-  #   build:
-  #     context: ./Springboot/auth-service
-  #   container_name: beverage_auth_service
-  #   ports:
-  #     - "8081:8081"
-  #   environment:
-  #     - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
-  #     - POSTGRES_HOST=postgres-common
-  #     - POSTGRES_PORT=5432
-  #     - POSTGRES_DB=auth_db
-  #     - POSTGRES_USER=${POSTGRES_USER}
-  #     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-  #     - REDIS_HOST=redis
-  #     - REDIS_PORT=6379
-  #   depends_on:
-  #     - eureka-server
-  #     - postgres-common
-  #     - redis
-  #   restart: always
-  #   networks:
-  #     - beverage_net
+  auth-service:
+    build:
+      context: ./Springboot/auth-service
+    container_name: beverage_auth_service
+    ports:
+      - "8081:8081"
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - POSTGRES_HOST=postgres-common
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=auth_db
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_ACCESS_TOKEN_EXPIRATION=${JWT_ACCESS_TOKEN_EXPIRATION}
+      - JWT_REFRESH_TOKEN_EXPIRATION=${JWT_REFRESH_TOKEN_EXPIRATION}
+    depends_on:
+      - eureka-server
+      - postgres-common
+      - redis
+    restart: always
+    networks:
+      - beverage_net
 
   # ============================================================
   # PRODUCT SERVICE
@@ -96,9 +107,15 @@ services:
   #     - POSTGRES_DB=product_db
   #     - POSTGRES_USER=${POSTGRES_USER}
   #     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
+  #     - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+  #     - JWT_ACCESS_TOKEN_EXPIRATION=${JWT_ACCESS_TOKEN_EXPIRATION}
+  #     - JWT_REFRESH_TOKEN_EXPIRATION=${JWT_REFRESH_TOKEN_EXPIRATION}
   #   depends_on:
   #     - eureka-server
   #     - postgres-common
+  #     - redis
   #   restart: always
   #   networks:
   #     - beverage_net
