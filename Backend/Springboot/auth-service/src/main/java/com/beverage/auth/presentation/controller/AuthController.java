@@ -12,12 +12,18 @@ import com.beverage.auth.domain.exception.AuthException;
 import com.beverage.auth.infrastructure.security.JwtUserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -27,6 +33,21 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Tag(name = "Authentication", description = "Authentication APIs")
 public class AuthController {
+
+    @Value("${auth.refresh-cookie.name:refreshToken}")
+    private String refreshCookieName;
+
+    @Value("${auth.refresh-cookie.path:/api/v1/auth}")
+    private String refreshCookiePath;
+
+    @Value("${auth.refresh-cookie.secure:false}")
+    private boolean refreshCookieSecure;
+
+    @Value("${auth.refresh-cookie.same-site:Lax}")
+    private String refreshCookieSameSite;
+
+    @Value("${jwt.refresh-token-expiration:604800000}")
+    private long refreshTokenExpirationMs;
 
     private final AuthUseCase authUseCase;
 
@@ -43,26 +64,55 @@ public class AuthController {
     @Operation(summary = "User login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(
             @Valid @RequestBody LoginRequest request,
-            HttpServletRequest httpRequest) {
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
         String ipAddress = getClientIp(httpRequest);
         String deviceInfo = httpRequest.getHeader("User-Agent");
         AuthResponse response = authUseCase.login(request, ipAddress, deviceInfo);
+
+        addRefreshTokenCookie(httpResponse, response.getRefreshToken());
         return ResponseEntity.ok(ApiResponse.success(response, "Đăng nhập thành công"));
     }
 
     @PostMapping("/logout")
     @Operation(summary = "User logout")
     public ResponseEntity<ApiResponse<Void>> logout(
-            @Valid @RequestBody LogoutRequest request) {
-        authUseCase.logout(request);
+            @RequestBody(required = false) LogoutRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
+        String accessToken = resolveAccessToken(request, httpRequest);
+        if (!StringUtils.hasText(accessToken)) {
+            throw new AuthException.AccessTokenInvalidException();
+        }
+
+        String refreshToken = resolveRefreshToken(request, httpRequest);
+        LogoutRequest resolved = LogoutRequest.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .build();
+
+        clearRefreshTokenCookie(httpResponse);
+        authUseCase.logout(resolved);
         return ResponseEntity.ok(ApiResponse.success(null, "Đăng xuất thành công"));
     }
 
     @PostMapping("/refresh")
     @Operation(summary = "Refresh access token")
     public ResponseEntity<ApiResponse<AuthResponse>> refresh(
-            @Valid @RequestBody RefreshTokenRequest request) {
-        AuthResponse response = authUseCase.refreshToken(request);
+            @RequestBody(required = false) RefreshTokenRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
+        String refreshToken = resolveRefreshToken(request, httpRequest);
+        if (!StringUtils.hasText(refreshToken)) {
+            throw new AuthException.RefreshTokenInvalidException();
+        }
+
+        RefreshTokenRequest resolved = RefreshTokenRequest.builder()
+                .refreshToken(refreshToken)
+                .build();
+
+        AuthResponse response = authUseCase.refreshToken(resolved);
+        addRefreshTokenCookie(httpResponse, response.getRefreshToken());
         return ResponseEntity.ok(ApiResponse.success(response, "Làm mới token thành công"));
     }
 
@@ -95,5 +145,70 @@ public class AuthController {
             return xForwardedFor.split(",")[0].trim();
         }
         return request.getRemoteAddr();
+    }
+
+    private String resolveAccessToken(LogoutRequest request, HttpServletRequest httpRequest) {
+        if (request != null && StringUtils.hasText(request.getAccessToken())) {
+            return request.getAccessToken();
+        }
+
+        String bearerToken = httpRequest.getHeader(HttpHeaders.AUTHORIZATION);
+        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
+        }
+        return null;
+    }
+
+    private String resolveRefreshToken(Object request, HttpServletRequest httpRequest) {
+        if (request instanceof RefreshTokenRequest r && StringUtils.hasText(r.getRefreshToken())) {
+            return r.getRefreshToken();
+        }
+        if (request instanceof LogoutRequest l && StringUtils.hasText(l.getRefreshToken())) {
+            return l.getRefreshToken();
+        }
+        return extractCookie(httpRequest, refreshCookieName);
+    }
+
+    private String extractCookie(HttpServletRequest request, String cookieName) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null || cookies.length == 0) {
+            return null;
+        }
+        for (Cookie cookie : cookies) {
+            if (cookieName.equals(cookie.getName())) {
+                return cookie.getValue();
+            }
+        }
+        return null;
+    }
+
+    private void addRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
+        if (!StringUtils.hasText(refreshToken)) {
+            return;
+        }
+
+        ResponseCookie cookie = ResponseCookie.from(refreshCookieName, refreshToken)
+                .httpOnly(true)
+                .secure(refreshCookieSecure)
+                .path(refreshCookiePath)
+                .sameSite(refreshCookieSameSite)
+                .maxAge(jwtSecondsToDurationSeconds())
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    private void clearRefreshTokenCookie(HttpServletResponse response) {
+        ResponseCookie cookie = ResponseCookie.from(refreshCookieName, "")
+                .httpOnly(true)
+                .secure(refreshCookieSecure)
+                .path(refreshCookiePath)
+                .sameSite(refreshCookieSameSite)
+                .maxAge(0)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    private long jwtSecondsToDurationSeconds() {
+        return Math.max(1, refreshTokenExpirationMs / 1000);
     }
 }

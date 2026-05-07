@@ -39,8 +39,25 @@ eureka:
 
 jwt:
   secret-key: ${JWT_SECRET_KEY:dGhpc2lzYXZlcnlsb25nc2VjcmV0a2V5Zm9yand0dG9rZW5nZW5lcmF0aW9uYW5kZGVjcnlwdGlvbg==}
-  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:60000}   # 30 seconds #900000
+  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:600000}   # 30 seconds #900000
   refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:604800000} # #604800000
+
+# Cookie refresh-token config (HTTP only)
+auth:
+  refresh-cookie:
+    name: ${AUTH_REFRESH_COOKIE_NAME:refreshToken}
+    path: ${AUTH_REFRESH_COOKIE_PATH:/api/v1/auth}
+    # SWITCH POINT:
+    # - local http  : false
+    # - production https / ngrok https: true
+    secure: ${AUTH_REFRESH_COOKIE_SECURE:true}
+    same-site: ${AUTH_REFRESH_COOKIE_SAME_SITE:Lax}
+
+# CORS for FE with withCredentials=true
+app:
+  cors:
+    # comma-separated patterns
+    allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:3000,http://localhost:5173,https://*.ngrok-free.app}
 
 springdoc:
   api-docs:

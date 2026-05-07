@@ -17,12 +17,16 @@ spring:
           # - Khi auth-service chạy Docker: AUTH_SERVICE_URI=http://auth-service:8081
           # - Khi auth-service chạy local:  AUTH_SERVICE_URI=http://host.docker.internal:8081
           uri: ${AUTH_SERVICE_URI:http://auth-service:8081}
-
+          # - auth local  -> http://host.docker.internal:8081
+          # - auth docker -> http://auth-service:8081
+          uri: ${AUTH_SERVICE_URI:http://host.docker.internal:8081}
+          //mai dùng 1 trong 2 là được
           predicates:
             - Path=/api/v1/users/**
         # Route cho auth-service (login/auth endpoints)
         - id: auth-service-auth
           uri: ${AUTH_SERVICE_URI:http://auth-service:8081}
+          uri: ${AUTH_SERVICE_URI:http://host.docker.internal:8081}
           predicates:
             - Path=/api/v1/auth/**
 
