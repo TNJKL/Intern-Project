@@ -1,5 +1,6 @@
 package com.beverage.auth.infrastructure.security;
 
+import com.beverage.shared.jwt.TokenSecurityStateService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -12,7 +13,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class AuthRedisService {
+public class AuthRedisService implements TokenSecurityStateService {
 
     private final RedisTemplate<String, Object> redisTemplate;
 

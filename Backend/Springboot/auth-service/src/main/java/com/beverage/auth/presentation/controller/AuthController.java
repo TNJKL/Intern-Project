@@ -9,7 +9,7 @@ import com.beverage.auth.application.dto.response.UserResponse;
 import com.beverage.auth.application.usecase.AuthUseCase;
 import com.beverage.auth.common.ApiResponse;
 import com.beverage.auth.domain.exception.AuthException;
-import com.beverage.auth.infrastructure.security.JwtUserPrincipal;
+import com.beverage.shared.jwt.JwtUserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.Cookie;

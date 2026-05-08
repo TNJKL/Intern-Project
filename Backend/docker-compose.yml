@@ -68,7 +68,8 @@ services:
   # ============================================================
   auth-service:
     build:
-      context: ./Springboot/auth-service
+      context: ./Springboot
+      dockerfile: auth-service/Dockerfile
     container_name: beverage_auth_service
     ports:
       - "8081:8081"
@@ -97,7 +98,8 @@ services:
   # ============================================================
   # product-service:
   #   build:
-  #     context: ./Springboot/product-service
+  #     context: ./Springboot
+  #     dockerfile: product-service/Dockerfile
   #   container_name: beverage_product_service
   #   ports:
   #     - "8082:8082"

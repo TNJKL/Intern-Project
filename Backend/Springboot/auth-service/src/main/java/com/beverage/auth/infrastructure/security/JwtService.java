@@ -2,6 +2,7 @@ package com.beverage.auth.infrastructure.security;
 
 import com.beverage.auth.domain.entity.User;
 import com.beverage.auth.domain.enums.UserRole;
+import com.beverage.shared.jwt.JwtTokenProvider;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -14,12 +15,11 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
-import java.util.Map;
 import java.util.UUID;
 
 @Service
 @Slf4j
-public class JwtService {
+public class JwtService implements JwtTokenProvider {
 
     @Value("${jwt.secret-key}")
     private String secretKey;
@@ -99,9 +99,14 @@ public class JwtService {
         return extractClaims(token).get("email", String.class);
     }
 
-    public UserRole extractRole(String token) {
+    public UserRole extractRoleEnum(String token) {
         String role = extractClaims(token).get("role", String.class);
         return UserRole.valueOf(role);
+    }
+
+    @Override
+    public String extractRole(String token) {
+        return extractRoleEnum(token).name();
     }
 
     public String extractTokenType(String token) {
