@@ -65,7 +65,7 @@ auth:
 app:
   cors:
     # comma-separated patterns
-    allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:3000,http://localhost:5173,https://*.ngrok-free.app}
+    allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:3000,http://localhost:5173,https://*.ngrok-free.app,https://*.ngrok-free.dev}
 
 springdoc:
   api-docs:
