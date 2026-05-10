@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -109,23 +110,7 @@ public class AuthUseCase {
         String accessToken = request.getAccessToken();
         String refreshToken = request.getRefreshToken();
 
-        if (!jwtService.validateToken(accessToken)) {
-            log.warn("Logout rejected: invalid/expired access token");
-            throw new AuthException.AccessTokenInvalidException();
-        }
-
-        String accessJti = jwtService.extractJti(accessToken);
-        long remainingTtl = jwtService.extractRemainingTtlSeconds(accessToken);
-
-        authRedisService.blacklistToken(accessJti, remainingTtl);
-        log.info("SECURITY_EVENT type=TOKEN_REVOKED tokenType=ACCESS reason=LOGOUT jti={} ttlSeconds={}",
-                accessJti, remainingTtl);
-
-        sessionRepository.findByTokenHash(accessJti).ifPresent(session -> {
-            authRedisService.removeSessionFromUser(session.getUserId(), session.getId().toString());
-            sessionRepository.deleteById(session.getId());
-        });
-
+        boolean revokedRefresh = false;
         if (refreshToken != null && !refreshToken.isBlank() && jwtService.validateToken(refreshToken)) {
             String refreshJti = jwtService.extractJti(refreshToken);
             long refreshTtl = jwtService.extractRemainingTtlSeconds(refreshToken);
@@ -137,6 +122,25 @@ public class AuthUseCase {
                 refresh.revoke();
                 refreshTokenRepository.save(refresh);
             });
+            revokedRefresh = true;
+        }
+
+        Optional<JwtService.LogoutAccessParse> accessForLogout = jwtService.parseAccessTokenForLogout(accessToken);
+        if (accessForLogout.isPresent()) {
+            JwtService.LogoutAccessParse p = accessForLogout.get();
+            authRedisService.blacklistToken(p.jti(), p.blacklistTtlSeconds());
+            log.info("SECURITY_EVENT type=TOKEN_REVOKED tokenType=ACCESS reason=LOGOUT jti={} ttlSeconds={}",
+                    p.jti(), p.blacklistTtlSeconds());
+
+            sessionRepository.findByTokenHash(p.jti()).ifPresent(session -> {
+                authRedisService.removeSessionFromUser(session.getUserId(), session.getId().toString());
+                sessionRepository.deleteById(session.getId());
+            });
+        }
+
+        if (!revokedRefresh && accessForLogout.isEmpty()) {
+            log.warn("Logout rejected: không parse được access và refresh không hợp lệ hoặc thiếu");
+            throw new AuthException.AccessTokenInvalidException();
         }
 
         log.info("User logged out successfully");

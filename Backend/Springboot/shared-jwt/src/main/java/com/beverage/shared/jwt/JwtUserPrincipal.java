@@ -1,4 +1,4 @@
-package com.beverage.auth.infrastructure.security;
+package com.beverage.shared.jwt;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

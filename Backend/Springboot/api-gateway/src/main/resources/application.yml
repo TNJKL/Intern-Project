@@ -11,27 +11,25 @@ spring:
           enabled: true
           lower-case-service-id: true
       routes:
-        # Route cho auth-service (users management)
+        # Auth: users CRUD
+        # SWITCH (docker-compose env):
+        # - auth local  -> AUTH_SERVICE_URI=http://host.docker.internal:8081
+        # - auth docker -> AUTH_SERVICE_URI=http://auth-service:8081
         - id: auth-service
-          # SWITCH POINT:
-          # - Khi auth-service chạy Docker: AUTH_SERVICE_URI=http://auth-service:8081
-          # - Khi auth-service chạy local:  AUTH_SERVICE_URI=http://host.docker.internal:8081
           uri: ${AUTH_SERVICE_URI:http://auth-service:8081}
-          # - auth local  -> http://host.docker.internal:8081
-          # - auth docker -> http://auth-service:8081
-          uri: ${AUTH_SERVICE_URI:http://host.docker.internal:8081}
-          //mai dùng 1 trong 2 là được
           predicates:
             - Path=/api/v1/users/**
-        # Route cho auth-service (login/auth endpoints)
+        # Auth: login / refresh / logout / register
         - id: auth-service-auth
           uri: ${AUTH_SERVICE_URI:http://auth-service:8081}
-          uri: ${AUTH_SERVICE_URI:http://host.docker.internal:8081}
           predicates:
             - Path=/api/v1/auth/**
 
-        # Route cho product-service (product management)
-        - id: product-service
+        # Product catalog
+        # SWITCH:
+        # - product local  -> PRODUCT_SERVICE_URI=http://host.docker.internal:8082
+        # - product docker -> PRODUCT_SERVICE_URI=http://product-service:8082
+        - id: product-service-categories
           uri: ${PRODUCT_SERVICE_URI:http://product-service:8082}
           predicates:
             - Path=/api/v1/categories,/api/v1/categories/**

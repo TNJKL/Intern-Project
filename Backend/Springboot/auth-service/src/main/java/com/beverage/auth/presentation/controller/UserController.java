@@ -6,7 +6,7 @@ import com.beverage.auth.application.dto.request.UpdateUserRequest;
 import com.beverage.auth.application.dto.response.UserResponse;
 import com.beverage.auth.common.ApiResponse;
 import com.beverage.auth.domain.exception.AuthException;
-import com.beverage.auth.infrastructure.security.JwtUserPrincipal;
+import com.beverage.shared.jwt.JwtUserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;

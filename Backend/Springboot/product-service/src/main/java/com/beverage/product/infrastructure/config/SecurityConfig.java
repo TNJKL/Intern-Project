@@ -37,9 +37,8 @@ public class SecurityConfig {
                         ).permitAll()
 
                         // Public catalog GET
-                        .requestMatchers(HttpMethod.GET,
-                                "/api/v1/categories",
-                                "/api/v1/categories/**",
+                        .requestMatchers(HttpMethod.GET,                          
+                                // "/api/v1/categories/**",
                                 "/api/v1/products",
                                 "/api/v1/products/**",
                                 "/api/v1/toppings",
@@ -51,11 +50,15 @@ public class SecurityConfig {
                                 "/api/v1/categories",
                                 "/api/v1/products",
                                 "/api/v1/toppings"
+                                
                         ).hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT,
                                 "/api/v1/categories/**",
                                 "/api/v1/products/**",
                                 "/api/v1/toppings/**"
+                        ).hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/categories/**"
                         ).hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PATCH,
                                 "/api/v1/categories/**",

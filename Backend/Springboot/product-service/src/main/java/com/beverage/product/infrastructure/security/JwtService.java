@@ -1,5 +1,6 @@
 package com.beverage.product.infrastructure.security;
 
+import com.beverage.shared.jwt.JwtTokenProvider;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -11,12 +12,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
-import java.util.Date;
 import java.util.UUID;
 
 @Service
 @Slf4j
-public class JwtService {
+public class JwtService implements JwtTokenProvider {
 
     @Value("${jwt.secret-key}")
     private String secretKey;

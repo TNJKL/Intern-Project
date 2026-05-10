@@ -1,5 +1,7 @@
 server:
   port: 8081
+  # Hai JWT trong Cookie header có thể dài; tránh Tomcat cắt header → mất refresh/access.
+  max-http-request-header-size: 16384
 
 spring:
   application:
@@ -42,8 +44,14 @@ jwt:
   access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:600000}   # 30 seconds #900000
   refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:604800000} # #604800000
 
-# Cookie refresh-token config (HTTP only)
+# Cookie (HttpOnly). Path refresh=/api/v1/auth vẫn gửi cookie trên /api/v1/auth/refresh (prefix khớp RFC6265).
+# Nếu FE (vd localhost) gọi API ngrok bằng fetch credentials: cần SameSite=None + Secure (đặt env AUTH_*_SAME_SITE=None).
 auth:
+  access-cookie:
+    name: ${AUTH_ACCESS_COOKIE_NAME:accessToken}
+    path: ${AUTH_ACCESS_COOKIE_PATH:/}
+    secure: ${AUTH_ACCESS_COOKIE_SECURE:true}
+    same-site: ${AUTH_ACCESS_COOKIE_SAME_SITE:Lax}
   refresh-cookie:
     name: ${AUTH_REFRESH_COOKIE_NAME:refreshToken}
     path: ${AUTH_REFRESH_COOKIE_PATH:/api/v1/auth}
