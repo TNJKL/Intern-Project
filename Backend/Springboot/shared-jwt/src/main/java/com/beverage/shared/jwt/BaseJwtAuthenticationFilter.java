@@ -2,9 +2,9 @@ package com.beverage.shared.jwt;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -16,12 +16,29 @@ import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 
-@RequiredArgsConstructor
 @Slf4j
 public class BaseJwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final TokenSecurityStateService tokenSecurityStateService;
+    private final String accessCookieName;
+
+    public BaseJwtAuthenticationFilter(
+            JwtTokenProvider jwtTokenProvider,
+            TokenSecurityStateService tokenSecurityStateService
+    ) {
+        this(jwtTokenProvider, tokenSecurityStateService, "accessToken");
+    }
+
+    public BaseJwtAuthenticationFilter(
+            JwtTokenProvider jwtTokenProvider,
+            TokenSecurityStateService tokenSecurityStateService,
+            String accessCookieName
+    ) {
+        this.jwtTokenProvider = jwtTokenProvider;
+        this.tokenSecurityStateService = tokenSecurityStateService;
+        this.accessCookieName = accessCookieName;
+    }
 
     @Override
     protected void doFilterInternal(
@@ -72,9 +89,21 @@ public class BaseJwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private String extractToken(HttpServletRequest request) {
+        // Backward-compatible priority: Authorization header first.
         String bearerToken = request.getHeader("Authorization");
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
             return bearerToken.substring(7);
+        }
+
+        // Dual mode: fallback to HttpOnly access-token cookie.
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null || cookies.length == 0) {
+            return null;
+        }
+        for (Cookie cookie : cookies) {
+            if (accessCookieName.equals(cookie.getName()) && StringUtils.hasText(cookie.getValue())) {
+                return cookie.getValue();
+            }
         }
         return null;
     }

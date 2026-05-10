@@ -46,6 +46,21 @@ public class AuthController {
     @Value("${auth.refresh-cookie.same-site:Lax}")
     private String refreshCookieSameSite;
 
+    @Value("${auth.access-cookie.name:accessToken}")
+    private String accessCookieName;
+
+    @Value("${auth.access-cookie.path:/}")
+    private String accessCookiePath;
+
+    @Value("${auth.access-cookie.secure:false}")
+    private boolean accessCookieSecure;
+
+    @Value("${auth.access-cookie.same-site:Lax}")
+    private String accessCookieSameSite;
+
+    @Value("${jwt.access-token-expiration:900000}")
+    private long accessTokenExpirationMs;
+
     @Value("${jwt.refresh-token-expiration:604800000}")
     private long refreshTokenExpirationMs;
 
@@ -70,6 +85,7 @@ public class AuthController {
         String deviceInfo = httpRequest.getHeader("User-Agent");
         AuthResponse response = authUseCase.login(request, ipAddress, deviceInfo);
 
+        addAccessTokenCookie(httpResponse, response.getAccessToken());
         addRefreshTokenCookie(httpResponse, response.getRefreshToken());
         return ResponseEntity.ok(ApiResponse.success(response, "Đăng nhập thành công"));
     }
@@ -81,16 +97,17 @@ public class AuthController {
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
         String accessToken = resolveAccessToken(request, httpRequest);
-        if (!StringUtils.hasText(accessToken)) {
-            throw new AuthException.AccessTokenInvalidException();
+        String refreshToken = resolveRefreshToken(request, httpRequest);
+        if (!StringUtils.hasText(accessToken) && !StringUtils.hasText(refreshToken)) {
+            throw new AuthException("Thiếu access token hoặc refresh token", "TOKEN_MISSING");
         }
 
-        String refreshToken = resolveRefreshToken(request, httpRequest);
         LogoutRequest resolved = LogoutRequest.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .build();
 
+        clearAccessTokenCookie(httpResponse);
         clearRefreshTokenCookie(httpResponse);
         authUseCase.logout(resolved);
         return ResponseEntity.ok(ApiResponse.success(null, "Đăng xuất thành công"));
@@ -112,6 +129,7 @@ public class AuthController {
                 .build();
 
         AuthResponse response = authUseCase.refreshToken(resolved);
+        addAccessTokenCookie(httpResponse, response.getAccessToken());
         addRefreshTokenCookie(httpResponse, response.getRefreshToken());
         return ResponseEntity.ok(ApiResponse.success(response, "Làm mới token thành công"));
     }
@@ -156,17 +174,22 @@ public class AuthController {
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
             return bearerToken.substring(7);
         }
-        return null;
+        return extractCookie(httpRequest, accessCookieName);
     }
 
     private String resolveRefreshToken(Object request, HttpServletRequest httpRequest) {
+        // HttpOnly cookie trước: tránh Postman/client gửi body cũ ghi đè cookie hợp lệ.
+        String fromCookie = extractCookie(httpRequest, refreshCookieName);
+        if (StringUtils.hasText(fromCookie)) {
+            return fromCookie;
+        }
         if (request instanceof RefreshTokenRequest r && StringUtils.hasText(r.getRefreshToken())) {
             return r.getRefreshToken();
         }
         if (request instanceof LogoutRequest l && StringUtils.hasText(l.getRefreshToken())) {
             return l.getRefreshToken();
         }
-        return extractCookie(httpRequest, refreshCookieName);
+        return null;
     }
 
     private String extractCookie(HttpServletRequest request, String cookieName) {
@@ -197,6 +220,21 @@ public class AuthController {
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
+    private void addAccessTokenCookie(HttpServletResponse response, String accessToken) {
+        if (!StringUtils.hasText(accessToken)) {
+            return;
+        }
+
+        ResponseCookie cookie = ResponseCookie.from(accessCookieName, accessToken)
+                .httpOnly(true)
+                .secure(accessCookieSecure)
+                .path(accessCookiePath)
+                .sameSite(accessCookieSameSite)
+                .maxAge(jwtAccessSecondsToDurationSeconds())
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
     private void clearRefreshTokenCookie(HttpServletResponse response) {
         ResponseCookie cookie = ResponseCookie.from(refreshCookieName, "")
                 .httpOnly(true)
@@ -206,6 +244,21 @@ public class AuthController {
                 .maxAge(0)
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    private void clearAccessTokenCookie(HttpServletResponse response) {
+        ResponseCookie cookie = ResponseCookie.from(accessCookieName, "")
+                .httpOnly(true)
+                .secure(accessCookieSecure)
+                .path(accessCookiePath)
+                .sameSite(accessCookieSameSite)
+                .maxAge(0)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    private long jwtAccessSecondsToDurationSeconds() {
+        return Math.max(1, accessTokenExpirationMs / 1000);
     }
 
     private long jwtSecondsToDurationSeconds() {

@@ -15,11 +15,18 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
 @Slf4j
 public class JwtService implements JwtTokenProvider {
+
+    /**
+     * Dùng khi logout: access còn hạn hoặc đã hết hạn nhưng chữ ký hợp lệ (để blacklist jti + xóa session).
+     */
+    public record LogoutAccessParse(String jti, long blacklistTtlSeconds, UUID userId) {
+    }
 
     @Value("${jwt.secret-key}")
     private String secretKey;
@@ -76,6 +83,44 @@ public class JwtService implements JwtTokenProvider {
             log.warn("Invalid JWT token: {}", e.getMessage());
             return false;
         }
+    }
+
+    /**
+     * Parse access token cho luồng logout: chấp nhận token đã hết hạn miễn là chữ ký đúng và claim tokenType=access.
+     */
+    public Optional<LogoutAccessParse> parseAccessTokenForLogout(String token) {
+        if (token == null || token.isBlank()) {
+            return Optional.empty();
+        }
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(getSigningKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+            return toLogoutAccessParse(claims);
+        } catch (ExpiredJwtException e) {
+            return toLogoutAccessParse(e.getClaims());
+        } catch (JwtException e) {
+            log.debug("parseAccessTokenForLogout: {}", e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    private Optional<LogoutAccessParse> toLogoutAccessParse(Claims claims) {
+        String tokenType = claims.get("tokenType", String.class);
+        if (tokenType == null || !"access".equalsIgnoreCase(tokenType)) {
+            return Optional.empty();
+        }
+        String jti = claims.getId();
+        if (jti == null || jti.isBlank()) {
+            return Optional.empty();
+        }
+        UUID userId = UUID.fromString(claims.getSubject());
+        Date exp = claims.getExpiration();
+        long remaining = Math.max(0, (exp.getTime() - System.currentTimeMillis()) / 1000);
+        long blacklistTtl = remaining > 0 ? remaining : 60L;
+        return Optional.of(new LogoutAccessParse(jti, blacklistTtl, userId));
     }
 
     public Claims extractClaims(String token) {
