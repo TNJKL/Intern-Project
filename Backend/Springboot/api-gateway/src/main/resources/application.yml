@@ -11,14 +11,42 @@ spring:
           enabled: true
           lower-case-service-id: true
       routes:
-        # Route mẫu cho auth-service (Nginx chuyển /api/auth/* vào SCG, SCG gỡ bỏ chữ /api và forward cho auth-service)
+        # Auth: users CRUD
+        # SWITCH (docker-compose env):
+        # - auth local  -> AUTH_SERVICE_URI=http://host.docker.internal:8081
+        # - auth docker -> AUTH_SERVICE_URI=http://auth-service:8081
         - id: auth-service
-          uri: lb://auth-service
+          uri: ${AUTH_SERVICE_URI:http://auth-service:8081}
           predicates:
-            - Path=/api/auth/**
-          filters:
-            - StripPrefix=1
-        
+            - Path=/api/v1/users/**
+        # Auth: login / refresh / logout / register
+        - id: auth-service-auth
+          uri: ${AUTH_SERVICE_URI:http://auth-service:8081}
+          predicates:
+            - Path=/api/v1/auth/**
+
+        # Product catalog
+        # SWITCH:
+        # - product local  -> PRODUCT_SERVICE_URI=http://host.docker.internal:8082
+        # - product docker -> PRODUCT_SERVICE_URI=http://product-service:8082
+        - id: product-service-categories
+          uri: ${PRODUCT_SERVICE_URI:http://product-service:8082}
+          predicates:
+            - Path=/api/v1/categories,/api/v1/categories/**
+        - id: product-service-products
+          uri: ${PRODUCT_SERVICE_URI:http://product-service:8082}
+          predicates:
+            - Path=/api/v1/products,/api/v1/products/**
+        - id: product-service-toppings
+          uri: ${PRODUCT_SERVICE_URI:http://product-service:8082}
+          predicates:
+            - Path=/api/v1/toppings,/api/v1/toppings/**
+        # Upload ảnh (shared-storage qua product-service)
+        - id: product-service-storage
+          uri: ${PRODUCT_SERVICE_URI:http://product-service:8082}
+          predicates:
+            - Path=/api/v1/storage,/api/v1/storage/**
+
 eureka:
   client:
     service-url:
