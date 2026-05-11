@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS products (
 CREATE TABLE IF NOT EXISTS toppings (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name            VARCHAR(100) NOT NULL,
+    image_url       VARCHAR(500),
     price           DECIMAL(12,0) NOT NULL DEFAULT 0 CHECK (price >= 0),
     is_available    BOOLEAN NOT NULL DEFAULT TRUE,
     display_order   SMALLINT NOT NULL DEFAULT 0,
@@ -69,3 +70,6 @@ CREATE INDEX idx_products_slug ON products(slug);
 CREATE INDEX idx_products_available ON products(is_available, is_featured);
 CREATE INDEX idx_product_toppings_product ON product_toppings(product_id);
 CREATE INDEX idx_product_toppings_topping ON product_toppings(topping_id);
+
+-- DB cũ chưa có cột ảnh topping (bỏ comment và chạy một lần nếu cần):
+-- ALTER TABLE toppings ADD COLUMN IF NOT EXISTS image_url VARCHAR(500);

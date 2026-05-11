@@ -1,10 +1,18 @@
 #Do nhiều service quá em sợ bị lẫn lộn với lại đây là project thực tập 
 #Nên cho phép em tạm push các biến môi trường lên luôn nha anh 
 #Khi nào gần xong hết em sẽ trau chuốt sửa lại rồi bỏ vô .env 
+# Secret (POSTGRES_PASSWORD, JWT_SECRET_KEY, AWS_*) nên đặt trong .env — không commit .env.
 
 spring:
   application:
     name: product-service
+  # Đọc file .env cùng thư mục làm việc khi chạy (IDE: đặt Working directory = module product-service).
+  config:
+    import: optional:file:.env[.properties],optional:file:./.env[.properties],optional:file:./product-service/.env[.properties],optional:file:../product-service/.env[.properties],optional:file:./Backend/Springboot/product-service/.env[.properties]
+  servlet:
+    multipart:
+      max-file-size: 6MB
+      max-request-size: 6MB
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:5432/${POSTGRES_DB:product_db}
     username: ${POSTGRES_USER:postgres}
@@ -49,12 +57,21 @@ auth:
   access-cookie:
     name: ${AUTH_ACCESS_COOKIE_NAME:accessToken}
 
-# CORS (Swagger qua ngrok hoặc FE gọi trực tiếp product — kèm *.ngrok-free.dev)
+# shared-storage — bật khi đã cấu hình bucket + credential (ưu tiên biến môi trường / Run Configuration, không nhét secret vào YAML).
+beverage:
+  storage:
+    s3:
+      enabled: ${BEVERAGE_STORAGE_S3_ENABLED:true}
+      bucket: ${AWS_S3_BUCKET:}
+      region: ${AWS_REGION:ap-southeast-1}
+      key-prefix: ${AWS_S3_KEY_PREFIX:beverage/dev}
+      max-bytes: 5242880
+      public-base-url: ${AWS_S3_PUBLIC_BASE_URL:}
+
 app:
   cors:
     allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:3000,http://localhost:5173,https://*.ngrok-free.app,https://*.ngrok-free.dev}
 
-# Prefix /product/ để không trùng path Swagger với auth-service khi cùng host (nginx/ngrok).
 springdoc:
   api-docs:
     path: /product/v3/api-docs

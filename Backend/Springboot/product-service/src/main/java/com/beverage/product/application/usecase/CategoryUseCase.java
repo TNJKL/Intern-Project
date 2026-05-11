@@ -8,6 +8,7 @@ import com.beverage.product.domain.entity.Category;
 import com.beverage.product.domain.exception.ResourceNotFoundException;
 import com.beverage.product.domain.repository.CategoryRepository;
 import com.beverage.product.infrastructure.cache.RedisCacheService;
+import com.beverage.product.infrastructure.storage.CatalogImageStorageService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class CategoryUseCase {
     private final CategoryRepository categoryRepository;
     private final CategoryDtoMapper categoryDtoMapper;
     private final RedisCacheService redisCacheService;
+    private final CatalogImageStorageService catalogImageStorageService;
 
     public CategoryResponse createCategory(@Valid CreateCategoryRequest request) {
         Category category = categoryDtoMapper.toDomainCreate(request);
@@ -40,18 +42,22 @@ public class CategoryUseCase {
 
         Category updated = categoryDtoMapper.toDomainUpdate(request);
         updated.setId(existing.getId());
+        if (updated.getImageUrl() == null || updated.getImageUrl().isBlank()) {
+            updated.setImageUrl(existing.getImageUrl());
+        }
 
         Category saved = categoryRepository.save(updated);
+        catalogImageStorageService.deleteIfChangedQuietly(existing.getImageUrl(), saved.getImageUrl());
         redisCacheService.delete(CACHE_CATEGORIES_KEY);
         redisCacheService.deleteByPattern("cache:product:*");
         return categoryDtoMapper.toResponse(saved);
     }
 
     public void deleteCategory(UUID id) {
-        if (categoryRepository.findById(id).isEmpty()) {
-            throw new ResourceNotFoundException("Category", "id", id);
-        }
+        Category existing = categoryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Category", "id", id));
         categoryRepository.deleteById(id);
+        catalogImageStorageService.deleteIfChangedQuietly(existing.getImageUrl(), null);
         redisCacheService.delete(CACHE_CATEGORIES_KEY);
         redisCacheService.deleteByPattern("cache:product:*");
     }

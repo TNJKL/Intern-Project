@@ -3,7 +3,9 @@ package com.beverage.product.presentation.config;
 import com.beverage.product.common.ApiResponse;
 import com.beverage.product.domain.exception.BusinessException;
 import com.beverage.product.domain.exception.ResourceNotFoundException;
+import com.beverage.storage.StorageException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -33,6 +35,21 @@ public class GlobalExceptionHandler {
         HttpStatus status = HttpStatus.BAD_REQUEST;
         return ResponseEntity.status(status)
                 .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(StorageException.class)
+    public ResponseEntity<ApiResponse<Void>> handleStorageException(StorageException ex) {
+        log.warn("Storage: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        log.warn("Vi phạm ràng buộc DB: {}", ex.getMostSpecificCause().getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(
+                        "Dữ liệu không thỏa ràng buộc cơ sở dữ liệu (ví dụ slug trùng với sản phẩm khác, hoặc danh sách topping có id trùng lặp)."));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

@@ -10,8 +10,8 @@
     <packaging>pom</packaging>
 
     <modules>
-        <!-- mai mốt có implement jwt chung cho tất cả các service thì vô đây -->
         <module>shared-jwt</module>
+        <module>shared-storage</module>
         <module>auth-service</module>
         <module>product-service</module>
     </modules>

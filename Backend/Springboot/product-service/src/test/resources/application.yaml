@@ -1,0 +1,6 @@
+# Test: tắt S3 để không cần bucket/credential
+beverage:
+  storage:
+    s3:
+      enabled: true
+      bucket: amazon-beverage-storage-906024320323-ap-southeast-1-an

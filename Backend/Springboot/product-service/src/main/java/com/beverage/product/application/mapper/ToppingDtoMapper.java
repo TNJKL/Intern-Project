@@ -14,6 +14,7 @@ public class ToppingDtoMapper {
         return Topping.builder()
                 .id(null)
                 .name(request.getName())
+                .imageUrl(request.getImageUrl())
                 .price(request.getPrice())
                 .isAvailable(request.getIsAvailable() != null ? request.getIsAvailable() : Boolean.TRUE)
                 .displayOrder(request.getDisplayOrder() != null ? request.getDisplayOrder() : (short) 0)
@@ -26,6 +27,7 @@ public class ToppingDtoMapper {
         if (request == null) return null;
         return Topping.builder()
                 .name(request.getName())
+                .imageUrl(request.getImageUrl())
                 .price(request.getPrice())
                 .isAvailable(request.getIsAvailable() != null ? request.getIsAvailable() : Boolean.TRUE)
                 .displayOrder(request.getDisplayOrder() != null ? request.getDisplayOrder() : (short) 0)
@@ -39,6 +41,7 @@ public class ToppingDtoMapper {
         return ToppingResponse.builder()
                 .id(topping.getId())
                 .name(topping.getName())
+                .imageUrl(topping.getImageUrl())
                 .price(topping.getPrice())
                 .isAvailable(topping.getIsAvailable())
                 .displayOrder(topping.getDisplayOrder())

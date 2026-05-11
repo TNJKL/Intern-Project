@@ -1,5 +1,6 @@
 package com.beverage.product.application.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,6 +17,10 @@ import java.util.UUID;
 public class ToppingResponse {
     private UUID id;
     private String name;
+
+    /** Luôn xuất hiện trong JSON (kể cả null) — override cấu hình global non_null. */
+    @JsonInclude(JsonInclude.Include.ALWAYS)
+    private String imageUrl;
     private BigDecimal price;
     private Boolean isAvailable;
     private Short displayOrder;

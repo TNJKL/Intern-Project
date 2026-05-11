@@ -13,6 +13,7 @@ import com.beverage.product.domain.repository.ProductRepository;
 import com.beverage.product.domain.repository.ProductToppingRepository;
 import com.beverage.product.domain.repository.ToppingRepository;
 import com.beverage.product.infrastructure.cache.RedisCacheService;
+import com.beverage.product.infrastructure.storage.CatalogImageStorageService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -31,13 +32,14 @@ public class ProductUseCase {
     private final ProductToppingRepository productToppingRepository;
     private final ProductDtoMapper productDtoMapper;
     private final RedisCacheService redisCacheService;
+    private final CatalogImageStorageService catalogImageStorageService;
 
     public ProductResponse createProduct(@Valid CreateProductRequest request) {
         // Validate category exists
         categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Category", "id", request.getCategoryId()));
 
-        List<UUID> toppingIds = request.getToppingIds() != null ? request.getToppingIds() : List.of();
+        List<UUID> toppingIds = normalizeToppingIds(request.getToppingIds());
         validateToppingsExist(toppingIds);
 
         Product product = productDtoMapper.toDomainCreate(request);
@@ -66,11 +68,14 @@ public class ProductUseCase {
         categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Category", "id", request.getCategoryId()));
 
-        List<UUID> toppingIds = request.getToppingIds() != null ? request.getToppingIds() : List.of();
+        List<UUID> toppingIds = normalizeToppingIds(request.getToppingIds());
         validateToppingsExist(toppingIds);
 
         Product updated = productDtoMapper.toDomainUpdate(request);
         updated.setId(existing.getId());
+        if (updated.getImageUrl() == null || updated.getImageUrl().isBlank()) {
+            updated.setImageUrl(existing.getImageUrl());
+        }
 
         Product saved = productRepository.save(updated);
 
@@ -86,17 +91,19 @@ public class ProductUseCase {
             productToppingRepository.save(pt);
         }
 
+        catalogImageStorageService.deleteIfChangedQuietly(existing.getImageUrl(), saved.getImageUrl());
+
         redisCacheService.delete(getProductCacheKey(saved.getId()));
         return productDtoMapper.toResponse(saved, toppings);
     }
 
     public void deleteProduct(UUID productId) {
-        if (productRepository.findById(productId).isEmpty()) {
-            throw new ResourceNotFoundException("Product", "id", productId);
-        }
+        Product existing = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product", "id", productId));
 
         productToppingRepository.deleteByProductId(productId);
         productRepository.deleteById(productId);
+        catalogImageStorageService.deleteIfChangedQuietly(existing.getImageUrl(), null);
         redisCacheService.delete(getProductCacheKey(productId));
     }
 
@@ -143,12 +150,18 @@ public class ProductUseCase {
     private void validateToppingsExist(List<UUID> toppingIds) {
         if (toppingIds == null || toppingIds.isEmpty()) return;
 
-        List<UUID> distinctIds = toppingIds.stream().filter(Objects::nonNull).distinct().toList();
-        List<Topping> found = toppingRepository.findByIds(distinctIds);
-        if (found.size() != distinctIds.size()) {
-            // Determine missing ids is extra; skeleton just throws generic.
-            throw new ResourceNotFoundException("Topping", "ids", distinctIds);
+        List<Topping> found = toppingRepository.findByIds(toppingIds);
+        if (found.size() != toppingIds.size()) {
+            throw new ResourceNotFoundException("Topping", "ids", toppingIds);
         }
+    }
+
+    /** Giữ thứ tự, bỏ null, bỏ trùng — tránh vi phạm uk (product_id, topping_id) khi FE gửi trùng id. */
+    private static List<UUID> normalizeToppingIds(List<UUID> raw) {
+        if (raw == null || raw.isEmpty()) {
+            return List.of();
+        }
+        return raw.stream().filter(Objects::nonNull).distinct().toList();
     }
 
     private String getProductCacheKey(UUID productId) {

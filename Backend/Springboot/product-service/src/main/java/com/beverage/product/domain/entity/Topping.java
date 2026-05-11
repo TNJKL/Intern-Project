@@ -16,6 +16,8 @@ import java.util.UUID;
 public class Topping {
     private UUID id;
     private String name;
+    /** URL ảnh (S3/CDN hoặc ngoài); optional */
+    private String imageUrl;
     private BigDecimal price;
     private Boolean isAvailable;
     private Short displayOrder;
