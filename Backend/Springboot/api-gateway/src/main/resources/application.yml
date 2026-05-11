@@ -41,6 +41,11 @@ spring:
           uri: ${PRODUCT_SERVICE_URI:http://product-service:8082}
           predicates:
             - Path=/api/v1/toppings,/api/v1/toppings/**
+        # Upload ảnh (shared-storage qua product-service)
+        - id: product-service-storage
+          uri: ${PRODUCT_SERVICE_URI:http://product-service:8082}
+          predicates:
+            - Path=/api/v1/storage,/api/v1/storage/**
 
 eureka:
   client:

@@ -25,6 +25,9 @@ public class ToppingEntity {
     @Column(nullable = false, length = 100)
     private String name;
 
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
     @Column(nullable = false, precision = 12, scale = 0)
     private BigDecimal price;
 

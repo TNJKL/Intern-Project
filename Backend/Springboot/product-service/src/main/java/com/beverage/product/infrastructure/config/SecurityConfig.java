@@ -40,7 +40,7 @@ public class SecurityConfig {
 
                         // Public catalog GET
                         .requestMatchers(HttpMethod.GET,                          
-                                // "/api/v1/categories/**",
+                                "/api/v1/categories/**",
                                 "/api/v1/products",
                                 "/api/v1/products/**",
                                 "/api/v1/toppings",
@@ -51,16 +51,16 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v1/categories",
                                 "/api/v1/products",
-                                "/api/v1/toppings"
-                                
+                                "/api/v1/toppings",
+                                "/api/v1/storage/images"
+                        ).hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/storage/consistency/**"
                         ).hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT,
                                 "/api/v1/categories/**",
                                 "/api/v1/products/**",
                                 "/api/v1/toppings/**"
-                        ).hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.GET,
-                                "/api/v1/categories/**"
                         ).hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PATCH,
                                 "/api/v1/categories/**",

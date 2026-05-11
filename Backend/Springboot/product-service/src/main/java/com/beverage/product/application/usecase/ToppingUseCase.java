@@ -8,6 +8,7 @@ import com.beverage.product.domain.entity.Topping;
 import com.beverage.product.domain.exception.ResourceNotFoundException;
 import com.beverage.product.domain.repository.ToppingRepository;
 import com.beverage.product.infrastructure.cache.RedisCacheService;
+import com.beverage.product.infrastructure.storage.CatalogImageStorageService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class ToppingUseCase {
     private final ToppingRepository toppingRepository;
     private final ToppingDtoMapper toppingDtoMapper;
     private final RedisCacheService redisCacheService;
+    private final CatalogImageStorageService catalogImageStorageService;
 
     public ToppingResponse createTopping(@Valid CreateToppingRequest request) {
         Topping topping = toppingDtoMapper.toDomainCreate(request);
@@ -35,24 +37,27 @@ public class ToppingUseCase {
     }
 
     public ToppingResponse updateTopping(UUID id, @Valid UpdateToppingRequest request) {
-        if (toppingRepository.findById(id).isEmpty()) {
-            throw new ResourceNotFoundException("Topping", "id", id);
-        }
+        Topping existing = toppingRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Topping", "id", id));
 
         Topping updated = toppingDtoMapper.toDomainUpdate(request);
         updated.setId(id);
+        if (updated.getImageUrl() == null || updated.getImageUrl().isBlank()) {
+            updated.setImageUrl(existing.getImageUrl());
+        }
 
         Topping saved = toppingRepository.save(updated);
+        catalogImageStorageService.deleteIfChangedQuietly(existing.getImageUrl(), saved.getImageUrl());
         redisCacheService.delete(CACHE_TOPPINGS_KEY);
         redisCacheService.deleteByPattern("cache:product:*");
         return toppingDtoMapper.toResponse(saved);
     }
 
     public void deleteTopping(UUID id) {
-        if (toppingRepository.findById(id).isEmpty()) {
-            throw new ResourceNotFoundException("Topping", "id", id);
-        }
+        Topping existing = toppingRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Topping", "id", id));
         toppingRepository.deleteById(id);
+        catalogImageStorageService.deleteIfChangedQuietly(existing.getImageUrl(), null);
         redisCacheService.delete(CACHE_TOPPINGS_KEY);
         redisCacheService.deleteByPattern("cache:product:*");
     }
