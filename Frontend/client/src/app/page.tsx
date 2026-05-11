@@ -4,13 +4,39 @@ import { Features } from "@/components/home/Features";
 import { AboutUs } from "@/components/home/AboutUs";
 import { Hero } from "@/components/home/Hero";
 
-export default function Home() {
+export const metadata = {
+  title: "Brewtra Coffee - Hương vị nguyên bản",
+  description: "Trải nghiệm cà phê tuyệt hảo từ những hạt cà phê tuyển chọn nhất.",
+};
+
+import { getServerApi } from "@/lib/server-api";
+import { Category } from "@/types/category";
+import { Product } from "@/types/product";
+
+export default async function Home() {
+  let categories: Category[] = [];
+  let products: Product[] = [];
+
+  try {
+    const categoryRes = await getServerApi('/api/v1/categories');
+    if (categoryRes && categoryRes.success) {
+      categories = categoryRes.data;
+    }
+
+    const productRes = await getServerApi('/api/v1/products');
+    if (productRes && productRes.success) {
+      products = productRes.data;
+    }
+  } catch (error) {
+    console.error("Failed to fetch data for home page:", error);
+  }
+
   return (
     <div className="relative">
       <Hero />
 
-      <Categories />
-      <ProductList />
+      <Categories categories={categories} />
+      <ProductList products={products} categories={categories} />
       <AboutUs />
       <Features />
       

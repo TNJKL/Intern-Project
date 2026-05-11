@@ -1,34 +1,36 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { User } from '../types/user';
 
-interface AuthState {
+/**
+ * Zustand store chỉ lưu thông tin User (tên, email...).
+ * accessToken được quản lý bởi Redux (RAM only).
+ * refreshToken được quản lý bởi Backend qua httpOnly Cookie.
+ */
+interface UserState {
   user: User | null;
-  accessToken: string | null;
-  refreshToken: string | null;
-  isAuthenticated: boolean;
-  _hasHydrated: boolean; // Trạng thái đã load xong dữ liệu từ storage
-  setAuth: (user: User, accessToken: string, refreshToken: string) => void;
+  _hasHydrated: boolean;
+  setUser: (user: User | null) => void;
   setHasHydrated: (state: boolean) => void;
-  logout: () => void;
+  clearUser: () => void;
 }
 
-export const useAuthStore = create<AuthState>()(
+export const useAuthStore = create<UserState>()(
   persist(
     (set) => ({
       user: null,
-      accessToken: null,
-      refreshToken: null,
-      isAuthenticated: false,
       _hasHydrated: false,
-      setAuth: (user, accessToken, refreshToken) => 
-        set({ user, accessToken, refreshToken, isAuthenticated: true }),
+
+      setUser: (user) => set({ user }),
+
       setHasHydrated: (state) => set({ _hasHydrated: state }),
-      logout: () => 
-        set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false }),
+
+      clearUser: () => set({ user: null }),
     }),
     {
-      name: 'auth-storage',
+      name: 'user-storage', // Chỉ lưu user info (tên, email) — không phải token
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({ user: state.user }), // Chỉ persist user object
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
       },

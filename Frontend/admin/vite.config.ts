@@ -8,18 +8,21 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
-  },
   server: {
     proxy: {
       '/api': {
         target: 'https://morbidity-stucco-grower.ngrok-free.dev',
         changeOrigin: true,
         secure: false,
+        ws: true,
+        timeout: 600000, // 10 phút
+        proxyTimeout: 600000,
       }
     }
-  }
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
 })

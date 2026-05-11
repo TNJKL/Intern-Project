@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { Modal, Form, Input, Space, App as AntApp, Typography } from 'antd';
+import { Modal, Form, Input, Space, Typography } from 'antd';
+import { message } from '@/lib/antd';
 import { userService } from '../../../services/userService';
 import { useAuthStore } from '../../../store/useAuthStore';
 
@@ -16,7 +17,6 @@ interface EditProfileModalProps {
 const EditProfileModal: React.FC<EditProfileModalProps> = ({ open, onCancel, user, loading, setLoading }) => {
   const [form] = Form.useForm();
   const { setAuth } = useAuthStore();
-  const { message } = AntApp.useApp();
 
   useEffect(() => {
     if (user && open) {

@@ -1,15 +1,17 @@
 import axios from 'axios';
-import { useAuthStore } from '../store/useAuthStore';
+import { store } from '../store/store';
+import { updateAccessToken, clearCredentials } from '../store/authSlice';
 
 export const apiClient = axios.create({
   baseURL: '/api/v1',
+  withCredentials: true, // BẮT BUỘC: để browser gửi kèm refreshToken cookie
   headers: {
     'Content-Type': 'application/json',
     'ngrok-skip-browser-warning': '69420',
   },
 });
 
-// ─── Refresh token queue (tránh nhiều request refresh cùng lúc) ───
+// ─── Refresh token queue ───
 let isRefreshing = false;
 let failedQueue: Array<{ resolve: (token: string) => void; reject: (err: any) => void }> = [];
 
@@ -18,41 +20,22 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
-// ─── Request interceptor: gắn access token ───
+// ─── Request interceptor: Không cần gắn Token thủ công nữa, Proxy sẽ tự làm ───
 apiClient.interceptors.request.use((config) => {
-  let token = useAuthStore.getState().accessToken;
-
-  // Fallback khi store chưa hydrate
-  if (!token) {
-    try {
-      const stored = localStorage.getItem('auth-storage');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        token = parsed?.state?.accessToken ?? null;
-      }
-    } catch (_) { }
-  }
-
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
   return config;
 });
 
-// ─── Response interceptor: tự động refresh khi 401 ───
+// ─── Response interceptor ───
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-
-    // Xử lý cả 401 (Unauthorized) và 403 (Forbidden) vì một số backend trả về 403 khi token hết hạn
     const isAuthError = error.response?.status === 401 || error.response?.status === 403;
 
     if (!isAuthError || originalRequest._retry) {
       return Promise.reject(error);
     }
 
-    // Nếu đang refresh → đưa request vào queue chờ
     if (isRefreshing) {
       return new Promise<string>((resolve, reject) => {
         failedQueue.push({ resolve, reject });
@@ -67,39 +50,38 @@ apiClient.interceptors.response.use(
     originalRequest._retry = true;
     isRefreshing = true;
 
-    const refreshToken = useAuthStore.getState().refreshToken;
-
-    if (!refreshToken) {
-      isRefreshing = false;
-      useAuthStore.getState().logout();
-      return Promise.reject(error);
-    }
-
     try {
-      // Gọi refresh bằng axios thuần (không qua apiClient để tránh vòng lặp)
+      // Gửi body rỗng + withCredentials — Browser tự gửi refreshToken cookie
       const { data } = await axios.post(
         '/api/v1/auth/refresh',
-        { refreshToken },
-        { 
-          headers: { 
-            'Content-Type': 'application/json', 
-            'ngrok-skip-browser-warning': '69420' 
-          } 
+        {},
+        {
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': '69420',
+          },
         }
       );
 
       const newAccessToken: string = data?.data?.accessToken ?? data?.accessToken;
-      const newRefreshToken: string = data?.data?.refreshToken ?? data?.refreshToken ?? refreshToken;
+      const user = data?.data?.user ?? data?.user;
 
-      const { user, setAuth } = useAuthStore.getState();
-      setAuth(user!, newAccessToken, newRefreshToken);
+      // Cập nhật Redux (RAM) — KHÔNG lưu vào Cookie hay localStorage
+      store.dispatch(updateAccessToken({ accessToken: newAccessToken, user }));
 
       processQueue(null, newAccessToken);
       originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
       return apiClient(originalRequest);
     } catch (refreshError) {
       processQueue(refreshError, null);
-      useAuthStore.getState().logout();
+
+      // Xóa toàn bộ trạng thái auth khỏi RAM và điều hướng về login
+      store.dispatch(clearCredentials());
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
+
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;

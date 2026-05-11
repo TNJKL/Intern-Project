@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../store/useAuthStore';
 
 export const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, user, setAuth } = useAuthStore();
+  const { isAuthenticated, user, setAuth, fetchUser } = useAuthStore();
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
@@ -30,18 +30,23 @@ export const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children })
       }
     }
 
+    // If authenticated, fetch latest profile to prevent data loss
+    if (isAuthenticated) {
+      fetchUser();
+    }
+
     // If not authenticated, redirect to login
     if (!isAuthenticated) {
-      window.location.href = 'http://localhost:3000/login';
+      window.location.href = 'http://localhost:3000/login?logout=true';
       return;
     }
 
     // If authenticated but NOT an admin, redirect to client homepage
-    if (user?.role !== 'ADMIN') {
+    if (user && user.role !== 'ADMIN') {
       window.location.href = 'http://localhost:3000';
       return;
     }
-  }, [isHydrated, isAuthenticated, user, setAuth]);
+  }, [isHydrated, isAuthenticated, setAuth, fetchUser]);
 
   // Show loading while hydrating or redirecting
   if (!isHydrated || !isAuthenticated || user?.role !== 'ADMIN') {

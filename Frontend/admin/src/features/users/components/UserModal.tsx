@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Modal, Form, Input, Select } from 'antd';
-import type { User, UserPayload } from '../../types/user';
+import type { User, UserPayload } from '@/types/user';
 
 interface UserModalProps {
   isOpen: boolean;

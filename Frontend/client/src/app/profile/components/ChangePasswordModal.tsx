@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { userService } from "@/services/userService";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useAppDispatch } from "@/store/hooks";
+import { clearCredentials } from "@/store/authSlice";
 import toast from "react-hot-toast";
 
 interface ChangePasswordModalProps {
@@ -18,7 +20,8 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ open, onClose
   const [isSaving, setIsSaving] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
-  const { logout } = useAuthStore();
+  const { clearUser } = useAuthStore();
+  const dispatch = useAppDispatch();
 
   // Đếm ngược khi thành công
   useEffect(() => {
@@ -39,9 +42,11 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ open, onClose
   // Logout khi countdown về 0 (tách riêng để tránh setState-in-render)
   useEffect(() => {
     if (isSuccess && countdown === 0) {
-      logout();
+      dispatch(clearCredentials());
+      clearUser();
+      window.location.href = '/login';
     }
-  }, [isSuccess, countdown]);
+  }, [isSuccess, countdown, dispatch, clearUser]);
 
   // Reset khi modal đóng
   const handleClose = () => {

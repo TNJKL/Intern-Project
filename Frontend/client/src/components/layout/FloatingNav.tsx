@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuthStore } from "@/store/useAuthStore";
+import { useAppSelector } from "@/store/hooks";
 import { Home, Tag, User, Coffee, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
@@ -9,25 +10,32 @@ import Link from "next/link";
 
 export function FloatingNav() {
   const pathname = usePathname();
-  const { user, isAuthenticated } = useAuthStore();
+  const { user } = useAuthStore();
+  const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
+  const [isMounted, setIsMounted] = useState(false);
   const [activeId, setActiveId] = useState("home");
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const navItems = useMemo(() => [
     { id: "home", icon: Home, label: "Trang chủ", href: "/" },
     { id: "menu", icon: Coffee, label: "Thực đơn", href: "/menu" },
     { id: "orders", icon: Package, label: "Đơn hàng", href: "/orders" },
     { id: "promo", icon: Tag, label: "Ưu đãi", href: "#" },
-    { 
-      id: "account", 
-      icon: User, 
-      label: "Tài khoản", 
-      href: isAuthenticated 
-        ? (user?.role === 'ADMIN' ? 'http://localhost:5173/admin/profile' : '/profile') 
-        : "/login" 
+    {
+      id: "account",
+      icon: User,
+      label: "Tài khoản",
+      href: isMounted && isAuthenticated
+        ? (user?.role === 'ADMIN' ? 'http://localhost:5173/admin/profile' : '/profile')
+        : "/login"
     },
-  ], [isAuthenticated, user]);
+  ], [isAuthenticated, user, isMounted]);
 
   useEffect(() => {
+    if (!isMounted) return;
     const currentItem = navItems.find((item) => {
       if (item.href === "/") return pathname === "/";
       return pathname.startsWith(item.href) && item.href !== "/";
@@ -35,7 +43,7 @@ export function FloatingNav() {
     if (currentItem) {
       setActiveId(currentItem.id);
     }
-  }, [pathname, navItems]);
+  }, [pathname, navItems, isMounted]);
 
   return (
     <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">

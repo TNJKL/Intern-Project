@@ -1,15 +1,17 @@
 import axios from 'axios';
+import Cookies from 'js-cookie';
 import { useAuthStore } from '../store/useAuthStore';
 
 export const apiClient = axios.create({
   baseURL: '/api/v1',
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
-    'ngrok-skip-browser-warning': '69420',
+    'ngrok-skip-browser-warning': 'true',
   },
 });
 
-// ─── Refresh token queue (tránh nhiều request refresh cùng lúc) ───
+// ─── Refresh token queue ───
 let isRefreshing = false;
 let failedQueue: Array<{ resolve: (token: string) => void; reject: (err: any) => void }> = [];
 
@@ -18,20 +20,9 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
-// ─── Request interceptor: gắn access token ───
+// ─── Request interceptor ───
 apiClient.interceptors.request.use((config) => {
-  let token = useAuthStore.getState().accessToken;
-
-  // Fallback khi store chưa hydrate
-  if (!token) {
-    try {
-      const stored = localStorage.getItem('admin-auth-storage');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        token = parsed?.state?.accessToken ?? null;
-      }
-    } catch (_) { }
-  }
+  const token = useAuthStore.getState().accessToken || Cookies.get('adminAccessToken');
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -39,20 +30,17 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// ─── Response interceptor: tự động refresh khi 401 ───
+// ─── Response interceptor ───
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-
-    // Xử lý cả 401 (Unauthorized) và 403 (Forbidden) vì một số backend trả về 403 khi token hết hạn
     const isAuthError = error.response?.status === 401 || error.response?.status === 403;
-    
+
     if (!isAuthError || originalRequest._retry) {
       return Promise.reject(error);
     }
 
-    // Nếu đang refresh → đưa request vào queue chờ
     if (isRefreshing) {
       return new Promise<string>((resolve, reject) => {
         failedQueue.push({ resolve, reject });
@@ -67,32 +55,24 @@ apiClient.interceptors.response.use(
     originalRequest._retry = true;
     isRefreshing = true;
 
-    const refreshToken = useAuthStore.getState().refreshToken;
-
-    if (!refreshToken) {
-      isRefreshing = false;
-      useAuthStore.getState().logout();
-      return Promise.reject(error);
-    }
-
     try {
-      // Gọi refresh bằng axios thuần (không qua apiClient để tránh vòng lặp)
+      // Gọi refresh KHÔNG cần gửi refreshToken trong body
       const { data } = await axios.post(
         '/api/v1/auth/refresh',
-        { refreshToken },
-        { 
-          headers: { 
-            'Content-Type': 'application/json', 
-            'ngrok-skip-browser-warning': '69420' 
-          } 
+        {},
+        {
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': '69420'
+          }
         }
       );
 
       const newAccessToken: string = data?.data?.accessToken ?? data?.accessToken;
-      const newRefreshToken: string = data?.data?.refreshToken ?? data?.refreshToken ?? refreshToken;
 
       const { user, setAuth } = useAuthStore.getState();
-      setAuth(user!, newAccessToken, newRefreshToken);
+      setAuth(user!, newAccessToken, "");
 
       processQueue(null, newAccessToken);
       originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;

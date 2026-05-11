@@ -1,22 +1,19 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AdminLayout } from './components/AdminLayout';
-import { ConfigProvider, message, App as AntApp } from 'antd';
+import { ConfigProvider, App as AntApp } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
+import Toppings from './pages/Toppings';
 import Orders from './pages/Orders';
 import Chat from './pages/Chat';
 import Categories from './pages/Categories';
 import Users from './pages/Users';
 import Profile from './pages/Profile';
 import { AuthGuard } from './components/AuthGuard';
+import { AntdStaticHelper } from './lib/antd';
 
-// Configure global message
-message.config({
-  top: 40,
-  duration: 3,
-  maxCount: 3,
-});
+
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -48,6 +45,7 @@ function App() {
         }}
       >
         <AntApp>
+          <AntdStaticHelper />
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
@@ -59,6 +57,7 @@ function App() {
                       <Routes>
                         <Route path="dashboard" element={<Dashboard />} />
                         <Route path="products" element={<Products />} />
+                        <Route path="toppings" element={<Toppings />} />
                         <Route path="categories" element={<Categories />} />
                         <Route path="users" element={<Users />} />
                         <Route path="orders" element={<Orders />} />

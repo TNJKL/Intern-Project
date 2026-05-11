@@ -12,6 +12,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { apiClient } from "@/lib/api";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useAppDispatch } from "@/store/hooks";
+import { setCredentials } from "@/store/authSlice";
+import axios from "axios";
 
 const loginSchema = z.object({
   email: z.string().email("Email không hợp lệ"),
@@ -31,16 +34,16 @@ export default function LoginPage() {
 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { setAuth, logout } = useAuthStore();
+  const { setUser } = useAuthStore();
+  const dispatch = useAppDispatch();
   const logoutParam = searchParams.get('logout');
 
   useEffect(() => {
     if (logoutParam === 'true') {
-      logout();
-      // Remove param from URL
+      // Logout được xử lý bởi CustomerLayout, chỉ cần clean URL
       router.replace('/login');
     }
-  }, [logoutParam, logout, router]);
+  }, [logoutParam, router]);
 
   const [apiError, setApiError] = useState<string | null>(null);
   const [loginSuccessData, setLoginSuccessData] = useState<{ name: string, role: string } | null>(null);
@@ -48,21 +51,26 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormValues) => {
     setApiError(null);
     try {
-      const response = await apiClient.post('/auth/login', {
+      // Gọi qua Route Handler cục bộ để xử lý cookie cho localhost
+      const response = await axios.post('/api/auth/login', {
         email: data.email,
         password: data.password,
       });
 
       if (response.data.success) {
-        const { user, accessToken, refreshToken } = response.data.data;
-        setAuth(user, accessToken, refreshToken);
+        const { user, accessToken } = response.data.data;
+        // refreshToken đã được Backend set vào httpOnly cookie tự động
+
+        // Lưu accessToken vào Redux RAM, user vào Zustand localStorage
+        dispatch(setCredentials({ user, accessToken }));
+        setUser(user);
 
         setLoginSuccessData({ name: user.fullName, role: user.role });
 
         // Delay redirect so user can read the welcome message
         setTimeout(() => {
           if (user.role === 'ADMIN') {
-            const authData = encodeURIComponent(JSON.stringify({ user, accessToken, refreshToken }));
+            const authData = encodeURIComponent(JSON.stringify({ user, accessToken }));
             window.location.href = `http://localhost:5173/admin/dashboard?auth=${authData}`;
           } else {
             router.push('/');
@@ -178,6 +186,7 @@ export default function LoginPage() {
                 <input
                   {...register("email")}
                   type="email"
+                  autoComplete="email"
                   className="w-full px-5 py-3.5 rounded-xl border border-white/5 bg-white/5 text-white placeholder:text-white/10 focus:bg-white/10 focus:ring-4 focus:ring-primary/10 focus:border-primary/40 outline-none transition-all text-sm font-medium shadow-inner"
                   placeholder="name@example.com"
                 />
@@ -192,6 +201,7 @@ export default function LoginPage() {
                 <input
                   {...register("password")}
                   type="password"
+                  autoComplete="current-password"
                   className="w-full px-5 py-3.5 rounded-xl border border-white/5 bg-white/5 text-white placeholder:text-white/10 focus:bg-white/10 focus:ring-4 focus:ring-primary/10 focus:border-primary/40 outline-none transition-all text-sm font-medium shadow-inner"
                   placeholder="••••••••"
                 />

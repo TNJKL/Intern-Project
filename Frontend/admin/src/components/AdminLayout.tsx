@@ -42,6 +42,11 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
       label: 'Sản phẩm',
     },
     {
+      key: '/admin/toppings',
+      icon: <TagsOutlined />, // Using TagsOutlined for Toppings
+      label: 'Topping',
+    },
+    {
       key: '/admin/categories',
       icon: <TagsOutlined />,
       label: 'Danh mục',

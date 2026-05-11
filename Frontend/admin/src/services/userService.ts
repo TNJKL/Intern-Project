@@ -1,5 +1,5 @@
 import { apiClient } from '../lib/api';
-import type { UserPayload } from '../types/user';
+import type { UserPayload } from '@/types/user';
 
 export interface ChangePasswordData {
   oldPassword: string;
@@ -9,6 +9,11 @@ export interface ChangePasswordData {
 export const userService = {
   getUsers: async (page = 0, size = 8) => {
     const response = await apiClient.get('/users', { params: { page, size } });
+    return response.data;
+  },
+
+  getUserById: async (id: string) => {
+    const response = await apiClient.get(`/users/${id}`);
     return response.data;
   },
 

@@ -10,6 +10,7 @@ export default {
         primary: "#d37533", // Coffee accent color
         coffee: {
           dark: "#3c2a21",
+          medium: "#634832",
           light: "#6f4e37",
         }
       }

@@ -3,9 +3,29 @@
 import { Search, Menu, User, Coffee, ShoppingCart, LogOut, LayoutDashboard } from "lucide-react";
 import Link from "next/link";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { clearCredentials } from "@/store/authSlice";
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { useRouter, usePathname } from "next/navigation";
 
-export function Navbar() {
-  const { user, isAuthenticated, logout } = useAuthStore();
+import { User as UserType } from "@/types/user";
+
+interface NavbarProps {
+  initialUser?: UserType | null;
+}
+
+export function Navbar({ initialUser }: NavbarProps) {
+  const { user, clearUser } = useAuthStore();
+  const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
+  const dispatch = useAppDispatch();
+  const [isMounted, setIsMounted] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   return (
     <nav className="flex items-center justify-between px-6 py-6 max-w-7xl mx-auto w-full gap-4">
@@ -19,7 +39,7 @@ export function Navbar() {
             <span className="text-coffee-dark">Brew</span>
             <span className="text-primary">tra</span>
           </span>
-          {isAuthenticated && user?.role === 'ADMIN' && (
+          {isMounted && isAuthenticated && user?.role === 'ADMIN' && (
             <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mt-0.5">Admin Panel</span>
           )}
         </div>
@@ -30,61 +50,92 @@ export function Navbar() {
         <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none text-gray-400 group-focus-within:text-primary transition-colors">
           <Search className="w-4 h-4" />
         </div>
-        <input 
-          type="text" 
-          placeholder="Tìm kiếm hương vị cà phê..." 
+        <input
+          type="text"
+          placeholder="Tìm kiếm hương vị cà phê..."
           className="w-full bg-[#fdfaf5] border border-gray-200 text-gray-800 text-sm font-medium rounded-full pl-12 pr-4 py-3 outline-none focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all shadow-sm"
         />
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-        <button className="sm:hidden p-3 text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
+      <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+        <button className="sm:hidden p-2.5 text-gray-500 hover:bg-gray-100 rounded-full transition-all active:scale-90">
           <Search className="w-5 h-5" />
         </button>
-        {isAuthenticated && user ? (
-          <div className="hidden md:flex items-center gap-4">
-            {user.role === 'ADMIN' && (
-              <a 
-                href="http://localhost:5173/admin/dashboard" 
-                className="flex items-center gap-2 px-4 py-2 bg-coffee-dark text-white text-[10px] font-black uppercase tracking-widest rounded-full hover:bg-primary transition-all shadow-lg shadow-coffee-dark/20 active:scale-95"
-              >
-                <LayoutDashboard className="w-3.5 h-3.5" />
-                Quản trị
-              </a>
-            )}
-            <Link 
-              href="/profile" 
-              className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary font-bold rounded-full border border-primary/20 hover:bg-primary/20 transition-colors"
-            >
-              <div className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs">
-                {user.fullName?.charAt(0).toUpperCase()}
-              </div>
-              <span className="text-sm max-w-[100px] truncate">{user.fullName}</span>
-            </Link>
-            <button 
-              onClick={() => logout()}
-              className="p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors group relative"
-              title="Đăng xuất"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
+
+        {((isMounted && isAuthenticated && user) || initialUser) ? (
+          <div className="flex items-center gap-2 sm:gap-4">
+            {(() => {
+              const displayUser = isMounted ? user : initialUser;
+              if (!displayUser) return null;
+
+              return (
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <Link
+                    href="/profile"
+                    className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-primary/5 border border-primary/10 text-gray-800 rounded-full hover:bg-primary/10 transition-all group"
+                  >
+                    <div className="w-7 h-7 bg-primary text-white rounded-full flex items-center justify-center text-[10px] font-black shadow-sm group-hover:scale-110 transition-transform">
+                      {displayUser.fullName?.charAt(0).toUpperCase() || 'LG'}
+                    </div>
+                    <span className="text-xs sm:text-sm font-bold truncate max-w-[80px] sm:max-w-[120px]">
+                      {displayUser.fullName || 'Đăng nhập'}
+                    </span>
+                  </Link>
+
+                  {displayUser.role === 'ADMIN' && (
+                    <a
+                      href="http://localhost:5173/admin/dashboard"
+                      className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-coffee-dark text-white text-[9px] sm:text-[10px] font-black uppercase tracking-widest rounded-full hover:bg-primary transition-all shadow-md active:scale-95"
+                    >
+                      <LayoutDashboard className="w-3 h-3" />
+                      <span className="hidden xs:block">Quản trị</span>
+                    </a>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      dispatch(clearCredentials());
+                      clearUser();
+                      axios.post('/api/auth/logout').then(() => {
+                        if (pathname === '/profile' || pathname.startsWith('/admin')) {
+                          router.push('/');
+                        } else {
+                          router.refresh();
+                        }
+                      });
+                    }}
+                    className="flex items-center gap-1.5 p-2 text-gray-400 hover:text-red-500 transition-all group"
+                  >
+                    <LogOut className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
+                    <span className="text-[10px] font-black uppercase tracking-wider hidden sm:block">Thoát</span>
+                  </button>
+                </div>
+              );
+            })()}
           </div>
-        ) : (
-          <Link href="/login" className="hidden md:flex items-center gap-2 px-6 py-3 bg-coffee-dark text-white text-sm font-bold rounded-full hover:bg-primary transition-colors shadow-lg shadow-coffee-dark/20 active:scale-95">
+        ) : isMounted ? (
+          <Link
+            href="/login"
+            className="flex items-center gap-2 px-6 py-2.5 bg-coffee-dark text-white text-sm font-bold rounded-full hover:bg-primary transition-all shadow-lg shadow-coffee-dark/10 active:scale-95"
+          >
             <User className="w-4 h-4" />
-            Đăng nhập
+            <span>Đăng nhập</span>
           </Link>
+        ) : (
+          <div className="w-32 h-10 bg-gray-50 animate-pulse rounded-full border border-gray-100"></div>
         )}
-        
-        <Link href="/cart" className="relative p-3 text-gray-600 hover:bg-gray-100 rounded-full transition-colors border border-transparent hover:border-gray-200 active:scale-95 group">
-          <ShoppingCart className="w-6 h-6" />
-          <span className="absolute top-2 right-2 w-4 h-4 bg-primary text-white text-[10px] font-black flex items-center justify-center rounded-full border-2 border-white group-hover:scale-110 transition-transform">
+
+        <div className="h-8 w-[1px] bg-gray-100 mx-1 hidden sm:block"></div>
+
+        <Link href="/cart" className="relative p-2.5 text-gray-600 hover:bg-gray-100 rounded-full transition-all group active:scale-90">
+          <ShoppingCart className="w-6 h-6 group-hover:text-primary transition-colors" />
+          <span className="absolute top-1.5 right-1.5 w-4.5 h-4.5 bg-primary text-white text-[9px] font-black flex items-center justify-center rounded-full border-2 border-white shadow-sm group-hover:scale-110 transition-transform">
             3
           </span>
         </Link>
 
-        <button className="p-3 text-gray-600 hover:bg-gray-100 rounded-full transition-colors border border-transparent hover:border-gray-200 active:scale-95">
+        <button className="p-2.5 text-gray-600 hover:bg-gray-100 rounded-full transition-all active:scale-90">
           <Menu className="w-6 h-6" />
         </button>
       </div>

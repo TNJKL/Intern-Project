@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, Space, App as AntApp, Typography } from 'antd';
+import { Modal, Form, Input, Space, Typography } from 'antd';
+import { message } from '@/lib/antd';
 import { userService } from '../../../services/userService';
 import { useAuthStore } from '../../../store/useAuthStore';
 
@@ -16,7 +17,6 @@ const COUNTDOWN_SECONDS = 4;
 
 const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ open, onCancel, loading, setLoading }) => {
   const [form] = Form.useForm();
-  const { message } = AntApp.useApp();
   const { logout } = useAuthStore();
   const [isSuccess, setIsSuccess] = useState(false);
   const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);

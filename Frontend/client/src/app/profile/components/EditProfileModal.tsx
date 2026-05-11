@@ -15,7 +15,7 @@ interface EditProfileModalProps {
 const EditProfileModal: React.FC<EditProfileModalProps> = ({ open, onClose, user }) => {
   const [form, setForm] = useState({ fullName: '', email: '', phone: '' });
   const [isSaving, setIsSaving] = useState(false);
-  const { setAuth } = useAuthStore();
+  const { setUser } = useAuthStore();
 
   useEffect(() => {
     if (user && open) {
@@ -39,7 +39,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ open, onClose, user
 
       const response = await userService.updateProfile(updateData);
       const updatedUser = response.data || { ...user, ...updateData };
-      setAuth(updatedUser, useAuthStore.getState().accessToken || '', useAuthStore.getState().refreshToken || '');
+      setUser(updatedUser);
       toast.success('Cập nhật hồ sơ thành công!');
       onClose();
     } catch (error: any) {
