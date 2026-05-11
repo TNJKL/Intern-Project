@@ -1,3 +1,7 @@
+#Do nhiều service quá em sợ bị lẫn lộn với lại đây là project thực tập 
+#Nên cho phép em tạm push các biến môi trường lên luôn nha anh 
+#Khi nào gần xong hết em sẽ trau chuốt sửa lại rồi bỏ vô .env 
+
 spring:
   application:
     name: product-service
@@ -45,11 +49,17 @@ auth:
   access-cookie:
     name: ${AUTH_ACCESS_COOKIE_NAME:accessToken}
 
+# CORS (Swagger qua ngrok hoặc FE gọi trực tiếp product — kèm *.ngrok-free.dev)
+app:
+  cors:
+    allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:3000,http://localhost:5173,https://*.ngrok-free.app,https://*.ngrok-free.dev}
+
+# Prefix /product/ để không trùng path Swagger với auth-service khi cùng host (nginx/ngrok).
 springdoc:
   api-docs:
-    path: /api-docs
+    path: /product/v3/api-docs
   swagger-ui:
-    path: /swagger-ui.html
+    path: /product/swagger-ui.html
     enabled: true
     tags-sorter: alpha
     operations-sorter: alpha
