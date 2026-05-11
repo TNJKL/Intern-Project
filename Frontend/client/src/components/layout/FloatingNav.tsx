@@ -1,41 +1,54 @@
 "use client";
 
-import Link from "next/link";
-import { Home, Tag, User, Info, Coffee, Package } from "lucide-react";
+import { useAuthStore } from "@/store/useAuthStore";
+import { useAppSelector } from "@/store/hooks";
+import { Home, Tag, User, Coffee, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
-
-const NAV_ITEMS = [
-  { id: "home", icon: Home, label: "Trang chủ", href: "/" },
-  { id: "menu", icon: Coffee, label: "Thực đơn", href: "/menu" },
-  { id: "orders", icon: Package, label: "Đơn hàng", href: "/orders" },
-  { id: "promo", icon: Tag, label: "Ưu đãi", href: "#" },
-  { id: "account", icon: User, label: "Tài khoản", href: "/login" },
-];
+import { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 
 export function FloatingNav() {
   const pathname = usePathname();
+  const { user } = useAuthStore();
+  const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
+  const [isMounted, setIsMounted] = useState(false);
   const [activeId, setActiveId] = useState("home");
 
   useEffect(() => {
-    if (pathname === "/login" || pathname === "/register") {
-      setActiveId("account");
-    } else if (pathname === "/menu") {
-      setActiveId("menu");
-    } else if (pathname === "/orders") {
-      setActiveId("orders");
-    } else if (pathname === "/") {
-      const hash = window.location.hash;
-      if (hash === "#about") setActiveId("about");
-      else setActiveId("home");
+    setIsMounted(true);
+  }, []);
+
+  const navItems = useMemo(() => [
+    { id: "home", icon: Home, label: "Trang chủ", href: "/" },
+    { id: "menu", icon: Coffee, label: "Thực đơn", href: "/menu" },
+    { id: "orders", icon: Package, label: "Đơn hàng", href: "/orders" },
+    { id: "promo", icon: Tag, label: "Ưu đãi", href: "#" },
+    {
+      id: "account",
+      icon: User,
+      label: "Tài khoản",
+      href: isMounted && isAuthenticated
+        ? (user?.role === 'ADMIN' ? 'http://localhost:5173/admin/profile' : '/profile')
+        : "/login"
+    },
+  ], [isAuthenticated, user, isMounted]);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    const currentItem = navItems.find((item) => {
+      if (item.href === "/") return pathname === "/";
+      return pathname.startsWith(item.href) && item.href !== "/";
+    });
+    if (currentItem) {
+      setActiveId(currentItem.id);
     }
-  }, [pathname]);
+  }, [pathname, navItems, isMounted]);
 
   return (
     <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
       <div className="bg-white/80 backdrop-blur-xl px-6 py-3 rounded-full shadow-2xl border border-white/50 flex items-center gap-8">
-        {NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const isActive = activeId === item.id;
 
           return (
@@ -66,4 +79,3 @@ export function FloatingNav() {
     </div>
   );
 }
-
