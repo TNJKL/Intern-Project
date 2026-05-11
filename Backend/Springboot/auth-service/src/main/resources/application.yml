@@ -1,3 +1,7 @@
+#Do nhiều service quá em sợ bị lẫn lộn với lại đây là project thực tập 
+#Nên cho phép em tạm push các biến môi trường lên luôn nha anh 
+#Khi nào gần xong hết em sẽ trau chuốt sửa lại rồi bỏ vô .env 
+
 server:
   port: 8081
   # Hai JWT trong Cookie header có thể dài; tránh Tomcat cắt header → mất refresh/access.
