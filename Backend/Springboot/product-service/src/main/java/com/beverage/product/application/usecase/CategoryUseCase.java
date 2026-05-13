@@ -98,6 +98,13 @@ public class CategoryUseCase {
         return categoryDtoMapper.toResponse(category);
     }
 
+    public CategoryResponse getCategoryBySlug(String rawSlug) {
+        String slug = catalogSlugService.slugify(rawSlug);
+        Category category = categoryRepository.findActiveBySlug(slug)
+                .orElseThrow(() -> new ResourceNotFoundException("Category", "slug", slug));
+        return categoryDtoMapper.toResponse(category);
+    }
+
     public List<CategoryResponse> listCategories(boolean includeDeleted) {
         if (includeDeleted) {
             return categoryRepository.listCatalog(true).stream()

@@ -46,6 +46,13 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success(response, "Lấy danh sách sản phẩm thành công"));
     }
 
+    @GetMapping("/by-slug/{slug}")
+    @Operation(summary = "Public - Lấy chi tiết sản phẩm theo slug (cùng payload với GET theo id: variants, toppings)")
+    public ResponseEntity<ApiResponse<ProductResponse>> getDetailBySlug(@PathVariable String slug) {
+        return ResponseEntity.ok(ApiResponse.success(productUseCase.getProductDetailBySlug(slug),
+                "Lấy chi tiết sản phẩm thành công"));
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Public - Get product detail by id")
     public ResponseEntity<ApiResponse<ProductResponse>> getDetail(@PathVariable UUID id) {

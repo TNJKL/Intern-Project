@@ -43,6 +43,13 @@ public class CategoryController {
                 "Lấy danh sách danh mục thành công"));
     }
 
+    @GetMapping("/by-slug/{slug}")
+    @Operation(summary = "Public - Lấy danh mục theo slug (URL thân thiện; cùng payload với GET theo id)")
+    public ResponseEntity<ApiResponse<CategoryResponse>> getBySlug(@PathVariable String slug) {
+        return ResponseEntity.ok(ApiResponse.success(categoryUseCase.getCategoryBySlug(slug),
+                "Lấy danh mục thành công"));
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Public - Get category by id")
     public ResponseEntity<ApiResponse<CategoryResponse>> getById(@PathVariable UUID id) {

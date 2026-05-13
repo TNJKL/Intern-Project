@@ -14,5 +14,8 @@ public interface ProductToppingRepository {
     List<ProductTopping> findByProductId(UUID productId);
 
     void deleteByProductId(UUID productId);
+
+    /** Đẩy DELETE xuống DB trước khi INSERT lại (tránh vi phạm UK khi thay topping trong cùng transaction). */
+    void flush();
 }
 

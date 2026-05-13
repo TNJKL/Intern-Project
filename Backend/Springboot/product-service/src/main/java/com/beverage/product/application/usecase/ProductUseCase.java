@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.UUID;
 import java.util.function.Predicate;
 
@@ -96,6 +97,7 @@ public class ProductUseCase {
         return productDtoMapper.toResponse(saved, toppings, variants);
     }
 
+    @Transactional
     public ProductResponse updateProduct(UUID productId, @Valid UpdateProductRequest request) {
         Product existing = productRepository.findActiveById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", "id", productId));
@@ -123,6 +125,7 @@ public class ProductUseCase {
         Product saved = productRepository.save(updated);
 
         productToppingRepository.deleteByProductId(saved.getId());
+        productToppingRepository.flush();
         List<Topping> toppings = toppingRepository.findActiveByIds(toppingIds);
         for (UUID toppingId : toppingIds) {
             ProductTopping pt = ProductTopping.builder()
@@ -190,6 +193,13 @@ public class ProductUseCase {
         return response;
     }
 
+    public ProductResponse getProductDetailBySlug(String rawSlug) {
+        String slug = catalogSlugService.slugify(rawSlug);
+        Product product = productRepository.findActiveBySlug(slug)
+                .orElseThrow(() -> new ResourceNotFoundException("Product", "slug", slug));
+        return getProductDetail(product.getId());
+    }
+
     public List<ProductResponse> listProducts(UUID categoryId, Boolean isAvailable, Boolean isFeatured, boolean includeDeleted) {
         List<Product> products = productRepository.listCatalog(categoryId, includeDeleted);
 
@@ -233,7 +243,10 @@ public class ProductUseCase {
 
         List<Topping> found = toppingRepository.findActiveByIds(toppingIds);
         if (found.size() != toppingIds.size()) {
-            throw new ResourceNotFoundException("Topping", "ids", toppingIds);
+            Set<UUID> foundIds = found.stream().map(Topping::getId).collect(Collectors.toSet());
+            List<UUID> missing = toppingIds.stream().filter(id -> !foundIds.contains(id)).toList();
+            throw new ResourceNotFoundException(
+                    "Topping không tồn tại hoặc đã bị xóa mềm (không còn active trong catalog): " + missing);
         }
     }
 
