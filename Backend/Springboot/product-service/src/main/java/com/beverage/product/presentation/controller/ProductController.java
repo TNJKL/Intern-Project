@@ -6,6 +6,7 @@ import com.beverage.product.application.dto.response.ProductResponse;
 import com.beverage.product.application.usecase.ProductUseCase;
 import com.beverage.product.common.ApiResponse;
 import com.beverage.product.infrastructure.storage.CatalogImageStorageService;
+import com.beverage.product.presentation.support.CatalogAdminApiSupport;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -13,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -29,14 +31,18 @@ public class ProductController {
 
     private final ProductUseCase productUseCase;
     private final CatalogImageStorageService catalogImageStorageService;
+    private final CatalogAdminApiSupport catalogAdminApiSupport;
 
     @GetMapping
-    @Operation(summary = "Public - List products (optional filters)")
+    @Operation(summary = "Public - List products (optional filters; ADMIN: ?includeDeleted=true)")
     public ResponseEntity<ApiResponse<List<ProductResponse>>> list(
             @RequestParam(required = false) UUID categoryId,
             @RequestParam(required = false) Boolean isAvailable,
-            @RequestParam(required = false) Boolean isFeatured) {
-        List<ProductResponse> response = productUseCase.listProducts(categoryId, isAvailable, isFeatured);
+            @RequestParam(required = false) Boolean isFeatured,
+            @RequestParam(required = false, defaultValue = "false") boolean includeDeleted,
+            Authentication authentication) {
+        catalogAdminApiSupport.assertAdminWhenIncludingDeleted(includeDeleted, authentication);
+        List<ProductResponse> response = productUseCase.listProducts(categoryId, isAvailable, isFeatured, includeDeleted);
         return ResponseEntity.ok(ApiResponse.success(response, "Lấy danh sách sản phẩm thành công"));
     }
 
@@ -116,9 +122,16 @@ public class ProductController {
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "ADMIN - Delete product")
+    @Operation(summary = "ADMIN - Soft delete product")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         productUseCase.deleteProduct(id);
         return ResponseEntity.ok(ApiResponse.success(null, "Xóa sản phẩm thành công"));
+    }
+
+    @PostMapping("/{id}/restore")
+    @Operation(summary = "ADMIN - Khôi phục sản phẩm đã xóa mềm")
+    public ResponseEntity<ApiResponse<Void>> restore(@PathVariable UUID id) {
+        productUseCase.restoreProduct(id);
+        return ResponseEntity.ok(ApiResponse.success(null, "Khôi phục sản phẩm thành công"));
     }
 }

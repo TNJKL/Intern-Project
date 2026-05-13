@@ -18,6 +18,7 @@ public class CategoryMapper {
                 .isActive(category.getIsActive())
                 .createdAt(category.getCreatedAt())
                 .updatedAt(category.getUpdatedAt())
+                .deletedAt(category.getDeletedAt())
                 .build();
     }
 
@@ -32,6 +33,7 @@ public class CategoryMapper {
                 .isActive(entity.getIsActive())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
+                .deletedAt(entity.getDeletedAt())
                 .build();
     }
 }

@@ -211,7 +211,7 @@ public class AuthController {
         }
 
         ResponseCookie cookie = ResponseCookie.from(refreshCookieName, refreshToken)
-                .httpOnly(true)
+                .httpOnly(false)
                 .secure(refreshCookieSecure)
                 .path(refreshCookiePath)
                 .sameSite(refreshCookieSameSite)

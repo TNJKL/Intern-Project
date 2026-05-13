@@ -7,16 +7,24 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface ProductRepository {
+
     Product save(Product product);
 
-    Optional<Product> findById(UUID id);
+    Optional<Product> findActiveById(UUID id);
 
-    Optional<Product> findBySlug(String slug);
+    Optional<Product> findIncludingDeletedById(UUID id);
 
-    List<Product> findByCategoryId(UUID categoryId);
+    Optional<Product> findActiveBySlug(String slug);
+
+    boolean existsActiveBySlug(String slug);
+
+    boolean existsActiveBySlugExcludingId(String slug, UUID excludeId);
 
     List<Product> findAll();
 
-    void deleteById(UUID id);
+    /**
+     * @param categoryId optional filter
+     * @param includeDeleted nếu true: gồm cả đã xóa mềm; nếu false: chỉ sản phẩm + danh mục đều chưa xóa mềm
+     */
+    List<Product> listCatalog(UUID categoryId, boolean includeDeleted);
 }
-

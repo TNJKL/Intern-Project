@@ -18,6 +18,7 @@ public class ToppingMapper {
                 .displayOrder(topping.getDisplayOrder())
                 .createdAt(topping.getCreatedAt())
                 .updatedAt(topping.getUpdatedAt())
+                .deletedAt(topping.getDeletedAt())
                 .build();
     }
 
@@ -32,6 +33,7 @@ public class ToppingMapper {
                 .displayOrder(entity.getDisplayOrder())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
+                .deletedAt(entity.getDeletedAt())
                 .build();
     }
 }

@@ -7,16 +7,22 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface CategoryRepository {
+
     Category save(Category category);
 
-    Optional<Category> findById(UUID id);
+    Optional<Category> findActiveById(UUID id);
 
-    Optional<Category> findBySlug(String slug);
+    Optional<Category> findIncludingDeletedById(UUID id);
 
-    List<Category> findAllActive();
+    Optional<Category> findActiveBySlug(String slug);
 
+    boolean existsActiveBySlug(String slug);
+
+    boolean existsActiveBySlugExcludingId(String slug, UUID excludeId);
+
+    /** Toàn bộ bản ghi (công cụ nội bộ / consistency). */
     List<Category> findAll();
 
-    void deleteById(UUID id);
+    /** Danh sách catalog: {@code false} = chỉ bản ghi đang hoạt động (is_active và chưa xóa mềm). */
+    List<Category> listCatalog(boolean includeDeleted);
 }
-

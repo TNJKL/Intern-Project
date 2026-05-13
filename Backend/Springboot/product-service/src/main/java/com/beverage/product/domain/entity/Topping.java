@@ -23,5 +23,7 @@ public class Topping {
     private Short displayOrder;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    /** null = đang hoạt động; có giá trị = đã soft-delete */
+    private LocalDateTime deletedAt;
 }
 

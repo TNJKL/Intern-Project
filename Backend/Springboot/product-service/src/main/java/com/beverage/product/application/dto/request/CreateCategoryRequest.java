@@ -10,7 +10,7 @@ public class CreateCategoryRequest {
     @Size(max = 100)
     private String name;
 
-    @NotBlank
+    /** Để trống: backend tự sinh slug từ {@link #name}. */
     @Size(max = 100)
     private String slug;
 

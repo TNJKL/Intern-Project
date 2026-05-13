@@ -50,8 +50,11 @@ public class SecurityConfig {
                         // ADMIN writes
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v1/categories",
+                                "/api/v1/categories/**",
                                 "/api/v1/products",
+                                "/api/v1/products/**",
                                 "/api/v1/toppings",
+                                "/api/v1/toppings/**",
                                 "/api/v1/storage/images"
                         ).hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET,

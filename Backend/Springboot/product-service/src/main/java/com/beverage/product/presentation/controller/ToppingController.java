@@ -6,6 +6,7 @@ import com.beverage.product.application.dto.response.ToppingResponse;
 import com.beverage.product.application.usecase.ToppingUseCase;
 import com.beverage.product.common.ApiResponse;
 import com.beverage.product.infrastructure.storage.CatalogImageStorageService;
+import com.beverage.product.presentation.support.CatalogAdminApiSupport;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -13,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -29,11 +31,15 @@ public class ToppingController {
 
     private final ToppingUseCase toppingUseCase;
     private final CatalogImageStorageService catalogImageStorageService;
+    private final CatalogAdminApiSupport catalogAdminApiSupport;
 
     @GetMapping
-    @Operation(summary = "Public - List active toppings")
-    public ResponseEntity<ApiResponse<List<ToppingResponse>>> listActive() {
-        return ResponseEntity.ok(ApiResponse.success(toppingUseCase.listToppingsActive(),
+    @Operation(summary = "List toppings (mặc định đang bán; ADMIN có thể ?includeDeleted=true)")
+    public ResponseEntity<ApiResponse<List<ToppingResponse>>> list(
+            @RequestParam(required = false, defaultValue = "false") boolean includeDeleted,
+            Authentication authentication) {
+        catalogAdminApiSupport.assertAdminWhenIncludingDeleted(includeDeleted, authentication);
+        return ResponseEntity.ok(ApiResponse.success(toppingUseCase.listToppings(includeDeleted),
                 "Lấy danh sách toppings thành công"));
     }
 
@@ -113,9 +119,16 @@ public class ToppingController {
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "ADMIN - Delete topping")
+    @Operation(summary = "ADMIN - Soft delete topping")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         toppingUseCase.deleteTopping(id);
         return ResponseEntity.ok(ApiResponse.success(null, "Xóa topping thành công"));
+    }
+
+    @PostMapping("/{id}/restore")
+    @Operation(summary = "ADMIN - Khôi phục topping đã xóa mềm")
+    public ResponseEntity<ApiResponse<Void>> restore(@PathVariable UUID id) {
+        toppingUseCase.restoreTopping(id);
+        return ResponseEntity.ok(ApiResponse.success(null, "Khôi phục topping thành công"));
     }
 }

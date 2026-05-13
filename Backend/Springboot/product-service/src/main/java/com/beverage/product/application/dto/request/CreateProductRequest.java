@@ -1,12 +1,11 @@
 package com.beverage.product.application.dto.request;
 
-import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -20,17 +19,13 @@ public class CreateProductRequest {
     @Size(max = 255)
     private String name;
 
-    @NotBlank
+    /** Để trống: backend tự sinh slug từ {@link #name}. */
     @Size(max = 255)
     private String slug;
 
     private String description;
 
     private String imageUrl;
-
-    @NotNull
-    @DecimalMin(value = "0", inclusive = true)
-    private BigDecimal price;
 
     private Boolean isAvailable;
 
@@ -41,5 +36,10 @@ public class CreateProductRequest {
     // Cho MVP: chỉ lưu danh sách topping_id qua product_toppings.
     @Size(max = 200)
     private List<UUID> toppingIds;
-}
 
+    /**
+     * Tùy chọn: tạo kèm các variant (size + giá) trong cùng transaction với sản phẩm.
+     */
+    @Valid
+    private List<InitialVariantRequest> initialVariants;
+}

@@ -25,20 +25,28 @@ public class CategoryRepositoryImpl implements CategoryRepository {
     }
 
     @Override
-    public Optional<Category> findById(UUID id) {
+    public Optional<Category> findActiveById(UUID id) {
+        return categoryJpaRepository.findByIdAndDeletedAtIsNull(id).map(categoryMapper::toDomain);
+    }
+
+    @Override
+    public Optional<Category> findIncludingDeletedById(UUID id) {
         return categoryJpaRepository.findById(id).map(categoryMapper::toDomain);
     }
 
     @Override
-    public Optional<Category> findBySlug(String slug) {
-        return categoryJpaRepository.findBySlug(slug).map(categoryMapper::toDomain);
+    public Optional<Category> findActiveBySlug(String slug) {
+        return categoryJpaRepository.findBySlugAndDeletedAtIsNull(slug).map(categoryMapper::toDomain);
     }
 
     @Override
-    public List<Category> findAllActive() {
-        return categoryJpaRepository.findByIsActiveTrue().stream()
-                .map(categoryMapper::toDomain)
-                .toList();
+    public boolean existsActiveBySlug(String slug) {
+        return categoryJpaRepository.existsBySlugAndDeletedAtIsNull(slug);
+    }
+
+    @Override
+    public boolean existsActiveBySlugExcludingId(String slug, UUID excludeId) {
+        return categoryJpaRepository.existsBySlugAndDeletedAtIsNullAndIdNot(slug, excludeId);
     }
 
     @Override
@@ -49,8 +57,14 @@ public class CategoryRepositoryImpl implements CategoryRepository {
     }
 
     @Override
-    public void deleteById(UUID id) {
-        categoryJpaRepository.deleteById(id);
+    public List<Category> listCatalog(boolean includeDeleted) {
+        if (includeDeleted) {
+            return categoryJpaRepository.findAllForCatalogOrderByDisplayOrderAsc().stream()
+                    .map(categoryMapper::toDomain)
+                    .toList();
+        }
+        return categoryJpaRepository.findByIsActiveTrueAndDeletedAtIsNullOrderByDisplayOrderAsc().stream()
+                .map(categoryMapper::toDomain)
+                .toList();
     }
 }
-

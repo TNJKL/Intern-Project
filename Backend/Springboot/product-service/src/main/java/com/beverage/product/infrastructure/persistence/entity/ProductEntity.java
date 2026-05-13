@@ -5,7 +5,6 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -35,7 +34,7 @@ public class ProductEntity {
     @Column(nullable = false, length = 255)
     private String name;
 
-    @Column(nullable = false, unique = true, length = 255)
+    @Column(nullable = false, length = 255)
     private String slug;
 
     @Column(columnDefinition = "TEXT")
@@ -43,9 +42,6 @@ public class ProductEntity {
 
     @Column(name = "image_url", length = 500)
     private String imageUrl;
-
-    @Column(nullable = false, precision = 12, scale = 0)
-    private BigDecimal price;
 
     @Column(name = "is_available", nullable = false)
     @Builder.Default
@@ -66,5 +62,8 @@ public class ProductEntity {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 }
 

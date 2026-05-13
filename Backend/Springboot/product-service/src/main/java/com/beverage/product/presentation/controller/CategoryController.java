@@ -6,6 +6,7 @@ import com.beverage.product.application.dto.response.CategoryResponse;
 import com.beverage.product.application.usecase.CategoryUseCase;
 import com.beverage.product.common.ApiResponse;
 import com.beverage.product.infrastructure.storage.CatalogImageStorageService;
+import com.beverage.product.presentation.support.CatalogAdminApiSupport;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -13,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -29,11 +31,15 @@ public class CategoryController {
 
     private final CategoryUseCase categoryUseCase;
     private final CatalogImageStorageService catalogImageStorageService;
+    private final CatalogAdminApiSupport catalogAdminApiSupport;
 
     @GetMapping
-    @Operation(summary = "Public - List active categories")
-    public ResponseEntity<ApiResponse<List<CategoryResponse>>> listActive() {
-        return ResponseEntity.ok(ApiResponse.success(categoryUseCase.listCategoriesActive(),
+    @Operation(summary = "List categories (mặc định chỉ đang hoạt động; ADMIN có thể ?includeDeleted=true)")
+    public ResponseEntity<ApiResponse<List<CategoryResponse>>> list(
+            @RequestParam(required = false, defaultValue = "false") boolean includeDeleted,
+            Authentication authentication) {
+        catalogAdminApiSupport.assertAdminWhenIncludingDeleted(includeDeleted, authentication);
+        return ResponseEntity.ok(ApiResponse.success(categoryUseCase.listCategories(includeDeleted),
                 "Lấy danh sách danh mục thành công"));
     }
 
@@ -113,9 +119,16 @@ public class CategoryController {
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "ADMIN - Delete category")
+    @Operation(summary = "ADMIN - Soft delete category")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         categoryUseCase.deleteCategory(id);
         return ResponseEntity.ok(ApiResponse.success(null, "Xóa danh mục thành công"));
+    }
+
+    @PostMapping("/{id}/restore")
+    @Operation(summary = "ADMIN - Khôi phục danh mục đã xóa mềm")
+    public ResponseEntity<ApiResponse<Void>> restore(@PathVariable UUID id) {
+        categoryUseCase.restoreCategory(id);
+        return ResponseEntity.ok(ApiResponse.success(null, "Khôi phục danh mục thành công"));
     }
 }

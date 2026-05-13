@@ -25,20 +25,28 @@ public class ProductRepositoryImpl implements ProductRepository {
     }
 
     @Override
-    public Optional<Product> findById(UUID id) {
+    public Optional<Product> findActiveById(UUID id) {
+        return productJpaRepository.findByIdAndDeletedAtIsNull(id).map(productMapper::toDomain);
+    }
+
+    @Override
+    public Optional<Product> findIncludingDeletedById(UUID id) {
         return productJpaRepository.findById(id).map(productMapper::toDomain);
     }
 
     @Override
-    public Optional<Product> findBySlug(String slug) {
-        return productJpaRepository.findBySlug(slug).map(productMapper::toDomain);
+    public Optional<Product> findActiveBySlug(String slug) {
+        return productJpaRepository.findBySlugAndDeletedAtIsNull(slug).map(productMapper::toDomain);
     }
 
     @Override
-    public List<Product> findByCategoryId(UUID categoryId) {
-        return productJpaRepository.findByCategoryId(categoryId).stream()
-                .map(productMapper::toDomain)
-                .toList();
+    public boolean existsActiveBySlug(String slug) {
+        return productJpaRepository.existsBySlugAndDeletedAtIsNull(slug);
+    }
+
+    @Override
+    public boolean existsActiveBySlugExcludingId(String slug, UUID excludeId) {
+        return productJpaRepository.existsBySlugAndDeletedAtIsNullAndIdNot(slug, excludeId);
     }
 
     @Override
@@ -49,8 +57,14 @@ public class ProductRepositoryImpl implements ProductRepository {
     }
 
     @Override
-    public void deleteById(UUID id) {
-        productJpaRepository.deleteById(id);
+    public List<Product> listCatalog(UUID categoryId, boolean includeDeleted) {
+        if (includeDeleted) {
+            return productJpaRepository.findAllForManagement(categoryId).stream()
+                    .map(productMapper::toDomain)
+                    .toList();
+        }
+        return productJpaRepository.findActiveCatalog(categoryId).stream()
+                .map(productMapper::toDomain)
+                .toList();
     }
 }
-

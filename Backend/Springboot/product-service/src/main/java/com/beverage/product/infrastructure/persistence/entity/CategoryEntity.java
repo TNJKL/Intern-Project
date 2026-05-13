@@ -29,7 +29,7 @@ public class CategoryEntity {
     @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(nullable = false, unique = true, length = 100)
+    @Column(nullable = false, length = 100)
     private String slug;
 
     @Column(name = "image_url", length = 500)
@@ -50,5 +50,8 @@ public class CategoryEntity {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 }
 
