@@ -1,6 +1,7 @@
 package com.beverage.product.application.usecase;
 
 import com.beverage.product.application.dto.request.CreateCategoryRequest;
+import com.beverage.product.application.dto.request.ReorderItemRequest;
 import com.beverage.product.application.dto.request.UpdateCategoryRequest;
 import com.beverage.product.application.dto.response.CategoryResponse;
 import com.beverage.product.application.mapper.CategoryDtoMapper;
@@ -9,24 +10,28 @@ import com.beverage.product.domain.entity.Category;
 import com.beverage.product.domain.exception.BusinessException;
 import com.beverage.product.domain.exception.ResourceNotFoundException;
 import com.beverage.product.domain.repository.CategoryRepository;
+import com.beverage.product.infrastructure.cache.CatalogCacheKeys;
 import com.beverage.product.infrastructure.cache.RedisCacheService;
 import com.beverage.product.infrastructure.storage.CatalogImageStorageService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
-import com.fasterxml.jackson.core.type.TypeReference;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class CategoryUseCase {
-
-    private static final String CACHE_CATEGORIES_KEY = "cache:categories";
 
     private final CategoryRepository categoryRepository;
     private final CategoryDtoMapper categoryDtoMapper;
@@ -105,27 +110,52 @@ public class CategoryUseCase {
         return categoryDtoMapper.toResponse(category);
     }
 
-    public List<CategoryResponse> listCategories(boolean includeDeleted) {
-        if (includeDeleted) {
-            return categoryRepository.listCatalog(true).stream()
-                    .map(categoryDtoMapper::toResponse)
-                    .toList();
+    /**
+     * Trả về trang danh mục có phân trang + keyword.
+     * Không cache list (nhiều tổ hợp page/size/sort/filter → cache không hiệu quả).
+     */
+    public Page<CategoryResponse> pageCategories(String keyword, boolean includeDeleted, Pageable pageable) {
+        return categoryRepository.pageCategories(keyword, includeDeleted, pageable)
+                .map(categoryDtoMapper::toResponse);
+    }
+
+    @Transactional
+    public void reorderCategories(List<ReorderItemRequest> items) {
+        if (items == null || items.isEmpty()) {
+            throw new BusinessException("Danh sách reorder không được rỗng.", "EMPTY_REORDER");
         }
-        TypeReference<List<CategoryResponse>> typeRef = new TypeReference<>() {};
-        List<CategoryResponse> cached = redisCacheService.get(CACHE_CATEGORIES_KEY, typeRef);
-        if (cached != null) {
-            return cached;
+        Set<Integer> orders = new HashSet<>();
+        for (ReorderItemRequest item : items) {
+            if (!orders.add(item.getDisplayOrder())) {
+                throw new BusinessException(
+                        "displayOrder trùng nhau trong danh sách reorder: " + item.getDisplayOrder(),
+                        "DUPLICATE_DISPLAY_ORDER");
+            }
         }
-        List<CategoryResponse> response = categoryRepository.listCatalog(false).stream()
-                .map(categoryDtoMapper::toResponse)
-                .toList();
-        redisCacheService.set(CACHE_CATEGORIES_KEY, response);
-        return response;
+
+        List<UUID> ids = items.stream().map(ReorderItemRequest::getId).toList();
+        List<Category> categories = categoryRepository.findAllActiveByIds(ids);
+
+        if (categories.size() != ids.size()) {
+            Set<UUID> foundIds = categories.stream().map(Category::getId).collect(Collectors.toSet());
+            List<UUID> missing = ids.stream().filter(id -> !foundIds.contains(id)).toList();
+            throw new ResourceNotFoundException("Category", "ids", missing);
+        }
+
+        Map<UUID, Integer> orderMap = items.stream()
+                .collect(Collectors.toMap(ReorderItemRequest::getId, ReorderItemRequest::getDisplayOrder));
+
+        for (Category c : categories) {
+            c.setDisplayOrder(orderMap.get(c.getId()).shortValue());
+            categoryRepository.save(c);
+        }
+
+        evictCaches();
     }
 
     private void evictCaches() {
-        redisCacheService.delete(CACHE_CATEGORIES_KEY);
-        redisCacheService.deleteByPattern("cache:product:*");
+        redisCacheService.delete(CatalogCacheKeys.CATEGORIES_LIST);
+        redisCacheService.deleteByPattern(CatalogCacheKeys.PRODUCT_ALL_PATTERN);
     }
 
     private String resolveSlugOnCreate(String optionalSlug, String name, Predicate<String> slugTakenInActive) {

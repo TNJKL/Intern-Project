@@ -8,6 +8,7 @@ import com.beverage.product.domain.entity.Topping;
 import com.beverage.product.domain.exception.BusinessException;
 import com.beverage.product.domain.exception.ResourceNotFoundException;
 import com.beverage.product.domain.repository.ToppingRepository;
+import com.beverage.product.infrastructure.cache.CatalogCacheKeys;
 import com.beverage.product.infrastructure.cache.RedisCacheService;
 import com.beverage.product.infrastructure.storage.CatalogImageStorageService;
 import jakarta.validation.Valid;
@@ -23,8 +24,6 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class ToppingUseCase {
-
-    private static final String CACHE_TOPPINGS_KEY = "cache:toppings";
 
     private final ToppingRepository toppingRepository;
     private final ToppingDtoMapper toppingDtoMapper;
@@ -88,19 +87,19 @@ public class ToppingUseCase {
                     .toList();
         }
         TypeReference<List<ToppingResponse>> typeRef = new TypeReference<>() {};
-        List<ToppingResponse> cached = redisCacheService.get(CACHE_TOPPINGS_KEY, typeRef);
+        List<ToppingResponse> cached = redisCacheService.get(CatalogCacheKeys.TOPPINGS_LIST, typeRef);
         if (cached != null) {
             return cached;
         }
         List<ToppingResponse> response = toppingRepository.listCatalog(false).stream()
                 .map(toppingDtoMapper::toResponse)
                 .toList();
-        redisCacheService.set(CACHE_TOPPINGS_KEY, response);
+        redisCacheService.set(CatalogCacheKeys.TOPPINGS_LIST, response);
         return response;
     }
 
     private void evictCaches() {
-        redisCacheService.delete(CACHE_TOPPINGS_KEY);
-        redisCacheService.deleteByPattern("cache:product:*");
+        redisCacheService.delete(CatalogCacheKeys.TOPPINGS_LIST);
+        redisCacheService.deleteByPattern(CatalogCacheKeys.PRODUCT_ALL_PATTERN);
     }
 }

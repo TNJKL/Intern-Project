@@ -52,6 +52,23 @@ public class ApiResponse<T> {
                 .build();
     }
 
+    /**
+     * Factory cho endpoint phân trang.
+     * data = content của trang, metadata phân trang nằm ở cùng cấp trong response.
+     */
+    public static <T> ApiResponse<T> paged(T data, String message, org.springframework.data.domain.Page<?> page) {
+        return ApiResponse.<T>builder()
+                .success(true)
+                .message(message)
+                .data(data)
+                .timestamp(LocalDateTime.now())
+                .totalPages(page.getTotalPages())
+                .totalElements(page.getTotalElements())
+                .currentPage(page.getNumber())
+                .pageSize(page.getSize())
+                .build();
+    }
+
     @Data
     @Builder
     @NoArgsConstructor

@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -64,6 +65,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiResponse.error(
                         "Dữ liệu không thỏa ràng buộc cơ sở dữ liệu (ví dụ slug trùng với sản phẩm khác, hoặc danh sách topping có id trùng lặp)."));
+    }
+
+    /**
+     * Xử lý JSON không parse được: UUID sai format, kiểu dữ liệu sai, body rỗng...
+     * Ví dụ: Jackson ném InvalidFormatException khi UUID có ký tự thừa.
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
+        String detail = ex.getMostSpecificCause().getMessage();
+        log.warn("Request body không đọc được: {}", detail);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error("Request body không hợp lệ: " + detail));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

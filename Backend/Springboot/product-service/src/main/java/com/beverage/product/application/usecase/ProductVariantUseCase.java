@@ -4,11 +4,13 @@ import com.beverage.product.application.dto.request.CreateProductVariantRequest;
 import com.beverage.product.application.dto.request.UpdateProductVariantRequest;
 import com.beverage.product.application.dto.response.ProductVariantResponse;
 import com.beverage.product.application.mapper.ProductVariantDtoMapper;
+import com.beverage.product.domain.entity.Product;
 import com.beverage.product.domain.entity.ProductVariant;
 import com.beverage.product.domain.exception.BusinessException;
 import com.beverage.product.domain.exception.ResourceNotFoundException;
 import com.beverage.product.domain.repository.ProductRepository;
 import com.beverage.product.domain.repository.ProductVariantRepository;
+import com.beverage.product.infrastructure.cache.CatalogCacheKeys;
 import com.beverage.product.infrastructure.cache.RedisCacheService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,22 +26,20 @@ import java.util.UUID;
 @Validated
 public class ProductVariantUseCase {
 
-    private static final String CACHE_PRODUCT_PREFIX = "cache:product:";
-
     private final ProductRepository productRepository;
     private final ProductVariantRepository productVariantRepository;
     private final ProductVariantDtoMapper productVariantDtoMapper;
     private final RedisCacheService redisCacheService;
 
     public List<ProductVariantResponse> listVariants(UUID productId) {
-        ensureProductExists(productId);
+        loadActiveProduct(productId);
         return productVariantRepository.findActiveByProductId(productId).stream()
                 .map(productVariantDtoMapper::toResponse)
                 .toList();
     }
 
     public ProductVariantResponse createVariant(UUID productId, @Valid CreateProductVariantRequest request) {
-        ensureProductExists(productId);
+        Product product = loadActiveProduct(productId);
         String label = normalizeSizeLabel(request.getSizeLabel());
         assertUniqueSizeLabel(productId, label, null);
 
@@ -53,12 +53,12 @@ public class ProductVariantUseCase {
                 .deletedAt(null)
                 .build();
         ProductVariant saved = productVariantRepository.save(toSave);
-        evictProductCache(productId);
+        evictProductCache(productId, product.getSlug());
         return productVariantDtoMapper.toResponse(saved);
     }
 
     public ProductVariantResponse updateVariant(UUID productId, UUID variantId, @Valid UpdateProductVariantRequest request) {
-        ensureProductExists(productId);
+        Product product = loadActiveProduct(productId);
         ProductVariant existing = productVariantRepository.findActiveByIdAndProductId(variantId, productId)
                 .orElseThrow(() -> new ResourceNotFoundException("ProductVariant", "id", variantId));
 
@@ -69,54 +69,44 @@ public class ProductVariantUseCase {
             assertUniqueSizeLabel(productId, newLabel, variantId);
         }
 
-        if (request.getPrice() != null) {
-            existing.setPrice(request.getPrice());
-        }
-        if (request.getIsAvailable() != null) {
-            existing.setIsAvailable(request.getIsAvailable());
-        }
-        if (request.getDisplayOrder() != null) {
-            existing.setDisplayOrder(request.getDisplayOrder());
-        }
+        if (request.getPrice() != null) existing.setPrice(request.getPrice());
+        if (request.getIsAvailable() != null) existing.setIsAvailable(request.getIsAvailable());
+        if (request.getDisplayOrder() != null) existing.setDisplayOrder(request.getDisplayOrder());
         existing.setSizeLabel(newLabel);
 
         ProductVariant saved = productVariantRepository.save(existing);
-        evictProductCache(productId);
+        evictProductCache(productId, product.getSlug());
         return productVariantDtoMapper.toResponse(saved);
     }
 
     public void deleteVariant(UUID productId, UUID variantId) {
-        ensureProductExists(productId);
+        Product product = loadActiveProduct(productId);
         if (productVariantRepository.findActiveByIdAndProductId(variantId, productId).isEmpty()) {
             throw new ResourceNotFoundException("ProductVariant", "id", variantId);
         }
         productVariantRepository.softDelete(variantId, productId);
-        evictProductCache(productId);
+        evictProductCache(productId, product.getSlug());
     }
 
-    private void ensureProductExists(UUID productId) {
-        productRepository.findActiveById(productId)
+    private Product loadActiveProduct(UUID productId) {
+        return productRepository.findActiveById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", "id", productId));
     }
 
-    private void evictProductCache(UUID productId) {
-        redisCacheService.delete(CACHE_PRODUCT_PREFIX + productId);
-        redisCacheService.deleteByPattern("cache:product:*");
+    private void evictProductCache(UUID productId, String slug) {
+        redisCacheService.delete(CatalogCacheKeys.productById(productId));
+        redisCacheService.delete(CatalogCacheKeys.productBySlug(slug));
     }
 
     public static String normalizeSizeLabel(String raw) {
-        if (raw == null) {
-            return null;
-        }
+        if (raw == null) return null;
         String t = raw.trim();
         return t.isEmpty() ? null : t;
     }
 
     private void assertUniqueSizeLabel(UUID productId, String normalizedLabel, UUID excludeVariantId) {
         for (ProductVariant v : productVariantRepository.findActiveByProductId(productId)) {
-            if (excludeVariantId != null && excludeVariantId.equals(v.getId())) {
-                continue;
-            }
+            if (excludeVariantId != null && excludeVariantId.equals(v.getId())) continue;
             if (Objects.equals(v.getSizeLabel(), normalizedLabel)) {
                 throw new BusinessException("Đã tồn tại variant cùng size_label cho sản phẩm này.", "DUPLICATE_VARIANT_LABEL");
             }

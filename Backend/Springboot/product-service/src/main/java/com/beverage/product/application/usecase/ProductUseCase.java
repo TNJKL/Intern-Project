@@ -2,6 +2,7 @@ package com.beverage.product.application.usecase;
 
 import com.beverage.product.application.dto.request.CreateProductRequest;
 import com.beverage.product.application.dto.request.InitialVariantRequest;
+import com.beverage.product.application.dto.request.ReorderItemRequest;
 import com.beverage.product.application.dto.request.UpdateProductRequest;
 import com.beverage.product.application.dto.response.ProductResponse;
 import com.beverage.product.application.mapper.ProductDtoMapper;
@@ -17,10 +18,17 @@ import com.beverage.product.domain.repository.ProductRepository;
 import com.beverage.product.domain.repository.ProductToppingRepository;
 import com.beverage.product.domain.repository.ProductVariantRepository;
 import com.beverage.product.domain.repository.ToppingRepository;
+import com.beverage.product.infrastructure.cache.CatalogCacheKeys;
 import com.beverage.product.infrastructure.cache.RedisCacheService;
 import com.beverage.product.infrastructure.storage.CatalogImageStorageService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import com.beverage.product.application.dto.response.ProductSuggestResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,15 +38,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.UUID;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class ProductUseCase {
-
-    private static final String CACHE_PRODUCT_PREFIX = "cache:product:";
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
@@ -69,17 +75,13 @@ public class ProductUseCase {
 
         List<Topping> toppings = toppingRepository.findActiveByIds(toppingIds);
         for (UUID toppingId : toppingIds) {
-            ProductTopping pt = ProductTopping.builder()
-                    .id(null)
-                    .productId(saved.getId())
-                    .toppingId(toppingId)
-                    .build();
-            productToppingRepository.save(pt);
+            productToppingRepository.save(ProductTopping.builder()
+                    .id(null).productId(saved.getId()).toppingId(toppingId).build());
         }
 
         if (request.getInitialVariants() != null && !request.getInitialVariants().isEmpty()) {
             for (InitialVariantRequest iv : request.getInitialVariants()) {
-                ProductVariant v = ProductVariant.builder()
+                productVariantRepository.save(ProductVariant.builder()
                         .id(null)
                         .productId(saved.getId())
                         .sizeLabel(ProductVariantUseCase.normalizeSizeLabel(iv.getSizeLabel()))
@@ -87,13 +89,12 @@ public class ProductUseCase {
                         .isAvailable(iv.getIsAvailable() != null ? iv.getIsAvailable() : Boolean.TRUE)
                         .displayOrder(iv.getDisplayOrder() != null ? iv.getDisplayOrder() : (short) 0)
                         .deletedAt(null)
-                        .build();
-                productVariantRepository.save(v);
+                        .build());
             }
         }
 
         List<ProductVariant> variants = productVariantRepository.findActiveByProductId(saved.getId());
-        redisCacheService.delete(getProductCacheKey(saved.getId()));
+        evictProductCache(saved.getId(), saved.getSlug(), null);
         return productDtoMapper.toResponse(saved, toppings, variants);
     }
 
@@ -115,6 +116,7 @@ public class ProductUseCase {
             throw new BusinessException("Slug đã được sản phẩm khác sử dụng.", "SLUG_CONFLICT");
         }
 
+        String oldSlug = existing.getSlug();
         updated.setId(existing.getId());
         updated.setDeletedAt(existing.getDeletedAt());
         updated.setCreatedAt(existing.getCreatedAt());
@@ -128,18 +130,14 @@ public class ProductUseCase {
         productToppingRepository.flush();
         List<Topping> toppings = toppingRepository.findActiveByIds(toppingIds);
         for (UUID toppingId : toppingIds) {
-            ProductTopping pt = ProductTopping.builder()
-                    .id(null)
-                    .productId(saved.getId())
-                    .toppingId(toppingId)
-                    .build();
-            productToppingRepository.save(pt);
+            productToppingRepository.save(ProductTopping.builder()
+                    .id(null).productId(saved.getId()).toppingId(toppingId).build());
         }
 
         catalogImageStorageService.deleteIfChangedQuietly(existing.getImageUrl(), saved.getImageUrl());
 
         List<ProductVariant> variants = productVariantRepository.findActiveByProductId(saved.getId());
-        redisCacheService.delete(getProductCacheKey(saved.getId()));
+        evictProductCache(saved.getId(), saved.getSlug(), oldSlug);
         return productDtoMapper.toResponse(saved, toppings, variants);
     }
 
@@ -148,7 +146,7 @@ public class ProductUseCase {
                 .orElseThrow(() -> new ResourceNotFoundException("Product", "id", productId));
         existing.setDeletedAt(LocalDateTime.now());
         productRepository.save(existing);
-        redisCacheService.delete(getProductCacheKey(productId));
+        evictProductCache(productId, existing.getSlug(), null);
     }
 
     public void restoreProduct(UUID productId) {
@@ -169,11 +167,11 @@ public class ProductUseCase {
                         "CATEGORY_NOT_ACTIVE"));
         existing.setDeletedAt(null);
         productRepository.save(existing);
-        redisCacheService.delete(getProductCacheKey(productId));
+        evictProductCache(productId, existing.getSlug(), null);
     }
 
     public ProductResponse getProductDetail(UUID productId) {
-        ProductResponse cached = redisCacheService.get(getProductCacheKey(productId), ProductResponse.class);
+        ProductResponse cached = redisCacheService.get(CatalogCacheKeys.productById(productId), ProductResponse.class);
         if (cached != null) {
             return cached;
         }
@@ -182,47 +180,125 @@ public class ProductUseCase {
                 .orElseThrow(() -> new ResourceNotFoundException("Product", "id", productId));
 
         List<ProductTopping> productToppings = productToppingRepository.findByProductId(productId);
-        List<UUID> toppingIds = productToppings.stream()
-                .map(ProductTopping::getToppingId)
-                .toList();
+        List<UUID> toppingIds = productToppings.stream().map(ProductTopping::getToppingId).toList();
 
         List<Topping> toppings = toppingRepository.findActiveByIds(toppingIds);
         List<ProductVariant> variants = productVariantRepository.findActiveByProductId(productId);
         ProductResponse response = productDtoMapper.toResponse(product, toppings, variants);
-        redisCacheService.set(getProductCacheKey(productId), response);
+        redisCacheService.set(CatalogCacheKeys.productById(productId), response);
+        redisCacheService.set(CatalogCacheKeys.productBySlug(product.getSlug()), response);
         return response;
     }
 
     public ProductResponse getProductDetailBySlug(String rawSlug) {
         String slug = catalogSlugService.slugify(rawSlug);
+        ProductResponse cached = redisCacheService.get(CatalogCacheKeys.productBySlug(slug), ProductResponse.class);
+        if (cached != null) {
+            return cached;
+        }
         Product product = productRepository.findActiveBySlug(slug)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", "slug", slug));
         return getProductDetail(product.getId());
     }
 
-    public List<ProductResponse> listProducts(UUID categoryId, Boolean isAvailable, Boolean isFeatured, boolean includeDeleted) {
-        List<Product> products = productRepository.listCatalog(categoryId, includeDeleted);
+    /** Trả về trang sản phẩm có filter và phân trang. Không cache list (filter quá đa dạng). */
+    public Page<ProductResponse> pageProducts(
+            UUID categoryId, Boolean isAvailable, Boolean isFeatured,
+            String keyword, boolean includeDeleted, Pageable pageable) {
 
-        List<Product> filtered = products.stream()
-                .filter(p -> isAvailable == null || Objects.equals(p.getIsAvailable(), isAvailable))
-                .filter(p -> isFeatured == null || Objects.equals(p.getIsFeatured(), isFeatured))
-                .toList();
+        Page<Product> page = productRepository.pageCatalog(
+                categoryId, isAvailable, isFeatured, keyword, includeDeleted, pageable);
 
-        List<UUID> ids = filtered.stream().map(Product::getId).toList();
+        List<UUID> ids = page.getContent().stream().map(Product::getId).toList();
         Map<UUID, List<ProductVariant>> variantMap = productVariantRepository.findActiveByProductIds(ids);
 
-        return filtered.stream()
+        List<ProductResponse> content = page.getContent().stream()
                 .map(p -> assembleProductResponse(p, variantMap.getOrDefault(p.getId(), List.of())))
                 .toList();
+
+        return new PageImpl<>(content, page.getPageable(), page.getTotalElements());
+    }
+
+    /**
+     * Suggest / autocomplete: chỉ trả id, name, slug, imageUrl, categoryId.
+     * Không join variants / toppings → nhẹ, phù hợp gọi mỗi keystroke (kết hợp debounce ở FE).
+     *
+     * @param keyword từ khóa tìm kiếm (trên name + description)
+     * @param size    số gợi ý tối đa, mặc định 8, tối đa 20
+     */
+    public List<ProductSuggestResponse> suggestProducts(String keyword, int size) {
+        int safeSize = Math.min(Math.max(size, 1), 20);
+        Pageable pageable = PageRequest.of(0, safeSize, Sort.by("displayOrder").ascending());
+        Page<Product> page = productRepository.pageCatalog(
+                null, Boolean.TRUE, null, keyword, false, pageable);
+        return page.getContent().stream()
+                .map(p -> ProductSuggestResponse.builder()
+                        .id(p.getId())
+                        .name(p.getName())
+                        .slug(p.getSlug())
+                        .imageUrl(p.getImageUrl())
+                        .categoryId(p.getCategoryId())
+                        .build())
+                .toList();
+    }
+
+    @Transactional
+    public void reorderProducts(List<ReorderItemRequest> items) {
+        validateReorderInput(items);
+
+        List<UUID> ids = items.stream().map(ReorderItemRequest::getId).toList();
+        List<Product> products = productRepository.findAllActiveByIds(ids);
+
+        if (products.size() != ids.size()) {
+            Set<UUID> foundIds = products.stream().map(Product::getId).collect(Collectors.toSet());
+            List<UUID> missing = ids.stream().filter(id -> !foundIds.contains(id)).toList();
+            throw new ResourceNotFoundException("Product", "ids", missing);
+        }
+
+        Map<UUID, Integer> orderMap = items.stream()
+                .collect(Collectors.toMap(ReorderItemRequest::getId, ReorderItemRequest::getDisplayOrder));
+
+        for (Product p : products) {
+            p.setDisplayOrder(orderMap.get(p.getId()).shortValue());
+            productRepository.save(p);
+        }
+
+        for (Product p : products) {
+            evictProductCache(p.getId(), p.getSlug(), null);
+        }
     }
 
     private ProductResponse assembleProductResponse(Product product, List<ProductVariant> variants) {
         List<ProductTopping> productToppings = productToppingRepository.findByProductId(product.getId());
-        List<UUID> toppingIds = productToppings.stream()
-                .map(ProductTopping::getToppingId)
-                .toList();
+        List<UUID> toppingIds = productToppings.stream().map(ProductTopping::getToppingId).toList();
         List<Topping> toppings = toppingRepository.findActiveByIds(toppingIds);
         return productDtoMapper.toResponse(product, toppings, variants);
+    }
+
+    /**
+     * Xóa cache theo id, slug mới, và (nếu slug đổi) slug cũ.
+     * @param oldSlug slug trước khi update; null = không đổi slug / không cần xóa riêng
+     */
+    private void evictProductCache(UUID id, String currentSlug, String oldSlug) {
+        redisCacheService.delete(CatalogCacheKeys.productById(id));
+        redisCacheService.delete(CatalogCacheKeys.productBySlug(currentSlug));
+        if (oldSlug != null && !oldSlug.equals(currentSlug)) {
+            redisCacheService.delete(CatalogCacheKeys.productBySlug(oldSlug));
+        }
+    }
+
+    private void validateReorderInput(List<ReorderItemRequest> items) {
+        if (items == null || items.isEmpty()) {
+            throw new BusinessException("Danh sách reorder không được rỗng.", "EMPTY_REORDER");
+        }
+        Set<Integer> orders = new HashSet<>();
+        for (ReorderItemRequest item : items) {
+            if (!orders.add(item.getDisplayOrder())) {
+                throw new BusinessException(
+                        "displayOrder trùng nhau trong danh sách reorder: " + item.getDisplayOrder(),
+                        "DUPLICATE_DISPLAY_ORDER");
+            }
+        }
     }
 
     private void validateInitialVariantDuplicates(List<InitialVariantRequest> list) {
@@ -240,7 +316,6 @@ public class ProductUseCase {
         if (toppingIds == null || toppingIds.isEmpty()) {
             return;
         }
-
         List<Topping> found = toppingRepository.findActiveByIds(toppingIds);
         if (found.size() != toppingIds.size()) {
             Set<UUID> foundIds = found.stream().map(Topping::getId).collect(Collectors.toSet());
@@ -255,10 +330,6 @@ public class ProductUseCase {
             return List.of();
         }
         return raw.stream().filter(Objects::nonNull).distinct().toList();
-    }
-
-    private String getProductCacheKey(UUID productId) {
-        return CACHE_PRODUCT_PREFIX + productId;
     }
 
     private String resolveSlugOnCreate(String optionalSlug, String name, Predicate<String> slugTakenInActive) {

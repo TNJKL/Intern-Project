@@ -3,7 +3,11 @@ package com.beverage.product.infrastructure.persistence.repository;
 import com.beverage.product.domain.entity.Category;
 import com.beverage.product.domain.repository.CategoryRepository;
 import com.beverage.product.infrastructure.persistence.mapper.CategoryMapper;
+import com.beverage.product.infrastructure.persistence.spec.CategorySpecifications;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -64,6 +68,25 @@ public class CategoryRepositoryImpl implements CategoryRepository {
                     .toList();
         }
         return categoryJpaRepository.findByIsActiveTrueAndDeletedAtIsNullOrderByDisplayOrderAsc().stream()
+                .map(categoryMapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public Page<Category> pageCategories(String keyword, boolean includeDeleted, Pageable pageable) {
+        Specification<com.beverage.product.infrastructure.persistence.entity.CategoryEntity> spec =
+                includeDeleted
+                        ? CategorySpecifications.withKeyword(keyword)
+                        : CategorySpecifications.publicCatalogBase()
+                                .and(CategorySpecifications.withKeyword(keyword));
+
+        return categoryJpaRepository.findAll(spec, pageable).map(categoryMapper::toDomain);
+    }
+
+    @Override
+    public List<Category> findAllActiveByIds(List<UUID> ids) {
+        if (ids == null || ids.isEmpty()) return List.of();
+        return categoryJpaRepository.findActiveByIdIn(ids).stream()
                 .map(categoryMapper::toDomain)
                 .toList();
     }
