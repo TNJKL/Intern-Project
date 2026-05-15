@@ -8,6 +8,10 @@ services:
     container_name: beverage_eureka
     ports:
       - "8761:8761"
+    environment:
+      - JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=72.0 -XX:+ExitOnOutOfMemoryError
+    mem_limit: 384m
+    cpus: "0.75"
     restart: always
     networks:
       - beverage_net
@@ -24,18 +28,23 @@ services:
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       # SWITCH POINT:
-      # - Docker auth-service  -> http://auth-service:8081
+      # - Docker auth-service  -> http://auth-service:8081 (cùng network beverage_net)
       # - Local auth-service   -> http://host.docker.internal:8081
-      #- AUTH_SERVICE_URI=http://auth-service:8081
-      - AUTH_SERVICE_URI=http://host.docker.internal:8081
+      - AUTH_SERVICE_URI=http://auth-service:8081
+      #- AUTH_SERVICE_URI=http://host.docker.internal:8081
       # SWITCH POINT:
-      # - Docker product-service -> http://product-service:8082
+      # - Docker product-service -> http://product-service:8082 (cùng network beverage_net)
       # - Local product-service  -> http://host.docker.internal:8082
-      - PRODUCT_SERVICE_URI=http://host.docker.internal:8082
+      - PRODUCT_SERVICE_URI=http://product-service:8082
+      - JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=72.0 -XX:+ExitOnOutOfMemoryError
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    mem_limit: 384m
+    cpus: "0.75"
     depends_on:
       - eureka-server
+      - auth-service
+      - product-service
     restart: always
     networks:
       - beverage_net
@@ -85,6 +94,9 @@ services:
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
       - JWT_ACCESS_TOKEN_EXPIRATION=${JWT_ACCESS_TOKEN_EXPIRATION}
       - JWT_REFRESH_TOKEN_EXPIRATION=${JWT_REFRESH_TOKEN_EXPIRATION}
+      - JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=70.0 -XX:+ExitOnOutOfMemoryError
+    mem_limit: 576m
+    cpus: "1.0"
     depends_on:
       - eureka-server
       - postgres-common
@@ -96,32 +108,42 @@ services:
   # ============================================================
   # PRODUCT SERVICE
   # ============================================================
-  # product-service:
-  #   build:
-  #     context: ./Springboot
-  #     dockerfile: product-service/Dockerfile
-  #   container_name: beverage_product_service
-  #   ports:
-  #     - "8082:8082"
-  #   environment:
-  #     - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
-  #     - POSTGRES_HOST=postgres-common
-  #     - POSTGRES_PORT=5432
-  #     - POSTGRES_DB=product_db
-  #     - POSTGRES_USER=${POSTGRES_USER}
-  #     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-  #     - REDIS_HOST=redis
-  #     - REDIS_PORT=6379
-  #     - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-  #     - JWT_ACCESS_TOKEN_EXPIRATION=${JWT_ACCESS_TOKEN_EXPIRATION}
-  #     - JWT_REFRESH_TOKEN_EXPIRATION=${JWT_REFRESH_TOKEN_EXPIRATION}
-  #   depends_on:
-  #     - eureka-server
-  #     - postgres-common
-  #     - redis
-  #   restart: always
-  #   networks:
-  #     - beverage_net
+  product-service:
+    build:
+      context: ./Springboot
+      dockerfile: product-service/Dockerfile
+    container_name: beverage_product_service
+    ports:
+      - "8082:8082"
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - POSTGRES_HOST=postgres-common
+      - POSTGRES_DB=product_db
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_ACCESS_TOKEN_EXPIRATION=${JWT_ACCESS_TOKEN_EXPIRATION}
+      - JWT_REFRESH_TOKEN_EXPIRATION=${JWT_REFRESH_TOKEN_EXPIRATION}
+      - BEVERAGE_STORAGE_S3_ENABLED=${BEVERAGE_STORAGE_S3_ENABLED:-true}
+      - AWS_S3_BUCKET=${AWS_S3_BUCKET:-}
+      - AWS_REGION=${AWS_REGION:-ap-southeast-1}
+      - AWS_S3_KEY_PREFIX=${AWS_S3_KEY_PREFIX:-beverage/dev}
+      - AWS_S3_PUBLIC_BASE_URL=${AWS_S3_PUBLIC_BASE_URL:-}
+      # Credential S3 — đặt trong Backend/.env (Compose tự substitute ${...} khi chạy từ thư mục Backend)
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=70.0 -XX:+ExitOnOutOfMemoryError
+    mem_limit: 768m
+    cpus: "1.0"
+    depends_on:
+      - eureka-server
+      - postgres-common
+      - redis
+    restart: always
+    networks:
+      - beverage_net
 
   # # ============================================================
   # # ORDER SERVICE
