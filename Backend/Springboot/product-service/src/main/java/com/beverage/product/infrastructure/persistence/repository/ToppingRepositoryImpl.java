@@ -25,15 +25,13 @@ public class ToppingRepositoryImpl implements ToppingRepository {
     }
 
     @Override
-    public Optional<Topping> findById(UUID id) {
-        return toppingJpaRepository.findById(id).map(toppingMapper::toDomain);
+    public Optional<Topping> findActiveById(UUID id) {
+        return toppingJpaRepository.findByIdAndDeletedAtIsNull(id).map(toppingMapper::toDomain);
     }
 
     @Override
-    public List<Topping> findAllActive() {
-        return toppingJpaRepository.findByIsAvailableTrue().stream()
-                .map(toppingMapper::toDomain)
-                .toList();
+    public Optional<Topping> findIncludingDeletedById(UUID id) {
+        return toppingJpaRepository.findById(id).map(toppingMapper::toDomain);
     }
 
     @Override
@@ -44,16 +42,24 @@ public class ToppingRepositoryImpl implements ToppingRepository {
     }
 
     @Override
-    public List<Topping> findByIds(List<UUID> ids) {
-        if (ids == null || ids.isEmpty()) return List.of();
-        return toppingJpaRepository.findByIdIn(ids).stream()
+    public List<Topping> listCatalog(boolean includeDeleted) {
+        if (includeDeleted) {
+            return toppingJpaRepository.findAllForCatalogOrderByDisplayOrderAsc().stream()
+                    .map(toppingMapper::toDomain)
+                    .toList();
+        }
+        return toppingJpaRepository.findByIsAvailableTrueAndDeletedAtIsNullOrderByDisplayOrderAsc().stream()
                 .map(toppingMapper::toDomain)
                 .toList();
     }
 
     @Override
-    public void deleteById(UUID id) {
-        toppingJpaRepository.deleteById(id);
+    public List<Topping> findActiveByIds(List<UUID> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        return toppingJpaRepository.findActiveByIdIn(ids).stream()
+                .map(toppingMapper::toDomain)
+                .toList();
     }
 }
-

@@ -20,6 +20,7 @@ public class CategoryDtoMapper {
                 .isActive(request.getIsActive() != null ? request.getIsActive() : Boolean.TRUE)
                 .createdAt(null)
                 .updatedAt(null)
+                .deletedAt(null)
                 .build();
     }
 
@@ -47,6 +48,7 @@ public class CategoryDtoMapper {
                 .isActive(category.getIsActive())
                 .createdAt(category.getCreatedAt())
                 .updatedAt(category.getUpdatedAt())
+                .deletedAt(category.getDeletedAt())
                 .build();
     }
 }

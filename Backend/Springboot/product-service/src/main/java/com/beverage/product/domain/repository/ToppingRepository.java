@@ -7,16 +7,17 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface ToppingRepository {
+
     Topping save(Topping topping);
 
-    Optional<Topping> findById(UUID id);
+    Optional<Topping> findActiveById(UUID id);
 
-    List<Topping> findAllActive();
+    Optional<Topping> findIncludingDeletedById(UUID id);
 
     List<Topping> findAll();
 
-    List<Topping> findByIds(List<UUID> ids);
+    /** {@code false}: topping đang bán và chưa xóa mềm; {@code true}: mọi bản ghi. */
+    List<Topping> listCatalog(boolean includeDeleted);
 
-    void deleteById(UUID id);
+    List<Topping> findActiveByIds(List<UUID> ids);
 }
-

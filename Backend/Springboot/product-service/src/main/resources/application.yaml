@@ -39,6 +39,95 @@ spring:
       write-dates-as-timestamps: false
     default-property-inclusion: non_null
 
+# Mặc định gồm IP LAN dev — override bằng APP_CORS_ALLOWED_ORIGIN_PATTERNS trong .env
+app:
+  cors:
+    allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:3000,http://localhost:5173,http://127.0.0.1:*,http://10.86.157.43:*,https://*.ngrok-free.app,https://*.ngrok-free.dev}
+  # Rate limit: rule đầu tiên khớp (Ant path) được áp dụng. Key = userId JWT nếu đã login, không thì IP (X-Forwarded-For).
+  rate-limit:
+    enabled: ${APP_RATE_LIMIT_ENABLED:true}
+    fail-open-on-redis-error: true
+    rules:
+      - name: products-suggest
+        pattern: /api/v1/products/suggest
+        exact-match: true
+        methods:
+          - GET
+        max-requests: 45
+        window-seconds: 60
+      - name: products-reorder
+        pattern: /api/v1/products/reorder
+        exact-match: true
+        methods:
+          - PATCH
+        max-requests: 120
+        window-seconds: 60
+      - name: products-by-slug
+        pattern: /api/v1/products/by-slug/**
+        methods:
+          - GET
+        max-requests: 5
+        window-seconds: 60
+      - name: categories-reorder
+        pattern: /api/v1/categories/reorder
+        exact-match: true
+        methods:
+          - PATCH
+        max-requests: 120
+        window-seconds: 60
+      - name: products-list-root
+        pattern: /api/v1/products
+        exact-match: true
+        methods:
+          - GET
+        max-requests: 120
+        window-seconds: 60
+      - name: products-create
+        pattern: /api/v1/products
+        exact-match: true
+        methods:
+          - POST
+        max-requests: 60
+        window-seconds: 60
+      - name: categories-list-root
+        pattern: /api/v1/categories
+        exact-match: true
+        methods:
+          - GET
+        max-requests: 100
+        window-seconds: 60
+      - name: toppings-list-root
+        pattern: /api/v1/toppings
+        exact-match: true
+        methods:
+          - GET
+        max-requests: 100
+        window-seconds: 60
+      - name: products-variants
+        pattern: /api/v1/products/*/variants
+        methods:
+          - GET
+        max-requests: 150
+        window-seconds: 60
+      - name: products-detail-segment
+        pattern: /api/v1/products/*
+        methods:
+          - GET
+        max-requests: 200
+        window-seconds: 60
+      - name: categories-detail-segment
+        pattern: /api/v1/categories/*
+        methods:
+          - GET
+        max-requests: 150
+        window-seconds: 60
+      - name: toppings-detail-segment
+        pattern: /api/v1/toppings/*
+        methods:
+          - GET
+        max-requests: 150
+        window-seconds: 60
+
 server:
   port: 8082
 
@@ -67,10 +156,6 @@ beverage:
       key-prefix: ${AWS_S3_KEY_PREFIX:beverage/dev}
       max-bytes: 5242880
       public-base-url: ${AWS_S3_PUBLIC_BASE_URL:}
-
-app:
-  cors:
-    allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:3000,http://localhost:5173,https://*.ngrok-free.app,https://*.ngrok-free.dev}
 
 springdoc:
   api-docs:

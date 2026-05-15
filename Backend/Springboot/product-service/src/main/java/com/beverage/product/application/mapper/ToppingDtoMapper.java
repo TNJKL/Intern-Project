@@ -20,6 +20,7 @@ public class ToppingDtoMapper {
                 .displayOrder(request.getDisplayOrder() != null ? request.getDisplayOrder() : (short) 0)
                 .createdAt(null)
                 .updatedAt(null)
+                .deletedAt(null)
                 .build();
     }
 
@@ -47,6 +48,7 @@ public class ToppingDtoMapper {
                 .displayOrder(topping.getDisplayOrder())
                 .createdAt(topping.getCreatedAt())
                 .updatedAt(topping.getUpdatedAt())
+                .deletedAt(topping.getDeletedAt())
                 .build();
     }
 }

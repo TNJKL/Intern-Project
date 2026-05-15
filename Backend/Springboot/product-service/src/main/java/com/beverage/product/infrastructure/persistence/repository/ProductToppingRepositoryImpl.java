@@ -41,5 +41,10 @@ public class ProductToppingRepositoryImpl implements ProductToppingRepository {
     public void deleteByProductId(UUID productId) {
         productToppingJpaRepository.deleteByProductId(productId);
     }
+
+    @Override
+    public void flush() {
+        productToppingJpaRepository.flush();
+    }
 }
 

@@ -10,6 +10,9 @@ server:
 spring:
   application:
     name: auth-service
+  # Đọc .env khi chạy local / IDE (working directory = auth-service)
+  config:
+    import: optional:file:.env[.properties],optional:file:./.env[.properties],optional:file:../auth-service/.env[.properties],optional:file:./Backend/Springboot/auth-service/.env[.properties]
 
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:5432/${POSTGRES_DB:auth_db}
@@ -54,7 +57,7 @@ auth:
   access-cookie:
     name: ${AUTH_ACCESS_COOKIE_NAME:accessToken}
     path: ${AUTH_ACCESS_COOKIE_PATH:/}
-    secure: ${AUTH_ACCESS_COOKIE_SECURE:true}
+    secure: ${AUTH_ACCESS_COOKIE_SECURE:false}
     same-site: ${AUTH_ACCESS_COOKIE_SAME_SITE:Lax}
   refresh-cookie:
     name: ${AUTH_REFRESH_COOKIE_NAME:refreshToken}
@@ -62,14 +65,15 @@ auth:
     # SWITCH POINT:
     # - local http  : false
     # - production https / ngrok https: true
-    secure: ${AUTH_REFRESH_COOKIE_SECURE:true}
+    secure: ${AUTH_REFRESH_COOKIE_SECURE:false}
     same-site: ${AUTH_REFRESH_COOKIE_SAME_SITE:Lax}
 
 # CORS for FE with withCredentials=true
 app:
   cors:
     # comma-separated patterns
-    allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:3000,http://localhost:5173,https://*.ngrok-free.app,https://*.ngrok-free.dev}
+    # Thêm http://<IP_LAN>:* khi FE chạy cùng máy qua IP (port khác :80 là cross-origin, cần pattern khớp)
+    allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:3000,http://localhost:5173,http://127.0.0.1:*,http://10.86.157.43:*,https://*.ngrok-free.app,https://*.ngrok-free.dev}
 
 springdoc:
   api-docs:

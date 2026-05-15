@@ -26,5 +26,8 @@ public class ToppingResponse {
     private Short displayOrder;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private LocalDateTime deletedAt;
 }
 

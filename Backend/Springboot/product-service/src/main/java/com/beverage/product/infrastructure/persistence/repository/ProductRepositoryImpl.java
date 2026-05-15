@@ -3,7 +3,10 @@ package com.beverage.product.infrastructure.persistence.repository;
 import com.beverage.product.domain.entity.Product;
 import com.beverage.product.domain.repository.ProductRepository;
 import com.beverage.product.infrastructure.persistence.mapper.ProductMapper;
+import com.beverage.product.infrastructure.persistence.spec.ProductSpecifications;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -25,20 +28,28 @@ public class ProductRepositoryImpl implements ProductRepository {
     }
 
     @Override
-    public Optional<Product> findById(UUID id) {
+    public Optional<Product> findActiveById(UUID id) {
+        return productJpaRepository.findByIdAndDeletedAtIsNull(id).map(productMapper::toDomain);
+    }
+
+    @Override
+    public Optional<Product> findIncludingDeletedById(UUID id) {
         return productJpaRepository.findById(id).map(productMapper::toDomain);
     }
 
     @Override
-    public Optional<Product> findBySlug(String slug) {
-        return productJpaRepository.findBySlug(slug).map(productMapper::toDomain);
+    public Optional<Product> findActiveBySlug(String slug) {
+        return productJpaRepository.findBySlugAndDeletedAtIsNull(slug).map(productMapper::toDomain);
     }
 
     @Override
-    public List<Product> findByCategoryId(UUID categoryId) {
-        return productJpaRepository.findByCategoryId(categoryId).stream()
-                .map(productMapper::toDomain)
-                .toList();
+    public boolean existsActiveBySlug(String slug) {
+        return productJpaRepository.existsBySlugAndDeletedAtIsNull(slug);
+    }
+
+    @Override
+    public boolean existsActiveBySlugExcludingId(String slug, UUID excludeId) {
+        return productJpaRepository.existsBySlugAndDeletedAtIsNullAndIdNot(slug, excludeId);
     }
 
     @Override
@@ -49,8 +60,38 @@ public class ProductRepositoryImpl implements ProductRepository {
     }
 
     @Override
-    public void deleteById(UUID id) {
-        productJpaRepository.deleteById(id);
+    public List<Product> listCatalog(UUID categoryId, boolean includeDeleted) {
+        if (includeDeleted) {
+            return productJpaRepository.findAllForManagement(categoryId).stream()
+                    .map(productMapper::toDomain)
+                    .toList();
+        }
+        return productJpaRepository.findActiveCatalog(categoryId).stream()
+                .map(productMapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public Page<Product> pageCatalog(UUID categoryId, Boolean isAvailable, Boolean isFeatured,
+                                      String keyword, boolean includeDeleted, Pageable pageable) {
+        var base = includeDeleted
+                ? ProductSpecifications.withCategoryId(categoryId)
+                : ProductSpecifications.publicCatalogBase()
+                        .and(ProductSpecifications.withCategoryId(categoryId));
+
+        var spec = base
+                .and(ProductSpecifications.withIsAvailable(isAvailable))
+                .and(ProductSpecifications.withIsFeatured(isFeatured))
+                .and(ProductSpecifications.withKeyword(keyword));
+
+        return productJpaRepository.findAll(spec, pageable).map(productMapper::toDomain);
+    }
+
+    @Override
+    public List<Product> findAllActiveByIds(List<UUID> ids) {
+        if (ids == null || ids.isEmpty()) return List.of();
+        return productJpaRepository.findActiveByIdIn(ids).stream()
+                .map(productMapper::toDomain)
+                .toList();
     }
 }
-
