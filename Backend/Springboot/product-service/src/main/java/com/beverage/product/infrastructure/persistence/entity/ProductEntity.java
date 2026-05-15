@@ -65,5 +65,11 @@ public class ProductEntity {
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+
+    @Column(name = "created_by", length = 128)
+    private String createdBy;
+
+    @Column(name = "updated_by", length = 128)
+    private String updatedBy;
 }
 

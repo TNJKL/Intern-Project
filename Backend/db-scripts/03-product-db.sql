@@ -35,6 +35,8 @@
         is_featured     BOOLEAN NOT NULL DEFAULT FALSE,
         display_order   SMALLINT NOT NULL DEFAULT 0,
         deleted_at      TIMESTAMP WITH TIME ZONE,
+        created_by      VARCHAR(128),
+        updated_by      VARCHAR(128),
         created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
         updated_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
     );

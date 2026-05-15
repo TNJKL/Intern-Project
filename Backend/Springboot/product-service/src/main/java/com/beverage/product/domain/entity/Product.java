@@ -26,5 +26,10 @@ public class Product {
     private LocalDateTime updatedAt;
     /** null = đang hoạt động; có giá trị = đã soft-delete */
     private LocalDateTime deletedAt;
+
+    /** User id từ JWT (JwtUserPrincipal) — chỉ lưu DB, không trả API. */
+    private String createdBy;
+    /** User id từ JWT lần sửa gần nhất — chỉ lưu DB, không trả API. */
+    private String updatedBy;
 }
 

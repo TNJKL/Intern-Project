@@ -20,6 +20,7 @@ import com.beverage.product.domain.repository.ProductVariantRepository;
 import com.beverage.product.domain.repository.ToppingRepository;
 import com.beverage.product.infrastructure.cache.CatalogCacheKeys;
 import com.beverage.product.infrastructure.cache.RedisCacheService;
+import com.beverage.product.infrastructure.security.AuditActorResolver;
 import com.beverage.product.infrastructure.storage.CatalogImageStorageService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -55,6 +56,7 @@ public class ProductUseCase {
     private final RedisCacheService redisCacheService;
     private final CatalogImageStorageService catalogImageStorageService;
     private final CatalogSlugService catalogSlugService;
+    private final AuditActorResolver auditActorResolver;
 
     @Transactional
     public ProductResponse createProduct(@Valid CreateProductRequest request) {
@@ -71,6 +73,10 @@ public class ProductUseCase {
         Product product = productDtoMapper.toDomainCreate(request);
         Predicate<String> taken = productRepository::existsActiveBySlug;
         product.setSlug(resolveSlugOnCreate(request.getSlug(), request.getName(), taken));
+        auditActorResolver.currentActorId().ifPresent(actor -> {
+            product.setCreatedBy(actor);
+            product.setUpdatedBy(actor);
+        });
         Product saved = productRepository.save(product);
 
         List<Topping> toppings = toppingRepository.findActiveByIds(toppingIds);
@@ -120,6 +126,8 @@ public class ProductUseCase {
         updated.setId(existing.getId());
         updated.setDeletedAt(existing.getDeletedAt());
         updated.setCreatedAt(existing.getCreatedAt());
+        updated.setCreatedBy(existing.getCreatedBy());
+        auditActorResolver.currentActorId().ifPresent(updated::setUpdatedBy);
         if (updated.getImageUrl() == null || updated.getImageUrl().isBlank()) {
             updated.setImageUrl(existing.getImageUrl());
         }
@@ -145,6 +153,7 @@ public class ProductUseCase {
         Product existing = productRepository.findActiveById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", "id", productId));
         existing.setDeletedAt(LocalDateTime.now());
+        auditActorResolver.currentActorId().ifPresent(existing::setUpdatedBy);
         productRepository.save(existing);
         evictProductCache(productId, existing.getSlug(), null);
     }
@@ -166,6 +175,7 @@ public class ProductUseCase {
                         "Danh mục của sản phẩm không còn hoạt động; hãy gán category khác (qua DB hoặc API) trước khi khôi phục.",
                         "CATEGORY_NOT_ACTIVE"));
         existing.setDeletedAt(null);
+        auditActorResolver.currentActorId().ifPresent(existing::setUpdatedBy);
         productRepository.save(existing);
         evictProductCache(productId, existing.getSlug(), null);
     }
@@ -258,8 +268,10 @@ public class ProductUseCase {
         Map<UUID, Integer> orderMap = items.stream()
                 .collect(Collectors.toMap(ReorderItemRequest::getId, ReorderItemRequest::getDisplayOrder));
 
+        var actor = auditActorResolver.currentActorId();
         for (Product p : products) {
             p.setDisplayOrder(orderMap.get(p.getId()).shortValue());
+            actor.ifPresent(p::setUpdatedBy);
             productRepository.save(p);
         }
 
