@@ -66,11 +66,13 @@ public class BaseJwtAuthenticationFilter extends OncePerRequestFilter {
                     return;
                 }
 
-                JwtUserPrincipal principal = new JwtUserPrincipal(
-                        userId,
-                        jwtTokenProvider.extractEmail(token),
-                        role
-                );
+                String email = jwtTokenProvider.extractEmail(token);
+                String fullName = jwtTokenProvider.extractFullName(token);
+                if (!StringUtils.hasText(fullName)) {
+                    fullName = email;
+                }
+
+                JwtUserPrincipal principal = new JwtUserPrincipal(userId, email, role, fullName);
 
                 List<SimpleGrantedAuthority> authorities = List.of(
                         new SimpleGrantedAuthority("ROLE_" + role)

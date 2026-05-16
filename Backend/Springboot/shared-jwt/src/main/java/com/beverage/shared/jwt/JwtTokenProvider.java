@@ -8,4 +8,9 @@ public interface JwtTokenProvider {
     UUID extractUserId(String token);
     String extractEmail(String token);
     String extractRole(String token);
+
+    /** Claim tùy chọn (vd. auth-service set fullName). Service không dùng thì để mặc định null. */
+    default String extractFullName(String token) {
+        return null;
+    }
 }

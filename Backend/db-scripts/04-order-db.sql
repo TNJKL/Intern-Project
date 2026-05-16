@@ -58,6 +58,8 @@ CREATE TABLE IF NOT EXISTS order_items (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     order_id        UUID NOT NULL,
     product_id      UUID NOT NULL,
+    variant_id      UUID NOT NULL,
+    variant_label   VARCHAR(50),
     product_name    VARCHAR(255) NOT NULL,
     toppings        JSONB NOT NULL DEFAULT '[]',
     unit_price      DECIMAL(12,0) NOT NULL,
