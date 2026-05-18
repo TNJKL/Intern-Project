@@ -14,7 +14,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import java.util.UUID;
 import java.math.BigDecimal;
 import java.time.Instant;
 
@@ -189,6 +189,29 @@ public class VoucherService {
     public void incrementUsage(String code) {
         voucherRepository.findByCodeForUpdate(code.trim().toUpperCase())
                 .ifPresent(VoucherEntity::incrementUsage);
+    }
+
+    @Transactional
+    public VoucherResponse toggleVoucher(UUID id) {
+        VoucherEntity voucher = voucherRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Voucher", "id", id));
+
+        voucher.setIsActive(!Boolean.TRUE.equals(voucher.getIsActive()));
+        VoucherEntity saved = voucherRepository.save(voucher);
+
+        log.info("Toggled voucher {}: isActive = {}", saved.getCode(), saved.getIsActive());
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public void deleteVoucher(UUID id) {
+        VoucherEntity voucher = voucherRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Voucher", "id", id));
+
+        voucher.setIsActive(false);
+        voucherRepository.save(voucher);
+
+        log.info("Soft-deleted voucher: {} ({})", voucher.getCode(), id);
     }
 
     private VoucherResponse toResponse(VoucherEntity voucher) {

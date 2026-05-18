@@ -101,6 +101,15 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.success(orderUseCase.getOrderDetail(id), "Lấy chi tiết đơn thành công"));
     }
 
+    @GetMapping("/code/{orderCode}")
+    @Operation(
+            summary = "Tìm đơn hàng bằng mã đơn",
+            description = "Dùng khi khách tra mã ORD250518-xxx thay vì UUID"
+    )
+    public ResponseEntity<ApiResponse<OrderDetailResponse>> getByOrderCode(@PathVariable String orderCode) {
+        return ResponseEntity.ok(ApiResponse.success(orderUseCase.getOrderDetailByCode(orderCode), "Lấy chi tiết đơn thành công"));
+    }
+
     @PatchMapping("/{id}/status")
     @Operation(
             summary = "ADMIN - Cập nhật trạng thái đơn",
