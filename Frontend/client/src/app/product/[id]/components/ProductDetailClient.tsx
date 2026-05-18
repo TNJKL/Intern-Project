@@ -28,17 +28,23 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
   const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
 
+  const variant = product.variants?.find((v: ProductVariant) => v.id === selectedSize) || null;
+  const variantPrice = variant ? variant.price : null;
+  
+  const selectedToppingObjs = product.toppings?.filter((t: any) => selectedToppings.includes(t.id)) || [];
+  const toppingsPrice = selectedToppingObjs.reduce((sum: number, t: any) => sum + (t.price || 0), 0);
+
+  const isExactPrice = variantPrice !== null || prices.length <= 1;
+  const displayMinPrice = ((variantPrice !== null ? variantPrice : minPrice) + toppingsPrice) * quantity;
+  const displayMaxPrice = (maxPrice + toppingsPrice) * quantity;
+
   const handleAddToCart = () => {
     if (product.variants && product.variants.length > 0 && !selectedSize) {
       toast.error("Vui lòng chọn kích cỡ");
       return false;
     }
 
-    const variant = product.variants?.find((v: ProductVariant) => v.id === selectedSize) || null;
-    const variantPrice = variant ? variant.price : (product.price || 0);
-    
-    const selectedToppingObjs = product.toppings?.filter((t: any) => selectedToppings.includes(t.id)) || [];
-    const toppingsPrice = selectedToppingObjs.reduce((sum: number, t: any) => sum + (t.price || 0), 0);
+    const addVariantPrice = variant ? variant.price : (product.price || 0);
 
     addItem({
       productId: product.id,
@@ -52,7 +58,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
       category: "Sản phẩm", 
       sizeLabel: variant ? variant.sizeLabel : "Mặc định",
       toppings: selectedToppingObjs,
-      unitPrice: variantPrice + toppingsPrice
+      unitPrice: addVariantPrice + toppingsPrice
     });
 
     toast.success("Đã thêm vào giỏ hàng");
@@ -73,13 +79,13 @@ export default function ProductDetailClient({ product }: { product: Product }) {
         <div className="flex items-baseline gap-1 text-[#4d362b]">
           <span className="text-sm font-medium">₫</span>
           <span className="text-3xl font-bold tracking-tight">
-            {formatPrice(minPrice)}
+            {formatPrice(displayMinPrice)}
           </span>
-          {maxPrice > minPrice && (
+          {!isExactPrice && displayMaxPrice > displayMinPrice && (
             <>
               <span className="text-gray-400 font-light text-2xl mx-1">-</span>
               <span className="text-3xl font-bold tracking-tight">
-                {formatPrice(maxPrice)}
+                {formatPrice(displayMaxPrice)}
               </span>
             </>
           )}
@@ -185,7 +191,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
           onClick={handleBuyNow}
           className="px-14 py-3.5 bg-[#4d362b] text-white rounded-sm hover:bg-[#3c2a21] transition-all shadow-sm font-bold text-sm"
         >
-          Mua Ngay
+          {isExactPrice ? `Mua Ngay - ₫${formatPrice(displayMinPrice)}` : "Mua Ngay"}
         </button>
       </div>
     </div>

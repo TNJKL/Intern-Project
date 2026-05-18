@@ -1,6 +1,7 @@
 import React from 'react';
-import { Drawer, Descriptions, Table, Tag, Typography, Spin, Divider } from 'antd';
-import { useOrder } from '../hooks/useOrders';
+import { Drawer, Descriptions, Table, Typography, Spin, Divider, Select } from 'antd';
+import { useOrder, useUpdateOrderStatus } from '../hooks/useOrders';
+import { message } from '@/lib/antd';
 //import type { OrderDetailItem } from '@/services/orderService';
 
 const { Text, Title } = Typography;
@@ -11,36 +12,10 @@ interface OrderDetailDrawerProps {
   onClose: () => void;
 }
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'PENDING': return 'orange';
-    case 'CONFIRMED': return 'cyan';
-    case 'PREPARING': return 'geekblue';
-    case 'READY': return 'purple';
-    case 'DELIVERING': return 'blue';
-    case 'COMPLETED': return 'green';
-    case 'CANCELLED': return 'red';
-    default: return 'default';
-  }
-};
-
-const getStatusText = (status?: string) => {
-  if (!status) return 'Không xác định';
-  switch (status.toUpperCase()) {
-    case 'PENDING': return 'Chờ xử lý';
-    case 'CONFIRMED': return 'Đã xác nhận';
-    case 'PREPARING': return 'Đang pha chế';
-    case 'READY': return 'Chờ giao';
-    case 'DELIVERING': return 'Đang giao';
-    case 'COMPLETED': return 'Hoàn thành';
-    case 'CANCELLED': return 'Đã hủy';
-    default: return status;
-  }
-};
-
 const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({ orderId, isOpen, onClose }) => {
   const { data: response, isLoading } = useOrder(orderId);
   const order = response?.data;
+  const updateStatusMutation = useUpdateOrderStatus();
 
   const itemColumns = [
     {
@@ -93,13 +68,31 @@ const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({ orderId, isOpen, 
               <Text type="secondary" className="text-xs uppercase tracking-widest font-bold">Mã đơn hàng</Text>
               <div className="text-lg font-black text-gray-800 mt-1">{order.orderCode}</div>
             </div>
-            <div className="text-right">
+            <div className="text-right flex flex-col items-end gap-1">
               <Text type="secondary" className="text-xs uppercase tracking-widest font-bold">Trạng thái</Text>
-              <div className="mt-1">
-                <Tag color={getStatusColor(order.status)} className="m-0 text-sm py-1 px-3">
-                  {getStatusText(order.status)?.toUpperCase()}
-                </Tag>
-              </div>
+              <Select
+                value={order.status}
+                onChange={async (value) => {
+                  try {
+                    await updateStatusMutation.mutateAsync({ id: order.id, status: value });
+                    message.success('Cập nhật trạng thái đơn hàng thành công');
+                  } catch {
+                    message.error('Cập nhật trạng thái đơn hàng thất bại');
+                  }
+                }}
+                loading={updateStatusMutation.isPending}
+                disabled={order.status === 'CANCELLED' || order.status === 'COMPLETED'}
+                style={{ width: 145 }}
+                size="small"
+                options={[
+                  { value: 'PENDING', label: 'ĐÃ NHẬN ĐƠN' },
+                  { value: 'CONFIRMED', label: 'ĐÃ XÁC NHẬN' },
+                  { value: 'PREPARING', label: 'ĐANG PHA CHẾ' },
+                  { value: 'DELIVERING', label: 'ĐANG GIAO' },
+                  { value: 'COMPLETED', label: 'HOÀN THÀNH' },
+                  { value: 'CANCELLED', label: 'ĐÃ HỦY' },
+                ]}
+              />
             </div>
           </div>
 

@@ -10,6 +10,7 @@ import Chat from './pages/Chat';
 import Categories from './pages/Categories';
 import Users from './pages/Users';
 import Profile from './pages/Profile';
+import Vouchers from './pages/Vouchers';
 import { AuthGuard } from './components/AuthGuard';
 import { AntdStaticHelper } from './lib/antd';
 
@@ -63,6 +64,7 @@ function App() {
                         <Route path="orders" element={<Orders />} />
                         <Route path="chat" element={<Chat />} />
                         <Route path="profile" element={<Profile />} />
+                        <Route path="vouchers" element={<Vouchers />} />
                         <Route path="*" element={<Navigate to="dashboard" replace />} />
                       </Routes>
                     </AdminLayout>

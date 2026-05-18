@@ -73,7 +73,7 @@ export default async function proxy(request: NextRequest) {
 
   // 3. Xử lý Proxy cho /api (TRỪ /api/auth của Next.js route handlers)
   if (pathname.startsWith('/api') && !pathname.startsWith('/api/auth/login') && !pathname.startsWith('/api/auth/logout')) {
-    const targetUrl = `${BACKEND_URL}${pathname}`;
+    const targetUrl = `${BACKEND_URL}${pathname}${request.nextUrl.search}`;
     const headers = new Headers(request.headers);
     headers.delete('host'); // Bắt buộc phải xóa host header khi dùng proxy với Ngrok
 

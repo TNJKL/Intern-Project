@@ -1,37 +1,10 @@
 import React, { useState } from 'react';
-import { Card, Table, Tag, Space, Button, Input, Popconfirm } from 'antd';
-import { EyeOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import { Card, Table, Space, Button, Input, Select } from 'antd';
+import { EyeOutlined } from '@ant-design/icons';
 import { useOrders, useUpdateOrderStatus } from './hooks/useOrders';
 import { message } from '@/lib/antd';
 import { type Order } from '@/services/orderService';
 import OrderDetailDrawer from './components/OrderDetailDrawer';
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'PENDING': return 'orange';
-    case 'CONFIRMED': return 'cyan';
-    case 'PREPARING': return 'geekblue';
-    case 'READY': return 'purple';
-    case 'DELIVERING': return 'blue';
-    case 'COMPLETED': return 'green';
-    case 'CANCELLED': return 'red';
-    default: return 'default';
-  }
-};
-
-const getStatusText = (status?: string) => {
-  if (!status) return 'Không xác định';
-  switch (status.toUpperCase()) {
-    case 'PENDING': return 'Chờ xử lý';
-    case 'CONFIRMED': return 'Đã xác nhận';
-    case 'PREPARING': return 'Đang pha chế';
-    case 'READY': return 'Chờ giao';
-    case 'DELIVERING': return 'Đang giao';
-    case 'COMPLETED': return 'Hoàn thành';
-    case 'CANCELLED': return 'Đã hủy';
-    default: return status;
-  }
-};
 
 const OrderList: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -96,7 +69,28 @@ const OrderList: React.FC = () => {
       title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">TRẠNG THÁI</span>, 
       dataIndex: 'status', 
       key: 'status',
-      render: (s: string) => <Tag color={getStatusColor(s)}>{getStatusText(s)?.toUpperCase()}</Tag>
+      render: (s: string, record: Order) => (
+        <Select
+          value={s}
+          onChange={(value) => handleUpdateStatus(record.id, value)}
+          loading={updateStatusMutation.isPending}
+          disabled={s === 'CANCELLED' || s === 'COMPLETED'}
+          style={{ 
+            width: 145, 
+            fontWeight: 'bold',
+            borderRadius: '8px'
+          }}
+          size="small"
+          options={[
+            { value: 'PENDING', label: 'ĐÃ NHẬN ĐƠN' },
+            { value: 'CONFIRMED', label: 'ĐÃ XÁC NHẬN' },
+            { value: 'PREPARING', label: 'ĐANG PHA CHẾ' },
+            { value: 'DELIVERING', label: 'ĐANG GIAO' },
+            { value: 'COMPLETED', label: 'HOÀN THÀNH' },
+            { value: 'CANCELLED', label: 'ĐÃ HỦY' },
+          ]}
+        />
+      )
     },
     {
       title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">THAO TÁC</span>,
@@ -111,35 +105,6 @@ const OrderList: React.FC = () => {
           >
             Chi tiết
           </Button>
-          {record.status === 'PENDING' && (
-            <>
-              <Button 
-                icon={<CheckCircleOutlined />} 
-                size="small" 
-                className="text-green-500 border-green-500"
-                loading={updateStatusMutation.isPending}
-                onClick={() => handleUpdateStatus(record.id, 'CONFIRMED')}
-              >
-                Duyệt
-              </Button>
-              <Popconfirm
-                title="Hủy đơn hàng"
-                description="Bạn có chắc chắn muốn hủy đơn hàng này không?"
-                onConfirm={() => handleUpdateStatus(record.id, 'CANCELLED')}
-                okText="Đồng ý"
-                cancelText="Không"
-              >
-                <Button 
-                  icon={<CloseCircleOutlined />} 
-                  size="small" 
-                  danger
-                  loading={updateStatusMutation.isPending}
-                >
-                  Hủy
-                </Button>
-              </Popconfirm>
-            </>
-          )}
         </Space>
       ),
     },

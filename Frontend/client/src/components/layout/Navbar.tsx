@@ -3,6 +3,7 @@
 import { Search, Menu, User, Coffee, ShoppingCart, LogOut, LayoutDashboard } from "lucide-react";
 import Link from "next/link";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useCartStore } from "@/store/useCartStore";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { clearCredentials } from "@/store/authSlice";
 import { useEffect, useState } from "react";
@@ -22,6 +23,7 @@ export function Navbar({ initialUser }: NavbarProps) {
   const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+  const cartItemsCount = useCartStore((state) => state.items.reduce((total, item) => total + item.quantity, 0));
 
   useEffect(() => {
     setIsMounted(true);
@@ -115,9 +117,11 @@ export function Navbar({ initialUser }: NavbarProps) {
 
         <Link href="/cart" className="relative p-2.5 text-gray-600 hover:bg-gray-100 rounded-full transition-all group active:scale-90">
           <ShoppingCart className="w-6 h-6 group-hover:text-primary transition-colors" />
-          <span className="absolute top-1.5 right-1.5 w-4.5 h-4.5 bg-primary text-white text-[9px] font-black flex items-center justify-center rounded-full border-2 border-white shadow-sm group-hover:scale-110 transition-transform">
-            3
-          </span>
+          {isMounted && cartItemsCount > 0 && (
+            <span className="absolute top-1.5 right-1.5 w-4.5 h-4.5 bg-primary text-white text-[9px] font-black flex items-center justify-center rounded-full border-2 border-white shadow-sm group-hover:scale-110 transition-transform p-1">
+              {cartItemsCount}
+            </span>
+          )}
         </Link>
 
         <button className="p-2.5 text-gray-600 hover:bg-gray-100 rounded-full transition-all active:scale-90">

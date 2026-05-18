@@ -3,10 +3,12 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronLeft, MapPin, CreditCard, CheckCircle2, Truck } from "lucide-react";
+import { ChevronLeft, MapPin, CreditCard, CheckCircle2, Truck, Ticket } from "lucide-react";
 import { motion } from "framer-motion";
 import { useCartStore } from "@/store/useCartStore";
 import { orderService } from "@/services/order.service";
+import { voucherService } from "@/services/voucher.service";
+import type { Voucher, ValidateVoucherResult } from "@/services/voucher.service";
 import toast from "react-hot-toast";
 
 export default function CheckoutClient() {
@@ -20,14 +22,120 @@ export default function CheckoutClient() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const [vouchers, setVouchers] = useState<Voucher[]>([]);
+  const [selectedVoucher, setSelectedVoucher] = useState<ValidateVoucherResult | null>(null);
+  const [voucherInput, setVoucherInput] = useState("");
 
   const subTotal = cartItems.reduce((total, item) => total + (item.unitPrice * item.quantity), 0);
   const shippingFee = 15000;
-  const discount = 0; // Tương lai có thể map voucher vào đây
+
+  useEffect(() => {
+    setMounted(true);
+    const fetchVouchers = async () => {
+      try {
+        const res = await voucherService.getVouchers();
+        if (res.success) {
+          const now = new Date();
+          const validVouchers = res.data.filter(v => {
+            const validFrom = new Date(v.validFrom);
+            const validUntil = v.validUntil ? new Date(v.validUntil) : null;
+            const hasStarted = now >= validFrom;
+            const hasNotExpired = !validUntil || now <= validUntil;
+            const hasUsageLeft = v.currentUsageCount < v.maxUsageCount;
+            return v.isActive && hasStarted && hasNotExpired && hasUsageLeft;
+          });
+          setVouchers(validVouchers);
+        }
+      } catch (err) {
+        console.error("Lỗi khi tải danh sách voucher", err);
+      }
+    };
+    fetchVouchers();
+  }, []);
+
+  // Tự động quản lý voucher (khôi phục & cập nhật theo giỏ hàng ở checkout)
+  useEffect(() => {
+    if (!mounted) return;
+
+    const savedCode = localStorage.getItem('brewtra_applied_voucher');
+
+    // TH1: Có mã lưu trong localStorage nhưng chưa nạp vào state, và giỏ hàng đã có sản phẩm
+    if (savedCode && !selectedVoucher && subTotal > 0) {
+      voucherService.validateVoucher(savedCode, subTotal)
+        .then(validationRes => {
+          if (validationRes.success && validationRes.data && validationRes.data.valid) {
+            setSelectedVoucher(validationRes.data);
+            setVoucherInput(validationRes.data.code);
+          } else {
+            localStorage.removeItem('brewtra_applied_voucher');
+          }
+        })
+        .catch(() => {
+          localStorage.removeItem('brewtra_applied_voucher');
+        });
+    }
+
+    // TH2: Đã có voucher, tự động tính toán lại khi subTotal thay đổi
+    if (selectedVoucher && subTotal > 0) {
+      voucherService.validateVoucher(selectedVoucher.code, subTotal)
+        .then(validationRes => {
+          if (validationRes.success && validationRes.data) {
+            setSelectedVoucher(validationRes.data);
+            if (!validationRes.data.valid) {
+              localStorage.removeItem('brewtra_applied_voucher');
+            } else {
+              localStorage.setItem('brewtra_applied_voucher', validationRes.data.code);
+            }
+          }
+        })
+        .catch(() => {
+          setSelectedVoucher(null);
+          localStorage.removeItem('brewtra_applied_voucher');
+        });
+    }
+
+    // TH3: Giỏ hàng trống
+    if (selectedVoucher && subTotal === 0) {
+      setSelectedVoucher(null);
+      localStorage.removeItem('brewtra_applied_voucher');
+    }
+  }, [subTotal, mounted]);
+
+  const discount = selectedVoucher && selectedVoucher.valid ? (selectedVoucher.discountAmount || 0) : 0;
+  
   const total = Math.max(0, subTotal + shippingFee - discount);
+
+  const handleApplyVoucher = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!voucherInput.trim()) {
+      toast.error("Vui lòng nhập mã voucher!");
+      return;
+    }
+    const code = voucherInput.trim().toUpperCase();
+    
+    try {
+      const res = await voucherService.validateVoucher(code, subTotal);
+      if (res.success && res.data) {
+        const result = res.data;
+        setSelectedVoucher(result);
+        if (result.valid) {
+          localStorage.setItem('brewtra_applied_voucher', result.code);
+          toast.success(`Đã áp dụng mã ${result.code}!`);
+        } else {
+          toast.error(result.message || "Mã giảm giá không hợp lệ!");
+          localStorage.removeItem('brewtra_applied_voucher');
+        }
+      } else {
+        toast.error(res.message || "Mã giảm giá không hợp lệ!");
+        setSelectedVoucher(null);
+        localStorage.removeItem('brewtra_applied_voucher');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Mã giảm giá không hợp lệ hoặc đã hết hạn!");
+      setSelectedVoucher(null);
+      localStorage.removeItem('brewtra_applied_voucher');
+    }
+  };
 
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,11 +156,13 @@ export default function CheckoutClient() {
           variantId: item.variantId,
           quantity: item.quantity,
           toppingIds: item.toppingIds,
-        }))
+        })),
+        voucherCode: selectedVoucher ? selectedVoucher.code : undefined
       };
       
       await orderService.createOrder(payload);
       clearCart();
+      localStorage.removeItem('brewtra_applied_voucher');
       setIsSuccess(true);
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Có lỗi xảy ra khi đặt hàng.");
@@ -205,6 +315,102 @@ export default function CheckoutClient() {
                   </div>
                 ))}
               </div>
+
+              {/* Voucher Input */}
+              <div className="border-t border-gray-100 pt-6 mb-6">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Mã giảm giá (VD: GIAM10)"
+                    value={voucherInput}
+                    onChange={(e) => setVoucherInput(e.target.value)}
+                    className="flex-1 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 outline-none focus:bg-white focus:border-primary/50 text-xs font-bold uppercase"
+                  />
+                  <button
+                    onClick={handleApplyVoucher}
+                    className="bg-primary text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-coffee-dark transition-all shrink-0"
+                  >
+                    Áp dụng
+                  </button>
+                </div>
+                {selectedVoucher && (
+                  <div className="flex items-center justify-between bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded-xl mt-3 text-xs">
+                    <span className="font-bold flex items-center gap-1">
+                      <Ticket size={14} />
+                      Đã áp dụng: {selectedVoucher.code}
+                    </span>
+                    <button 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setSelectedVoucher(null);
+                        setVoucherInput("");
+                        localStorage.removeItem('brewtra_applied_voucher');
+                      }}
+                      className="text-red-500 hover:text-red-700 font-bold ml-2"
+                    >
+                      Gỡ
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Danh sách Voucher Khả dụng */}
+              {vouchers.length > 0 && (
+                <div className="mb-6">
+                  <p className="text-xs font-bold text-gray-500 mb-2 uppercase">Voucher khả dụng:</p>
+                  <div className="flex flex-col gap-2 max-h-36 overflow-y-auto pr-1">
+                    {vouchers.map(v => {
+                      const isDisabled = subTotal < v.minOrderAmount;
+                      const isSelected = selectedVoucher?.code === v.code && selectedVoucher?.valid;
+                      return (
+                        <button
+                          key={v.id}
+                          disabled={isDisabled}
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            try {
+                              const res = await voucherService.validateVoucher(v.code, subTotal);
+                              if (res.success && res.data && res.data.valid) {
+                                setSelectedVoucher(res.data);
+                                setVoucherInput(res.data.code);
+                                localStorage.setItem('brewtra_applied_voucher', res.data.code);
+                                toast.success(`Đã áp dụng mã ${res.data.code}!`);
+                              } else {
+                                toast.error(res.data?.message || "Mã giảm giá không khả dụng!");
+                              }
+                            } catch (err) {
+                              toast.error("Không thể áp dụng mã giảm giá này.");
+                            }
+                          }}
+                          className={`w-full flex items-center justify-between p-2.5 rounded-xl border text-left transition-all ${
+                            isSelected 
+                              ? 'border-primary bg-primary/5' 
+                              : isDisabled 
+                                ? 'border-gray-100 opacity-50 cursor-not-allowed' 
+                                : 'border-gray-100 hover:border-primary/30 bg-gray-50/30'
+                          }`}
+                        >
+                          <div>
+                            <p className="text-xs font-bold text-gray-800 uppercase">{v.code}</p>
+                            <p className="text-[10px] text-gray-500">{v.name}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className="text-[10px] font-bold text-primary">
+                              {v.discountType === 'PERCENTAGE' 
+                                ? `${v.discountValue}%` 
+                                : `${(v.discountValue / 1000).toLocaleString()}k`
+                              }
+                            </span>
+                            {isDisabled && (
+                              <p className="text-[8px] text-red-500 mt-0.5">Tối thiểu {(v.minOrderAmount / 1000).toLocaleString()}k</p>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-3 text-sm font-medium text-gray-500 border-t border-gray-100 pt-6 mb-6">
                 <div className="flex justify-between">

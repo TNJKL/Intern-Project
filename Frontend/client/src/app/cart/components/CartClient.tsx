@@ -6,31 +6,139 @@ import Link from "next/link";
 import { Minus, Plus, Trash2, ArrowRight, Ticket, ChevronLeft, ShoppingBag } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCartStore } from "@/store/useCartStore";
+import { voucherService } from "@/services/voucher.service";
+import type { ValidateVoucherResult } from "@/services/voucher.service";
+import toast from "react-hot-toast";
 
 export default function CartClient() {
   const { items: cartItems, updateQuantity, removeItem } = useCartStore();
   
   const [voucherCode, setVoucherCode] = useState("");
-  const [appliedVoucher, setAppliedVoucher] = useState<{code: string, discount: number} | null>(null);
+  const [appliedVoucher, setAppliedVoucher] = useState<ValidateVoucherResult | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
+  const [suggestedVoucher, setSuggestedVoucher] = useState("GIAM10");
   const [mounted, setMounted] = useState(false);
+
+  // Tính toán tạm tính
+  const subTotal = cartItems.reduce((total, item) => total + (item.unitPrice * item.quantity), 0);
 
   useEffect(() => {
     setMounted(true);
+    
+    // Tải danh sách voucher để gợi ý mã thực tế đang có hiệu lực
+    voucherService.getVouchers()
+      .then(res => {
+        if (res.success && res.data && res.data.length > 0) {
+          const now = new Date();
+          const active = res.data.find(v => {
+            const validFrom = new Date(v.validFrom);
+            const validUntil = v.validUntil ? new Date(v.validUntil) : null;
+            const hasStarted = now >= validFrom;
+            const hasNotExpired = !validUntil || now <= validUntil;
+            const hasUsageLeft = v.currentUsageCount < v.maxUsageCount;
+            return v.isActive && hasStarted && hasNotExpired && hasUsageLeft;
+          });
+          if (active) {
+            setSuggestedVoucher(active.code);
+          }
+        }
+      })
+      .catch(err => console.error("Lỗi khi tải gợi ý voucher", err));
   }, []);
 
-  // Áp dụng voucher
-  const handleApplyVoucher = () => {
-    if (voucherCode.toUpperCase() === "GIAM20K") {
-      setAppliedVoucher({ code: "GIAM20K", discount: 20000 });
-    } else {
-      alert("Mã giảm giá không hợp lệ hoặc đã hết hạn.");
+  // Tự động quản lý voucher (khôi phục & cập nhật theo giỏ hàng)
+  useEffect(() => {
+    if (!mounted) return;
+
+    const savedVoucherCode = localStorage.getItem('brewtra_applied_voucher');
+    
+    // TH1: Có voucher lưu trữ nhưng chưa được áp dụng vào state, và giỏ hàng đã có sản phẩm (tránh race condition khi Zustand chưa nạp xong)
+    if (savedVoucherCode && !appliedVoucher && subTotal > 0) {
+      setVoucherCode(savedVoucherCode);
+      voucherService.validateVoucher(savedVoucherCode, subTotal)
+        .then(res => {
+          if (res.success && res.data && res.data.valid) {
+            setAppliedVoucher(res.data);
+          } else {
+            localStorage.removeItem('brewtra_applied_voucher');
+          }
+        })
+        .catch(() => {
+          localStorage.removeItem('brewtra_applied_voucher');
+        });
+    }
+    
+    // TH2: Đã có voucher trong state, cần tự động cập nhật lại khi subTotal thay đổi
+    if (appliedVoucher && subTotal > 0) {
+      voucherService.validateVoucher(appliedVoucher.code, subTotal)
+        .then(res => {
+          if (res.success && res.data) {
+            setAppliedVoucher(res.data);
+            if (!res.data.valid) {
+              localStorage.removeItem('brewtra_applied_voucher');
+            } else {
+              localStorage.setItem('brewtra_applied_voucher', res.data.code);
+            }
+          }
+        })
+        .catch(() => {
+          setAppliedVoucher(null);
+          localStorage.removeItem('brewtra_applied_voucher');
+        });
+    }
+
+    // TH3: Giỏ hàng trống
+    if (appliedVoucher && subTotal === 0) {
       setAppliedVoucher(null);
+      localStorage.removeItem('brewtra_applied_voucher');
+    }
+  }, [subTotal, mounted]);
+
+  // Áp dụng voucher
+  const handleApplyVoucher = async () => {
+    if (!voucherCode.trim()) {
+      toast.error("Vui lòng nhập mã giảm giá!");
+      return;
+    }
+    
+    setIsValidating(true);
+    try {
+      const res = await voucherService.validateVoucher(voucherCode.trim().toUpperCase(), subTotal);
+      if (res.success && res.data) {
+        const result = res.data;
+        setAppliedVoucher(result);
+        
+        if (result.valid) {
+          localStorage.setItem('brewtra_applied_voucher', result.code);
+          toast.success(`Áp dụng mã ${result.code} thành công!`);
+        } else {
+          toast.error(result.message || "Mã giảm giá không hợp lệ.");
+          localStorage.removeItem('brewtra_applied_voucher');
+        }
+      } else {
+        toast.error(res.message || "Mã giảm giá không hợp lệ.");
+        setAppliedVoucher(null);
+        localStorage.removeItem('brewtra_applied_voucher');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Mã giảm giá không hợp lệ hoặc đã hết hạn.");
+      setAppliedVoucher(null);
+      localStorage.removeItem('brewtra_applied_voucher');
+    } finally {
+      setIsValidating(false);
     }
   };
 
-  // Tính toán tổng tiền
-  const subTotal = cartItems.reduce((total, item) => total + (item.unitPrice * item.quantity), 0);
-  const discountAmount = appliedVoucher ? appliedVoucher.discount : 0;
+  // Gỡ voucher
+  const handleRemoveVoucher = () => {
+    setAppliedVoucher(null);
+    setVoucherCode("");
+    localStorage.removeItem('brewtra_applied_voucher');
+    toast.success("Đã gỡ mã giảm giá");
+  };
+
+  // Tính toán số tiền được giảm từ backend trả về
+  const discountAmount = appliedVoucher && appliedVoucher.valid ? (appliedVoucher.discountAmount || 0) : 0;
   const total = Math.max(0, subTotal - discountAmount);
 
   if (!mounted) return <div className="min-h-screen bg-[#fcf9f2]"></div>;
@@ -154,10 +262,23 @@ export default function CartClient() {
                       Áp dụng
                     </button>
                   </div>
-                  {appliedVoucher && (
-                    <p className="text-green-600 text-xs font-bold mt-2 ml-2 flex items-center gap-1">
-                      <span>✓</span> Áp dụng thành công mã: {appliedVoucher.code}
+                  {appliedVoucher && !appliedVoucher.valid && (
+                    <p className="text-red-500 text-xs font-bold mt-2 ml-2 leading-relaxed">
+                      ⚠ {appliedVoucher.message}
                     </p>
+                  )}
+                  {appliedVoucher && appliedVoucher.valid && (
+                    <div className="flex justify-between items-center mt-2 ml-2">
+                      <p className="text-green-600 text-xs font-bold flex items-center gap-1">
+                        <span>✓</span> {appliedVoucher.message || `Áp dụng thành công mã: ${appliedVoucher.code}`}
+                      </p>
+                      <button 
+                        onClick={handleRemoveVoucher} 
+                        className="text-xs text-red-500 hover:text-red-700 font-bold underline cursor-pointer"
+                      >
+                        Gỡ
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -170,10 +291,10 @@ export default function CartClient() {
                     <span>Phí giao hàng</span>
                     <span className="text-gray-800 font-bold">Chưa tính</span>
                   </div>
-                  {appliedVoucher && (
+                  {appliedVoucher && appliedVoucher.valid && (
                     <div className="flex justify-between text-green-600">
                       <span>Khuyến mãi ({appliedVoucher.code})</span>
-                      <span className="font-bold">-{appliedVoucher.discount.toLocaleString('vi-VN')}đ</span>
+                      <span className="font-bold">-{discountAmount.toLocaleString('vi-VN')}đ</span>
                     </div>
                   )}
                 </div>
@@ -193,7 +314,7 @@ export default function CartClient() {
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Link>
 
-                <p className="text-center text-xs text-gray-400 mt-4">Gợi ý mã: <strong className="text-gray-600 cursor-pointer" onClick={() => setVoucherCode('GIAM20K')}>GIAM20K</strong></p>
+                <p className="text-center text-xs text-gray-400 mt-4">Gợi ý mã: <strong className="text-gray-600 cursor-pointer hover:underline" onClick={() => setVoucherCode(suggestedVoucher)}>{suggestedVoucher}</strong></p>
               </div>
             </div>
           </div>
