@@ -4,6 +4,9 @@ import { Features } from "@/components/home/Features";
 import { AboutUs } from "@/components/home/AboutUs";
 import { Hero } from "@/components/home/Hero";
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export const metadata = {
   title: "Brewtra Coffee - Hương vị nguyên bản",
   description: "Trải nghiệm cà phê tuyệt hảo từ những hạt cà phê tuyển chọn nhất.",
@@ -18,15 +21,13 @@ export default async function Home() {
   let products: Product[] = [];
 
   try {
-    const categoryRes = await getServerApi('/api/v1/categories');
-    if (categoryRes && categoryRes.success) {
-      categories = categoryRes.data;
-    }
+    const [categoryRes, productRes] = await Promise.all([
+      getServerApi('/api/v1/categories'),
+      getServerApi('/api/v1/products')
+    ]);
 
-    const productRes = await getServerApi('/api/v1/products');
-    if (productRes && productRes.success) {
-      products = productRes.data;
-    }
+    if (categoryRes?.success) categories = categoryRes.data;
+    if (productRes?.success) products = productRes.data;
   } catch (error) {
     console.error("Failed to fetch data for home page:", error);
   }

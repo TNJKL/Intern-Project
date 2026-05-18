@@ -13,11 +13,31 @@ export interface Category {
   imageUrl?: string; 
 }
 
+export interface Page<T> {
+  data: T[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+}
+
 export const categoryService = {
-  getAllCategories: async (): Promise<Category[]> => {
-    // Gọi đúng path /categories (baseURL đã có /api/v1)
-    const response = await apiClient.get('/categories');
-    return response.data.data || response.data;
+  getAllCategories: async (params?: { 
+    page?: number; 
+    size?: number; 
+    keyword?: string;
+    includeDeleted?: boolean;
+    sortBy?: string;
+    sortDirection?: string;
+    sort?: string;
+  }): Promise<Page<Category> | Category[]> => {
+    const { sortBy, sortDirection, ...rest } = params || {};
+    const sort = sortBy ? `${sortBy},${sortDirection || 'asc'}` : params?.sort;
+
+    const response = await apiClient.get('/categories', { 
+      params: { ...rest, sort } 
+    });
+    return response.data;
   },
 
   getCategoryById: async (id: string): Promise<Category> => {
@@ -37,5 +57,9 @@ export const categoryService = {
 
   deleteCategory: async (id: string): Promise<void> => {
     await apiClient.delete(`/categories/${id}`);
+  },
+
+  restoreCategory: async (id: string): Promise<void> => {
+    await apiClient.post(`/categories/${id}/restore`);
   }
 };

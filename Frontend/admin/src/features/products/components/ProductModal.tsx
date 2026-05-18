@@ -1,15 +1,18 @@
-import React, { useEffect } from 'react';
-import { Modal, Form, Input, Select, InputNumber, Upload, Button } from 'antd';
-import { message } from '@/lib/antd';
-import { UploadOutlined, LoadingOutlined } from '@ant-design/icons';
-import type { UploadProps } from 'antd';
-import { fileService } from '../../../services/fileService';
-import { useState } from 'react';
-import type { Category } from '../../../services/categoryService';
+import React from 'react';
+import { Modal, Form, Input, Select, InputNumber, Button, Row, Col, Space, Divider, Tooltip } from 'antd';
+import { 
+  PlusOutlined,
+  DollarOutlined,
+  ShoppingOutlined,
+  FileTextOutlined
+} from '@ant-design/icons';
+import type { Category } from '@/services/categoryService';
+import { useProductForm } from '../hooks/useProductForm';
+import { ImageUploadSection, VariantSection } from './ProductFormParts';
 
 interface ProductModalProps {
   isOpen: boolean;
-  editingProduct: any;
+  editingRecord: any;
   categories: Category[];
   isLoading: boolean;
   onClose: () => void;
@@ -17,194 +20,146 @@ interface ProductModalProps {
 }
 
 export const ProductModal: React.FC<ProductModalProps> = ({
-  isOpen,
-  editingProduct,
-  categories,
-  isLoading,
-  onClose,
-  onSave
+  isOpen, editingRecord, categories, isLoading, onClose, onSave
 }) => {
-  const [form] = Form.useForm();
-  const [isUploading, setIsUploading] = useState(false);
+  const {
+    form, isUploading, toppings, isFetchingToppings, isAddingTopping,
+    newToppingName, setNewToppingName, newToppingPrice, setNewToppingPrice,
+    handleUpload, handleQuickAddTopping
+  } = useProductForm(isOpen, editingRecord);
 
-  const handleUpload = async (options: any) => {
-    const { file, onSuccess, onError } = options;
-    
-    setIsUploading(true);
-    try {
-      const imageUrl = await fileService.uploadImage(file as File);
-      form.setFieldsValue({ imageUrl });
-      onSuccess("ok");
-      message.success('Tải ảnh lên thành công!');
-    } catch (error) {
-      console.error('Upload failed:', error);
-      onError({ error });
-      message.error('Tải ảnh lên thất bại!');
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const uploadProps: UploadProps = {
-    customRequest: handleUpload,
-    showUploadList: false,
-    beforeUpload: (file) => {
-      const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png';
-      if (!isJpgOrPng) {
-        message.error('Bạn chỉ có thể tải lên file JPG/PNG!');
-      }
-      return isJpgOrPng || Upload.LIST_IGNORE;
-    },
-  };
-
-  useEffect(() => {
-    if (isOpen) {
-      if (editingProduct) {
-        form.setFieldsValue({
-          ...editingProduct,
-        });
-      } else {
-        form.resetFields();
-      }
-    }
-  }, [isOpen, editingProduct, form]);
-
-  const handleSave = () => {
-    form.validateFields().then(values => {
-      const payload = {
-        ...values,
-        isFeatured: values.isFeatured || false,
-      };
-      console.log('Sending values:', payload);
-      onSave(payload);
-    });
-  };
+  const imageUrl = Form.useWatch('imageUrl', form);
 
   return (
     <Modal
-      title={<span className="text-xl font-black uppercase text-gray-800">{editingProduct ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}</span>}
+      title={null}
       open={isOpen}
       onCancel={onClose}
-      onOk={handleSave}
-      confirmLoading={isLoading}
-      okText={editingProduct ? "Cập nhật" : "Tạo mới"}
-      cancelText="Hủy"
-      okButtonProps={{ className: 'bg-[#d37533] rounded-lg font-bold shadow-md' }}
-      cancelButtonProps={{ className: 'rounded-lg font-bold' }}
-      centered
-      width={700}
-      styles={{ body: { borderRadius: '24px', padding: '24px' } }}
-    >
-      <Form form={form} layout="vertical" className="mt-6" initialValues={{ isAvailable: true, displayOrder: 0 }}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
-          
-          <Form.Item 
-            name="name" 
-            label={<span className="font-bold text-gray-600 text-xs uppercase tracking-wider">Tên sản phẩm</span>}
-            rules={[{ required: true, message: 'Vui lòng nhập tên!' }]}
-          >
-            <Input size="large" placeholder="Ví dụ: Cà Phê Phin" className="rounded-xl" />
-          </Form.Item>
-
-          <Form.Item 
-            name="categoryId" 
-            label={<span className="font-bold text-gray-600 text-xs uppercase tracking-wider">Thuộc Danh mục</span>}
-            rules={[{ required: true, message: 'Vui lòng chọn danh mục!' }]}
-          >
-            <Select 
-              size="large" 
-              className="rounded-xl [&>.ant-select-selector]:!rounded-xl" 
-              placeholder="Chọn danh mục"
-              options={categories.map(c => ({ label: c.name, value: c.id }))}
-            />
-          </Form.Item>
-
-          <Form.Item 
-            name="price" 
-            label={<span className="font-bold text-gray-600 text-xs uppercase tracking-wider">Giá bán (VNĐ)</span>}
-            rules={[{ required: true, message: 'Vui lòng nhập giá!' }]}
-          >
-            <InputNumber 
-              size="large" 
-              className="w-full rounded-xl" 
-              formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-              parser={(value: any) => value!.replace(/\$\s?|(,*)/g, '')}
-              min={0}
-              step={1000}
-            />
-          </Form.Item>
-
-          <Form.Item 
-            name="slug" 
-            label={<span className="font-bold text-gray-600 text-xs uppercase tracking-wider">Đường dẫn (Slug)</span>}
-            rules={[{ required: true, message: 'Vui lòng nhập slug!' }]}
-          >
-            <Input size="large" placeholder="vi-du-ca-phe-phin" className="rounded-xl" />
-          </Form.Item>
-
-          <Form.Item 
-            name="description" 
-            label={<span className="font-bold text-gray-600 text-xs uppercase tracking-wider">Mô tả sản phẩm</span>}
-            className="md:col-span-2"
-          >
-            <Input.TextArea rows={3} placeholder="Mô tả về hương vị, thành phần..." className="rounded-xl" />
-          </Form.Item>
-
-          <div className="md:col-span-2 bg-gray-50 p-4 rounded-2xl border border-gray-100 mb-4">
-            <Form.Item 
-              name="imageUrl" 
-              label={<span className="font-bold text-gray-600 text-xs uppercase tracking-wider">Link hình ảnh đại diện</span>}
-              className="mb-4"
+      footer={(
+        <div className="flex justify-between items-center px-10 pb-10 pt-4">
+          <div className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">
+            {editingRecord ? `ID: ${editingRecord.id}` : 'Đang tạo món mới'}
+          </div>
+          <Space size="middle">
+            <Button onClick={onClose} className="rounded-xl font-bold h-11 border-gray-200 text-gray-500 px-8">Đóng</Button>
+            <Button 
+              type="primary" 
+              onClick={() => form.validateFields().then(values => onSave({ ...values, isFeatured: !!values.isFeatured }))} 
+              loading={isLoading}
+              className="bg-[#d37533] rounded-xl font-bold h-11 px-10 border-none shadow-lg shadow-orange-100"
             >
-              <Input size="large" placeholder="https://..." className="rounded-xl" />
+              {editingRecord ? 'Cập nhật' : 'Tạo sản phẩm'}
+            </Button>
+          </Space>
+        </div>
+      )}
+      centered width={1000} styles={{ body: { padding: 0 } }}
+    >
+      <div className="bg-white px-10 py-8 border-b border-gray-100 rounded-t-3xl">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center border border-gray-100">
+            <ShoppingOutlined className="text-xl text-gray-400" />
+          </div>
+          <div>
+            <h3 className="text-2xl font-black uppercase text-gray-800 tracking-tight leading-none">{editingRecord ? 'Chỉnh sửa sản phẩm' : 'Thêm món mới'}</h3>
+            <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-gray-300 rounded-full"></span> Quản lý thông tin thực đơn
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <Form form={form} layout="vertical" className="p-10 max-h-[75vh] overflow-y-auto scrollbar-hide bg-white">
+        <Space direction="vertical" size={24} className="w-full">
+          {/* Nhóm 1: Thông tin cơ bản */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-100">
+              <FileTextOutlined className="text-gray-400" />
+              <span className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Thông tin sản phẩm</span>
+            </div>
+            
+            <Form.Item name="name" label={<span className="text-[10px] font-black uppercase text-gray-500">Tên sản phẩm</span>} rules={[{ required: true, message: 'Vui lòng nhập tên!' }]}>
+              <Input size="large" placeholder="Ví dụ: Cà Phê Muối" className="rounded-xl border-gray-200 focus:border-[#d37533] h-12 text-sm font-bold" />
             </Form.Item>
 
-            <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.imageUrl !== currentValues.imageUrl} className="mb-4">
-              {({ getFieldValue }) => {
-                const imgUrl = getFieldValue('imageUrl');
-                return imgUrl ? (
-                  <div className="w-full h-32 bg-gray-100 rounded-xl overflow-hidden border border-gray-200 shadow-inner flex items-center justify-center">
-                    <img src={imgUrl} alt="Preview" className="h-full object-contain" />
-                  </div>
-                ) : null;
-              }}
+            <Form.Item name="categoryId" label={<span className="text-[10px] font-black uppercase text-gray-500">Danh mục sản phẩm</span>} rules={[{ required: true, message: 'Bắt buộc' }]}>
+              <Select size="large" placeholder="Chọn danh mục món..." className="rounded-xl h-12" options={categories.map(c => ({ label: c.name, value: c.id }))} />
             </Form.Item>
 
-            <Form.Item label={<span className="font-bold text-gray-600 text-xs uppercase tracking-wider">Hoặc tải lên từ máy tính</span>} className="mb-0">
-              <Upload {...uploadProps} listType="picture" maxCount={1} className="w-full" disabled={isUploading}>
-                <Button 
-                  icon={isUploading ? <LoadingOutlined /> : <UploadOutlined />} 
-                  className="rounded-xl h-11 w-full border-dashed border-gray-300 text-gray-500 hover:text-[#d37533] hover:border-[#d37533]"
-                  disabled={isUploading}
-                >
-                  {isUploading ? 'Đang tải ảnh lên...' : 'Chọn file ảnh từ thiết bị'}
-                </Button>
-              </Upload>
+            <Form.Item name="description" label={<span className="text-[10px] font-black uppercase text-gray-500">Mô tả sản phẩm</span>}>
+              <Input.TextArea rows={3} placeholder="Giới thiệu hương vị, thành phần..." className="rounded-xl border-gray-200 focus:border-[#d37533] text-sm p-4" />
             </Form.Item>
           </div>
 
-          <Form.Item 
-            name="displayOrder" 
-            label={<span className="font-bold text-gray-600 text-xs uppercase tracking-wider">Thứ tự hiển thị</span>}
-          >
-            <InputNumber size="large" className="w-full rounded-xl" min={0} />
-          </Form.Item>
+          {/* Nhóm 2: Cấu hình & Trạng thái */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-100">
+              <DollarOutlined className="text-gray-400" />
+              <span className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Trạng thái & Hiển thị</span>
+            </div>
 
-          <Form.Item 
-            name="isAvailable" 
-            label={<span className="font-bold text-gray-600 text-xs uppercase tracking-wider">Trạng thái Bán</span>}
-          >
-            <Select size="large" className="rounded-xl [&>.ant-select-selector]:!rounded-xl">
-              <Select.Option value={true}>
-                <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-green-500"></span>Đang bán</div>
-              </Select.Option>
-              <Select.Option value={false}>
-                <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-gray-400"></span>Ngừng bán</div>
-              </Select.Option>
-            </Select>
-          </Form.Item>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item name="isAvailable" label={<span className="text-[10px] font-black uppercase text-gray-500">Trạng thái bán</span>}>
+                  <Select size="large" className="rounded-xl h-12" options={[{ label: 'Đang mở bán', value: true }, { label: 'Tạm ngừng', value: false }]} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="displayOrder" label={<span className="text-[10px] font-black uppercase text-gray-500">Thứ tự hiển thị</span>}>
+                  <InputNumber size="large" className="w-full rounded-xl border-gray-200 h-12 flex items-center" placeholder="0" />
+                </Form.Item>
+              </Col>
+            </Row>
 
-        </div>
+            <Form.Item name="toppingIds" label={<Space className="w-full justify-between"><span className="text-[10px] font-black uppercase text-gray-500">Toppings đi kèm</span><Tooltip title="Thêm nhanh topping mới"><PlusOutlined className="text-[#d37533] cursor-pointer" /></Tooltip></Space>}>
+              <Select mode="multiple" size="large" placeholder="Chọn topping..." className="rounded-xl min-h-[48px]" loading={isFetchingToppings} options={toppings.map(t => ({ label: `${t.name} (+${t.price.toLocaleString()}đ)`, value: t.id }))} maxTagCount="responsive"
+                dropdownRender={(menu) => (
+                  <div className="bg-white border border-gray-100 shadow-xl rounded-xl overflow-hidden">
+                    {menu}<Divider style={{ margin: '8px 0' }} />
+                    <div className="p-3 flex flex-col gap-2">
+                      <span className="text-[9px] font-black uppercase text-gray-400 px-1">Tạo nhanh Topping</span>
+                      <div className="flex gap-2">
+                        <Input placeholder="Tên..." value={newToppingName} onChange={(e) => setNewToppingName(e.target.value)} className="rounded-lg text-xs" />
+                        <InputNumber placeholder="Giá" value={newToppingPrice} onChange={(val) => setNewToppingPrice(val || 0)} className="w-24 rounded-lg text-xs" min={0} />
+                        <Button type="primary" size="small" loading={isAddingTopping} onClick={handleQuickAddTopping} className="bg-[#d37533] border-none rounded-lg text-[10px] font-bold uppercase h-8">Thêm</Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              />
+            </Form.Item>
+          </div>
+
+          {/* Nhóm 3: Tùy chọn nâng cao */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-100">
+              <PlusOutlined className="text-gray-400" />
+              <span className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Tùy chọn nâng cao</span>
+            </div>
+            
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item name="isFeatured" label={<span className="text-[10px] font-black uppercase text-gray-500">Loại sản phẩm</span>}>
+                  <Select size="large" className="rounded-xl h-12" options={[{ label: 'Bình thường', value: false }, { label: 'Top đề xuất', value: true }]} />
+                </Form.Item>
+              </Col>
+              {editingRecord && (
+                <Col span={12}>
+                  <Form.Item name="slug" label={<span className="text-[10px] font-black uppercase text-gray-500">Slug định danh</span>}>
+                    <Input size="large" readOnly className="rounded-xl border-gray-200 bg-gray-50 text-gray-400 font-mono text-xs h-12" />
+                  </Form.Item>
+                </Col>
+              )}
+            </Row>
+          </div>
+
+          {!editingRecord && <VariantSection />}
+
+          {/* Phần hình ảnh - Để cuối cùng, thiết kế nhỏ gọn hơn */}
+          <div className="pt-6 border-t border-gray-100">
+            <ImageUploadSection imageUrl={imageUrl} isUploading={isUploading} uploadProps={{ customRequest: handleUpload, showUploadList: false }} />
+          </div>
+        </Space>
       </Form>
     </Modal>
   );

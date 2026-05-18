@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
+import { API_CONFIG } from './api-config';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://morbidity-stucco-grower.ngrok-free.dev';
+const API_URL = API_CONFIG.BASE_URL;
 
 /**
  * Gọi API từ Server Side.
@@ -13,41 +14,82 @@ export async function getServerApi(endpoint: string, options: RequestInit = {}) 
   const adminAccessTokenCookie = cookieStore.get('adminAccessToken');
   const accessToken = accessTokenCookie?.value || adminAccessTokenCookie?.value;
 
-  console.log(`[SSR Fetch] URL: ${API_URL}${endpoint}`);
-  if (accessToken) {
-    console.log(`[SSR Auth] Found cookie: ${accessTokenCookie ? 'accessToken' : 'adminAccessToken'}`);
-    console.log(`[SSR Auth] Token preview: ${accessToken.substring(0, 10)}...`);
-  }
-
+  
   const headers = new Headers(options.headers);
   headers.set('Content-Type', 'application/json');
   headers.set('ngrok-skip-browser-warning', 'true');
   headers.set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-  
-  // Chỉ thêm Authorization nếu có token
+
   if (accessToken) {
-    console.log(`[SSR Auth] Sending token for: ${endpoint}`);
     headers.set('Authorization', `Bearer ${accessToken}`);
-  } else {
-    console.log(`[SSR Auth] No token sent for: ${endpoint}`);
   }
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
+  // Thiết lập Timeout 5 giây để tránh treo trang quá lâu
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+  const fetchOptions: RequestInit = {
     ...options,
     headers,
+    signal: controller.signal,
     cache: 'no-store',
-  });
+  };
 
-  if (!response.ok) {
-    if (response.status === 401 || response.status === 403) {
-      console.log(`[SSR Auth] Access denied for ${endpoint} (Status: ${response.status})`);
-      return { success: false, data: [], message: 'Unauthorized' };
+  // Mặc định không cache để dữ liệu luôn mới (quan trọng khi đồng bộ giữa Admin và Client)
+  if (!fetchOptions.method || fetchOptions.method === 'GET') {
+    if (!fetchOptions.cache && !fetchOptions.next) {
+      fetchOptions.next = { revalidate: 0 }; 
     }
-    
-    console.error(`[SSR API Error] ${endpoint}: ${response.status} ${response.statusText}`);
-    throw new Error(`API Error: ${response.status} ${response.statusText}`);
   }
 
-  console.log(`[SSR API Success] ${endpoint}: 200 OK`);
-  return response.json();
+  try {
+    const response = await fetch(`${API_URL}${endpoint}`, fetchOptions);
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const isExpired = errorData?.errorCode === 'TOKEN_EXPIRED' || response.status === 401 || response.status === 403;
+
+      if (isExpired) {
+        const refreshToken = cookieStore.get('refreshToken')?.value;
+        if (refreshToken) {
+          // Thử refresh token ngay tại Server
+          try {
+            const refreshRes = await fetch(`${API_URL}/api/v1/auth/refresh`, {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'Cookie': `refreshToken=${refreshToken}`,
+                'ngrok-skip-browser-warning': 'true'
+              }
+            });
+
+            if (refreshRes.ok) {
+              const refreshData = await refreshRes.json();
+              const newToken = refreshData?.data?.accessToken || refreshData?.accessToken;
+              if (newToken) {
+                // Thử gọi lại request gốc với token mới
+                headers.set('Authorization', `Bearer ${newToken}`);
+                const retryResponse = await fetch(`${API_URL}${endpoint}`, { ...fetchOptions, headers });
+                if (retryResponse.ok) return retryResponse.json();
+              }
+            }
+          } catch (refreshErr) {
+            console.error('[SSR Refresh Error]', refreshErr);
+          }
+        }
+        return { success: false, data: [], message: 'Unauthorized' };
+      }
+      console.error(`[SSR ERROR] ${endpoint} (${response.status})`);
+      throw new Error(`API Error: ${response.status}`);
+    }
+
+    return response.json();
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error.name !== 'AbortError') {
+      console.error(`[SSR ERROR] ${endpoint}: ${error.message}`);
+    }
+    throw error;
+  }
 }

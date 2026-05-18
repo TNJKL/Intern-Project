@@ -4,39 +4,39 @@ import type { Topping } from '../../../services/toppingService';
 
 interface ToppingModalProps {
   isOpen: boolean;
-  editingTopping: Topping | null;
+  editingRecord: Topping | null;
   isLoading: boolean;
   onClose: () => void;
   onSave: (values: any) => void;
 }
 
-export const ToppingModal: React.FC<ToppingModalProps> = ({ 
-  isOpen, 
-  editingTopping, 
+export const ToppingModal: React.FC<ToppingModalProps> = ({
+  isOpen,
+  editingRecord,
   isLoading,
-  onClose, 
-  onSave 
+  onClose,
+  onSave
 }) => {
   const [form] = Form.useForm();
 
   useEffect(() => {
     if (isOpen) {
-      if (editingTopping) {
+      if (editingRecord) {
         form.setFieldsValue({
-          name: editingTopping.name,
-          price: editingTopping.price,
-          displayOrder: editingTopping.displayOrder,
-          isAvailable: editingTopping.isAvailable,
+          name: editingRecord.name,
+          price: editingRecord.price,
+          displayOrder: editingRecord.displayOrder,
+          isAvailable: editingRecord.isAvailable,
         });
       } else {
         form.resetFields();
-        form.setFieldsValue({ 
+        form.setFieldsValue({
           displayOrder: 0,
-          isAvailable: true 
+          isAvailable: true
         });
       }
     }
-  }, [isOpen, editingTopping, form]);
+  }, [isOpen, editingRecord, form]);
 
   const handleSubmit = async () => {
     try {
@@ -49,29 +49,29 @@ export const ToppingModal: React.FC<ToppingModalProps> = ({
 
   return (
     <Modal
-      title={<span className="text-xl font-black uppercase text-gray-800 tracking-tight">{editingTopping ? 'Chỉnh Sửa Topping' : 'Thêm Topping Mới'}</span>}
+      title={<span className="text-xl font-black uppercase text-gray-800 tracking-tight">{editingRecord ? 'Chỉnh Sửa Topping' : 'Thêm Topping Mới'}</span>}
       open={isOpen}
       onCancel={onClose}
       footer={[
         <Button key="back" onClick={onClose} className="rounded-xl font-medium">
           Hủy bỏ
         </Button>,
-        <Button 
-          key="submit" 
-          type="primary" 
-          loading={isLoading} 
+        <Button
+          key="submit"
+          type="primary"
+          loading={isLoading}
           onClick={handleSubmit}
           className="bg-[#d37533] rounded-xl font-bold px-6"
         >
-          {editingTopping ? 'Lưu thay đổi' : 'Thêm mới'}
+          {editingRecord ? 'Lưu thay đổi' : 'Thêm mới'}
         </Button>,
       ]}
       centered
       width={600}
     >
       <div className="mt-6">
-        <Form 
-          form={form} 
+        <Form
+          form={form}
           layout="vertical"
           requiredMark={false}
           className="custom-form"

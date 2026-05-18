@@ -7,7 +7,6 @@ export const apiClient = axios.create({
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
-    'ngrok-skip-browser-warning': 'true',
   },
 });
 
@@ -35,7 +34,8 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    const isAuthError = error.response?.status === 401 || error.response?.status === 403;
+    const isExpired = error.response?.data?.errorCode === 'TOKEN_EXPIRED';
+    const isAuthError = isExpired || error.response?.status === 401 || error.response?.status === 403;
 
     if (!isAuthError || originalRequest._retry) {
       return Promise.reject(error);
@@ -56,26 +56,11 @@ apiClient.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      // Gọi refresh KHÔNG cần gửi refreshToken trong body
-      const { data } = await axios.post(
-        '/api/v1/auth/refresh',
-        {},
-        {
-          withCredentials: true,
-          headers: {
-            'Content-Type': 'application/json',
-            'ngrok-skip-browser-warning': '69420'
-          }
-        }
-      );
+      // "Ra tín hiệu" cho Backend thông qua refresh endpoint
+      await axios.post('/api/v1/auth/refresh', {}, { withCredentials: true });
 
-      const newAccessToken: string = data?.data?.accessToken ?? data?.accessToken;
-
-      const { user, setAuth } = useAuthStore.getState();
-      setAuth(user!, newAccessToken, "");
-
-      processQueue(null, newAccessToken);
-      originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+      processQueue(null, "");
+      // Retry request gốc — browser sẽ tự đính kèm cookie mới
       return apiClient(originalRequest);
     } catch (refreshError) {
       processQueue(refreshError, null);

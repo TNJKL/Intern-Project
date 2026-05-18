@@ -16,7 +16,7 @@ const ChatWindow: React.FC = () => {
       <Row gutter={16} className="flex-1 overflow-hidden">
         {/* User List */}
         <Col span={8} className="h-full">
-          <Card className="h-full shadow-sm overflow-auto" styles={{ body: { padding: 0 } }}>
+          <Card variant="borderless" className="h-full shadow-sm overflow-auto" styles={{ body: { padding: 0 } }}>
             <List
               itemLayout="horizontal"
               dataSource={users}
@@ -45,7 +45,7 @@ const ChatWindow: React.FC = () => {
 
         {/* Chat Area */}
         <Col span={16} className="h-full flex flex-col">
-          <Card className="flex-1 shadow-sm mb-4 overflow-auto bg-[#fdfaf5]/30">
+          <Card variant="borderless" className="flex-1 shadow-sm mb-4 overflow-auto bg-[#fdfaf5]/30">
             <div className="flex flex-col gap-4">
               <div className="flex justify-start">
                 <div className="bg-white p-3 rounded-2xl rounded-bl-none shadow-sm max-w-md border border-gray-100">
@@ -60,7 +60,7 @@ const ChatWindow: React.FC = () => {
             </div>
           </Card>
 
-          <Card className="shadow-sm" styles={{ body: { padding: 12 } }}>
+          <Card variant="borderless" className="shadow-sm" styles={{ body: { padding: 12 } }}>
             <div className="flex gap-2">
               <Input placeholder="Nhập tin nhắn trả lời khách hàng..." className="flex-1 rounded-lg" />
               <Button type="primary" style={{ backgroundColor: '#8c6239' }} icon={<SendOutlined />} className="rounded-lg h-auto" />

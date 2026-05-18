@@ -11,8 +11,18 @@ export interface Topping {
 }
 
 export const toppingService = {
-  getAllToppings: async (): Promise<Topping[]> => {
-    const response = await apiClient.get('/toppings');
+  getAllToppings: async (params?: any): Promise<Topping[]> => {
+    const { sortBy, sortDirection, ...rest } = params || {};
+    const sort = sortBy ? `${sortBy},${sortDirection || 'asc'}` : params?.sort;
+
+    const response = await apiClient.get('/toppings', { 
+      params: {
+        search: params?.search,
+        includeDeleted: params?.includeDeleted,
+        ...rest,
+        sort
+      } 
+    });
     return response.data.data || response.data;
   },
 
@@ -33,5 +43,9 @@ export const toppingService = {
 
   deleteTopping: async (id: string): Promise<void> => {
     await apiClient.delete(`/toppings/${id}`);
+  },
+  
+  restoreTopping: async (id: string): Promise<void> => {
+    await apiClient.post(`/toppings/${id}/restore`);
   }
 };

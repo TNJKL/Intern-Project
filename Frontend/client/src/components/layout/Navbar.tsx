@@ -45,23 +45,8 @@ export function Navbar({ initialUser }: NavbarProps) {
         </div>
       </Link>
 
-      {/* Search Bar - Hidden on very small screens, expanded on others */}
-      <div className="hidden sm:flex flex-1 max-w-md mx-auto relative group">
-        <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none text-gray-400 group-focus-within:text-primary transition-colors">
-          <Search className="w-4 h-4" />
-        </div>
-        <input
-          type="text"
-          placeholder="Tìm kiếm hương vị cà phê..."
-          className="w-full bg-[#fdfaf5] border border-gray-200 text-gray-800 text-sm font-medium rounded-full pl-12 pr-4 py-3 outline-none focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all shadow-sm"
-        />
-      </div>
-
       {/* Actions */}
       <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-        <button className="sm:hidden p-2.5 text-gray-500 hover:bg-gray-100 rounded-full transition-all active:scale-90">
-          <Search className="w-5 h-5" />
-        </button>
 
         {((isMounted && isAuthenticated && user) || initialUser) ? (
           <div className="flex items-center gap-2 sm:gap-4">

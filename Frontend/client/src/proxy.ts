@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'https://morbidity-stucco-grower.ngrok-free.dev';
+const BACKEND_URL = process.env.NEXT_PUBLIC_GLOBAL_BACKEND_IP;
 
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -24,8 +24,8 @@ export default async function proxy(request: NextRequest) {
   // 2. Cơ chế Silent Refresh cho tất cả các request
   if (!accessToken && refreshToken) {
     try {
-      console.log('[Middleware] Access token missing. Attempting to refresh using refresh token...');
-      
+      // console.log('[Auth] Token missing, refreshing...');
+
       const refreshResponse = await fetch(`${BACKEND_URL}/api/v1/auth/refresh`, {
         method: 'POST',
         headers: {
@@ -38,24 +38,24 @@ export default async function proxy(request: NextRequest) {
       if (refreshResponse.ok) {
         const data = await refreshResponse.json();
         const newAccessToken = data?.data?.accessToken || data?.accessToken;
-        
+
         if (newAccessToken) {
-          console.log('[Middleware] Successfully refreshed token');
-          
+          // console.log('[Auth] Success');
+
           // Tạo redirect về chính trang hiện tại để áp dụng cookie ngay lập tức cho request tiếp theo
           const redirectRes = NextResponse.redirect(request.url);
-          
+
           // Kiểm tra xem là admin hay user
           const hasAdminCookie = request.cookies.has('adminAccessToken') || pathname.startsWith('/admin');
           if (hasAdminCookie) {
-             redirectRes.cookies.set('adminAccessToken', newAccessToken, { path: '/', maxAge: 7 * 24 * 60 * 60, sameSite: 'lax' });
+            redirectRes.cookies.set('adminAccessToken', newAccessToken, { path: '/', maxAge: 7 * 24 * 60 * 60, sameSite: 'lax' });
           } else {
-             redirectRes.cookies.set('accessToken', newAccessToken, { path: '/', maxAge: 7 * 24 * 60 * 60, sameSite: 'lax' });
+            redirectRes.cookies.set('accessToken', newAccessToken, { path: '/', maxAge: 7 * 24 * 60 * 60, sameSite: 'lax' });
           }
           return redirectRes;
         }
       } else {
-        console.log('[Middleware] Refresh failed, status:', refreshResponse.status);
+        // console.log('[Auth] Refresh failed');
         // Refresh token không hợp lệ -> xóa sạch token
         const protectedPaths = ['/profile', '/admin', '/orders', '/checkout'];
         if (protectedPaths.some(path => pathname.startsWith(path))) {
@@ -75,7 +75,8 @@ export default async function proxy(request: NextRequest) {
   if (pathname.startsWith('/api') && !pathname.startsWith('/api/auth/login') && !pathname.startsWith('/api/auth/logout')) {
     const targetUrl = `${BACKEND_URL}${pathname}`;
     const headers = new Headers(request.headers);
-    
+    headers.delete('host'); // Bắt buộc phải xóa host header khi dùng proxy với Ngrok
+
     // Nếu token vừa được refresh, nó sẽ nằm trong redirect chứ không chạy đến đây. 
     // Nếu có token sẵn thì dùng.
     if (accessToken) {

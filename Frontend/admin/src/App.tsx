@@ -32,7 +32,7 @@ function App() {
           token: {
             colorPrimary: '#d37533',
             borderRadius: 12,
-            fontFamily: "'Noto Sans Vietnamese', sans-serif",
+            fontFamily: "'Be Vietnam Pro', 'Inter', sans-serif",
           },
           components: {
             Message: {
