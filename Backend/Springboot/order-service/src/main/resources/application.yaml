@@ -35,6 +35,8 @@ app:
     read-timeout-ms: 5000
   order-cache:
     detail-ttl-seconds: 60
+  cache:
+    product-ttl-seconds: 300
   idempotency:
     ttl-hours: 24
 
