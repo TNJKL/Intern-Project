@@ -24,57 +24,51 @@ export function CustomerLayout({ children, initialUser }: CustomerLayoutProps) {
   const { setUser, clearUser, _hasHydrated } = useAuthStore();
   const dispatch = useAppDispatch();
 
+  const isAuthPage = pathname === "/login" || pathname === "/register";
+
   // Đồng bộ dữ liệu từ Server xuống Client ngay khi có thể
   useEffect(() => {
     if (initialUser) {
-      dispatch(setCredentials({ user: initialUser, accessToken: "" })); // accessToken đã có trong Cookie
+      dispatch(setCredentials({ user: initialUser, accessToken: "" }));
       setUser(initialUser);
     }
   }, [initialUser, dispatch, setUser]);
 
   useEffect(() => {
-    if (!_hasHydrated) return;
+    if (!_hasHydrated || isAuthPage) return;
 
-    // Chỉ refresh nếu đã có user (đã login) nhưng chưa có token trong RAM
     const silentRefresh = async () => {
       try {
-        // [SSR OPTIMIZATION] Nếu đã có initialUser từ Server, không cần gọi refresh ở client nữa
         if (initialUser || store.getState().auth.user) return;
-        
         if (store.getState().auth.accessToken) return;
+
         const { data } = await axios.post(
           '/api/v1/auth/refresh',
           {},
           {
             withCredentials: true,
-            headers: {
-              'Content-Type': 'application/json',
-              'ngrok-skip-browser-warning': '69420',
-            },
+            headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': '69420' },
           }
         );
 
-        const accessToken: string = data?.data?.accessToken ?? data?.accessToken;
+        const accessToken = data?.data?.accessToken ?? data?.accessToken;
         const user = data?.data?.user ?? data?.user;
 
         if (accessToken) {
-          // Lưu token vào Redux RAM, user vào Zustand (localStorage)
           dispatch(setCredentials({ user, accessToken }));
           if (user) setUser(user);
         }
       } catch {
-        // Không có refreshToken hợp lệ — user chưa đăng nhập, không cần thông báo
         dispatch(clearCredentials());
         clearUser();
-        // Xóa cookie cục bộ cho chắc chắn
-        axios.post('/api/auth/logout');
+        // Không gọi logout API ở đây để tránh loop
       }
     };
 
     silentRefresh();
-  }, [_hasHydrated, dispatch, setUser, clearUser]);
+  }, [_hasHydrated, isAuthPage, initialUser, dispatch, setUser, clearUser]);
 
-  // Xử lý sync auth data từ Admin (khi admin login redirect sang client)
+  // Xử lý sync auth data và logout tập trung
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const authDataParam = params.get('auth');
@@ -96,11 +90,12 @@ export function CustomerLayout({ children, initialUser }: CustomerLayoutProps) {
       dispatch(clearCredentials());
       clearUser();
       toast.success('Đã đăng xuất khỏi hệ thống');
-      window.history.replaceState({}, document.title, window.location.pathname);
+      // Xóa tham số logout trên URL để tránh loop khi F5
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
     }
   }, [dispatch, setUser, clearUser]);
 
-  const isAuthPage = pathname === "/login" || pathname === "/register";
 
   if (isAuthPage) {
     return <div className="h-screen overflow-hidden bg-[#fdfaf5]">{children}</div>;

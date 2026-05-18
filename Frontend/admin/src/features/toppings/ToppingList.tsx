@@ -1,183 +1,74 @@
-import React, { useState } from 'react';
-import { Card, Table, Button, Input, Space, Tag } from 'antd';
-import { message, modal } from '@/lib/antd';
-import { 
-  PlusOutlined, 
-  SearchOutlined, 
-  EditOutlined, 
-  DeleteOutlined 
-} from '@ant-design/icons';
+import React from 'react';
+import { Tag } from 'antd';
 import { ToppingModal } from './components/ToppingModal';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toppingService, type Topping } from '../../services/toppingService';
+import { BaseManagement } from '../common/BaseManagement';
 
 const ToppingList: React.FC = () => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingTopping, setEditingTopping] = useState<Topping | null>(null);
-  const queryClient = useQueryClient();
-
-  const { data: toppings, isLoading } = useQuery({
-    queryKey: ['toppings'],
-    queryFn: toppingService.getAllToppings,
-  });
-
-  const createMutation = useMutation({
-    mutationFn: toppingService.createTopping,
-    onSuccess: () => {
-      message.success('Thêm topping thành công!');
-      queryClient.invalidateQueries({ queryKey: ['toppings'] });
-      setIsModalOpen(false);
-    },
-    onError: (error: any) => {
-      message.error(error?.response?.data?.message || 'Có lỗi xảy ra!');
-    }
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string, data: Partial<Topping> }) => toppingService.updateTopping(id, data),
-    onSuccess: () => {
-      message.success('Cập nhật topping thành công!');
-      queryClient.invalidateQueries({ queryKey: ['toppings'] });
-      setIsModalOpen(false);
-    },
-    onError: (error: any) => {
-      message.error(error?.response?.data?.message || 'Có lỗi xảy ra!');
-    }
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: toppingService.deleteTopping,
-    onSuccess: () => {
-      message.success('Xóa topping thành công!');
-      queryClient.invalidateQueries({ queryKey: ['toppings'] });
-    },
-    onError: (error: any) => {
-      message.error(error?.response?.data?.message || 'Có lỗi xảy ra!');
-    }
-  });
-
-  const handleOpenModal = (record?: Topping) => {
-    setEditingTopping(record || null);
-    setIsModalOpen(true);
-  };
-
-  const handleSave = (values: any) => {
-    if (editingTopping) {
-      updateMutation.mutate({ id: editingTopping.id, data: values });
-    } else {
-      createMutation.mutate(values);
-    }
-  };
-
-  const handleDelete = (id: string) => {
-    modal.confirm({
-      title: 'Bạn có chắc chắn muốn xóa topping này?',
-      content: 'Hành động này không thể hoàn tác.',
-      okText: 'Xóa',
-      okType: 'danger',
-      cancelText: 'Hủy',
-      onOk: () => {
-        deleteMutation.mutate(id);
-      }
-    });
-  };
-
   const columns = [
     {
-      title: 'TÊN TOPPING',
+      title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">TÊN TOPPING</span>,
       dataIndex: 'name',
       key: 'name',
-      render: (text: string) => <span className="font-bold text-gray-800 uppercase">{text}</span>
+      render: (text: string, record: Topping) => (
+        <span className={`font-bold uppercase ${(record as any).isDeleted ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
+          {text}
+          {(record as any).isDeleted && <Tag color="error" className="ml-2 text-[9px] border-none uppercase">Đã xóa</Tag>}
+        </span>
+      )
     },
     {
-      title: 'GIÁ (VNĐ)',
+      title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">GIÁ (VNĐ)</span>,
       dataIndex: 'price',
       key: 'price',
-      render: (price: number) => (
-        <span className="font-bold text-[#d37533]">
+      render: (price: number, record: Topping) => (
+        <span className={`font-bold ${(record as any).isDeleted ? 'text-gray-300' : 'text-[#d37533]'}`}>
           {price.toLocaleString('vi-VN')}₫
         </span>
       )
     },
     {
-      title: 'TRẠNG THÁI',
+      title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">TRẠNG THÁI</span>,
       dataIndex: 'isAvailable',
       key: 'isAvailable',
-      render: (available: boolean) => (
-        <Tag color={available ? 'green' : 'red'} className="rounded-full px-3 font-bold">
-          {available ? 'CÓ SẴN' : 'HẾT HÀNG'}
-        </Tag>
-      )
-    },
-    {
-      title: 'HÀNH ĐỘNG',
-      key: 'action',
-      align: 'right' as const,
-      render: (_: any, record: Topping) => (
-        <Space size="middle">
-          <Button 
-            type="text" 
-            icon={<EditOutlined className="text-[#d37533]" />} 
-            onClick={() => handleOpenModal(record)} 
-          />
-          <Button 
-            type="text" 
-            danger 
-            icon={<DeleteOutlined />} 
-            onClick={() => handleDelete(record.id)}
-            loading={deleteMutation.isPending && deleteMutation.variables === record.id}
-          />
-        </Space>
-      )
+      render: (available: boolean, record: Topping) => {
+        const isDeleted = (record as any).isDeleted;
+        if (isDeleted) return <Tag color="default" className="rounded-full px-3 font-bold opacity-50">KHÔNG KHẢ DỤNG</Tag>;
+        return (
+          <Tag color={available ? 'green' : 'red'} className="rounded-full px-3 font-bold">
+            {available ? 'CÓ SẴN' : 'HẾT HÀNG'}
+          </Tag>
+        );
+      }
     }
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-        <div>
-          <h2 className="text-3xl font-black text-gray-800 uppercase tracking-tight">Quản Lý Toppings</h2>
-          <p className="text-gray-500 font-medium mt-1">Quản lý các loại topping đi kèm đồ uống</p>
-        </div>
-        <Button
-          type="primary"
-          size="large"
-          icon={<PlusOutlined />}
-          className="bg-gray-800 hover:bg-black rounded-xl font-bold px-6 shadow-md"
-          onClick={() => handleOpenModal()}
-        >
-          Thêm topping mới
-        </Button>
-      </div>
-
-      <Card className="rounded-[32px] shadow-sm border border-gray-100 p-2" styles={{ body: { padding: '24px' } }}>
-        <div className="mb-6 flex gap-4 max-w-md">
-          <Input
-            size="large"
-            placeholder="Tìm kiếm topping..."
-            prefix={<SearchOutlined className="text-gray-400" />}
-            className="rounded-xl bg-gray-50 border-transparent hover:border-gray-200 focus:border-primary focus:bg-white transition-all"
-          />
-        </div>
-
-        <Table
-          columns={columns}
-          dataSource={toppings}
-          rowKey="id"
-          loading={isLoading}
-          pagination={{ pageSize: 10 }}
-          className="custom-admin-table"
-        />
-      </Card>
-
-      <ToppingModal
-        isOpen={isModalOpen}
-        editingTopping={editingTopping}
-        isLoading={createMutation.isPending || updateMutation.isPending}
-        onClose={() => setIsModalOpen(false)}
-        onSave={handleSave}
-      />
-    </div>
+    <BaseManagement<Topping>
+      title="Quản Lý Toppings"
+      description="Quản lý các loại topping đi kèm đồ uống"
+      addButtonText="Thêm topping mới"
+      entityName="Topping"
+      queryKey="toppings"
+      service={{
+        getAll: toppingService.getAllToppings,
+        getById: toppingService.getToppingById,
+        create: toppingService.createTopping,
+        update: toppingService.updateTopping,
+        delete: toppingService.deleteTopping,
+        restore: toppingService.restoreTopping
+      }}
+      columns={columns}
+      ModalComponent={ToppingModal}
+      formatSaveValues={(values) => ({
+        ...values,
+        price: Number(values.price),
+        displayOrder: Number(values.displayOrder || 0),
+      })}
+      extraFilters={{
+        showDeletedFilter: true
+      }}
+    />
   );
 };
 

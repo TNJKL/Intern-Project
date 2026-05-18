@@ -36,13 +36,17 @@ export const useAuthStore = create<AuthState>()(
       fetchUser: async () => {
         try {
           const response = await userService.getProfile();
-          // Backend trả về data.data hoặc data tùy cấu hình
           const userData = response.data || response;
           set({ user: userData, isAuthenticated: true });
-        } catch (error) {
+        } catch (error: any) {
           console.error('Failed to fetch user profile:', error);
-          // Nếu lỗi 401/403 thì Interceptor sẽ xử lý refresh, 
-          // nhưng nếu vẫn lỗi thì có thể cần logout ở đây.
+          
+          // Chỉ logout nếu lỗi là 401 (Hết hạn) hoặc 403 (Không có quyền)
+          const status = error.response?.status;
+          if (status === 401 || status === 403) {
+            Cookies.remove('adminAccessToken', { path: '/' });
+            set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
+          }
         }
       },
     }),

@@ -23,7 +23,7 @@ export function FloatingNav() {
     { id: "home", icon: Home, label: "Trang chủ", href: "/" },
     { id: "menu", icon: Coffee, label: "Thực đơn", href: "/menu" },
     { id: "orders", icon: Package, label: "Đơn hàng", href: "/orders" },
-    { id: "promo", icon: Tag, label: "Ưu đãi", href: "#" },
+    { id: "promo", icon: Tag, label: "Ưu đãi", href: "/offers" },
     {
       id: "account",
       icon: User,
