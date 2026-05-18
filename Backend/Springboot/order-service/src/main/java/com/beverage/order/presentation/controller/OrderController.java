@@ -4,13 +4,18 @@ import com.beverage.order.application.dto.request.CreateOrderRequest;
 import com.beverage.order.application.dto.request.UpdateOrderStatusRequest;
 import com.beverage.order.application.dto.response.OrderDetailResponse;
 import com.beverage.order.application.dto.response.OrderSummaryResponse;
+import com.beverage.order.application.service.IdempotencyService;
 import com.beverage.order.application.usecase.OrderUseCase;
 import com.beverage.order.common.ApiResponse;
 import com.beverage.order.domain.model.OrderStatus;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -19,26 +24,66 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/orders")
 @RequiredArgsConstructor
 @Tag(name = "Orders", description = "Đơn hàng của khách")
+@Slf4j
 public class OrderController {
 
     private final OrderUseCase orderUseCase;
+    private final IdempotencyService idempotencyService;
+    private final ObjectMapper objectMapper;
 
     @PostMapping
-    @Operation(summary = "Tạo đơn hàng mới")
-    public ResponseEntity<ApiResponse<OrderDetailResponse>> create(@Valid @RequestBody CreateOrderRequest request) {
+    @Operation(
+            summary = "Tạo đơn hàng mới",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<ApiResponse<OrderDetailResponse>> create(
+            @Valid @RequestBody CreateOrderRequest request,
+            @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKey
+    ) {
+        String endpoint = "/api/v1/orders";
+
+        Optional<IdempotencyService.IdempotencyEntry> cached =
+                idempotencyService.check(idempotencyKey, endpoint);
+
+        if (cached.isPresent()) {
+            IdempotencyService.IdempotencyEntry entry = cached.get();
+            try {
+                OrderDetailResponse previousResponse = objectMapper.readValue(
+                        entry.responseBody(), OrderDetailResponse.class);
+                log.info("Returning cached response for idempotency key '{}'", idempotencyKey);
+                return ResponseEntity.status(entry.statusCode())
+                        .body(ApiResponse.success(previousResponse, "Đơn hàng đã được tạo (idempotent response)"));
+            } catch (JsonProcessingException e) {
+                log.warn("Failed to deserialize cached response for key '{}': {}", idempotencyKey, e.getMessage());
+            }
+        }
+
         OrderDetailResponse created = orderUseCase.createOrder(request);
+
+        try {
+            String responseJson = objectMapper.writeValueAsString(created);
+            int statusCode = HttpStatus.CREATED.value();
+            idempotencyService.save(idempotencyKey, endpoint, null, responseJson, statusCode);
+        } catch (JsonProcessingException e) {
+            log.warn("Failed to serialize order response for idempotency key '{}': {}", idempotencyKey, e.getMessage());
+        }
+
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(created, "Tạo đơn hàng thành công"));
     }
 
     @GetMapping
-    @Operation(summary = "Lịch sử đơn của tôi")
+    @Operation(
+            summary = "Lịch sử đơn của tôi",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
     public ResponseEntity<ApiResponse<List<OrderSummaryResponse>>> listMine(
             @RequestParam(required = false) OrderStatus status,
             @PageableDefault(size = 20, sort = "createdAt") Pageable pageable
@@ -48,13 +93,19 @@ public class OrderController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Chi tiết đơn hàng")
+    @Operation(
+            summary = "Chi tiết đơn hàng",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
     public ResponseEntity<ApiResponse<OrderDetailResponse>> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(orderUseCase.getOrderDetail(id), "Lấy chi tiết đơn thành công"));
     }
 
     @PatchMapping("/{id}/status")
-    @Operation(summary = "ADMIN - Cập nhật trạng thái đơn")
+    @Operation(
+            summary = "ADMIN - Cập nhật trạng thái đơn",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
     public ResponseEntity<ApiResponse<OrderDetailResponse>> updateStatus(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateOrderStatusRequest request
@@ -66,7 +117,10 @@ public class OrderController {
     }
 
     @PostMapping("/{id}/cancel")
-    @Operation(summary = "Hủy đơn (chỉ PENDING)")
+    @Operation(
+            summary = "Hủy đơn (chỉ PENDING)",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
     public ResponseEntity<ApiResponse<OrderDetailResponse>> cancel(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(orderUseCase.cancelOrder(id), "Hủy đơn thành công"));
     }

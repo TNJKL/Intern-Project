@@ -33,7 +33,8 @@ public class SecurityConfig {
                                 "/order/swagger-ui.html",
                                 "/order/v3/api-docs",
                                 "/order/v3/api-docs/**",
-                                "/actuator/**"
+                                "/actuator/**",
+                                "/api/v1/vouchers/validate/**"
                         ).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/orders").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/orders", "/api/v1/orders/**").authenticated()

@@ -22,6 +22,8 @@ public class OrderDetailResponse {
     private BigDecimal subtotal;
     private BigDecimal discountAmount;
     private BigDecimal totalAmount;
+    private UUID voucherId;
+    private String voucherCode;
     private String deliveryAddress;
     private String paymentMethod;
     private String note;

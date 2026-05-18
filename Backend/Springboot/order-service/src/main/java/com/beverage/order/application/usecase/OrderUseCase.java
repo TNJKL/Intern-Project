@@ -5,7 +5,9 @@ import com.beverage.order.application.dto.request.UpdateOrderStatusRequest;
 import com.beverage.order.application.dto.response.OrderDetailResponse;
 import com.beverage.order.application.dto.response.OrderSummaryResponse;
 import com.beverage.order.application.mapper.OrderDtoMapper;
+import com.beverage.order.application.service.IdempotencyService;
 import com.beverage.order.application.service.OrderPricingService;
+import com.beverage.order.application.service.VoucherService;
 import com.beverage.order.domain.exception.ConflictException;
 import com.beverage.order.domain.exception.ForbiddenException;
 import com.beverage.order.domain.exception.ResourceNotFoundException;
@@ -21,6 +23,7 @@ import com.beverage.order.infrastructure.security.OrderActorResolver;
 import com.beverage.shared.jwt.JwtUserPrincipal;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -35,6 +38,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OrderUseCase {
 
     private final OrderJpaRepository orderJpaRepository;
@@ -44,6 +48,7 @@ public class OrderUseCase {
     private final OrderActorResolver orderActorResolver;
     private final OrderDetailCacheService orderDetailCacheService;
     private final EntityManager entityManager;
+    private final VoucherService voucherService;
 
     @Transactional
     public OrderDetailResponse createOrder(CreateOrderRequest request) {
@@ -58,6 +63,23 @@ public class OrderUseCase {
                 .map(OrderItemEntity::getSubtotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        BigDecimal discountAmount = BigDecimal.ZERO;
+        java.util.UUID voucherId = null;
+
+        if (request.getVoucherCode() != null && !request.getVoucherCode().isBlank()) {
+            var voucherValidation = voucherService.validateAndApplyVoucher(request.getVoucherCode(), subtotal);
+            discountAmount = voucherValidation.getDiscountAmount();
+            try {
+                var voucher = voucherService.getVoucherByCode(request.getVoucherCode().trim().toUpperCase());
+                voucherId = voucher.getId();
+            } catch (Exception ignored) {}
+        }
+
+        BigDecimal totalAmount = subtotal.subtract(discountAmount);
+        if (totalAmount.compareTo(BigDecimal.ZERO) < 0) {
+            totalAmount = BigDecimal.ZERO;
+        }
+
         OrderEntity order = OrderEntity.builder()
                 .orderCode("")
                 .userId(actor.getUserId())
@@ -66,8 +88,9 @@ public class OrderUseCase {
                 .userPhone(request.getUserPhone())
                 .status(OrderStatus.PENDING)
                 .subtotal(subtotal)
-                .discountAmount(BigDecimal.ZERO)
-                .totalAmount(subtotal)
+                .discountAmount(discountAmount)
+                .totalAmount(totalAmount)
+                .voucherId(voucherId)
                 .deliveryAddress(request.getDeliveryAddress())
                 .paymentMethod(request.getPaymentMethod())
                 .note(request.getNote())
@@ -80,6 +103,14 @@ public class OrderUseCase {
 
         OrderEntity saved = orderJpaRepository.saveAndFlush(order);
         entityManager.refresh(saved);
+
+        if (voucherId != null && request.getVoucherCode() != null) {
+            try {
+                voucherService.incrementUsage(request.getVoucherCode().trim().toUpperCase());
+            } catch (Exception e) {
+                log.warn("Failed to increment voucher usage for code '{}': {}", request.getVoucherCode(), e.getMessage());
+            }
+        }
 
         appendStatusHistory(saved.getId(), OrderStatus.PENDING, "Đơn hàng được tạo");
 

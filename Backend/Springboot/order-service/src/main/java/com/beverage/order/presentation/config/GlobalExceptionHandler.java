@@ -4,6 +4,7 @@ import com.beverage.order.common.ApiResponse;
 import com.beverage.order.domain.exception.BusinessException;
 import com.beverage.order.domain.exception.ConflictException;
 import com.beverage.order.domain.exception.ForbiddenException;
+import com.beverage.order.domain.exception.IdempotencyException;
 import com.beverage.order.domain.exception.ResourceNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -51,6 +52,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusiness(BusinessException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(IdempotencyException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIdempotency(IdempotencyException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error(ex.getMessage()));
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

@@ -60,6 +60,16 @@ spring:
           predicates:
             - Path=/api/v1/admin/orders,/api/v1/admin/orders/**
 
+        # Voucher service (order-service)
+        - id: order-service-vouchers-public
+          uri: ${ORDER_SERVICE_URI:http://order-service:8083}
+          predicates:
+            - Path=/api/v1/vouchers,/api/v1/vouchers/**
+        - id: order-service-vouchers-admin
+          uri: ${ORDER_SERVICE_URI:http://order-service:8083}
+          predicates:
+            - Path=/api/v1/admin/vouchers,/api/v1/admin/vouchers/**
+
 eureka:
   client:
     service-url:

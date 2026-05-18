@@ -35,6 +35,8 @@ app:
     read-timeout-ms: 5000
   order-cache:
     detail-ttl-seconds: 60
+  idempotency:
+    ttl-hours: 24
 
 server:
   port: 8083

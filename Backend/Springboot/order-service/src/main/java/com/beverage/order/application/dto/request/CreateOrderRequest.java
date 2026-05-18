@@ -23,4 +23,6 @@ public class CreateOrderRequest {
     @NotEmpty
     @Valid
     private List<OrderLineRequest> items = new ArrayList<>();
+
+    private String voucherCode;
 }
