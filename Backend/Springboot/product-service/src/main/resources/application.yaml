@@ -53,14 +53,14 @@ app:
         exact-match: true
         methods:
           - GET
-        max-requests: 45
+        max-requests: 20
         window-seconds: 60
       - name: products-reorder
         pattern: /api/v1/products/reorder
         exact-match: true
         methods:
           - PATCH
-        max-requests: 120
+        max-requests: 20
         window-seconds: 60
       - name: products-by-slug
         pattern: /api/v1/products/by-slug/**

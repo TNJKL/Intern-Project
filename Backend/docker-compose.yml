@@ -8,6 +8,10 @@ services:
     container_name: beverage_eureka
     ports:
       - "8761:8761"
+    environment:
+      - JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=65.0 -XX:+ExitOnOutOfMemoryError
+    mem_limit: 256m
+    cpus: "0.50"
     restart: always
     networks:
       - beverage_net
@@ -24,18 +28,26 @@ services:
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       # SWITCH POINT:
-      # - Docker auth-service  -> http://auth-service:8081
+      # - Docker auth-service  -> http://auth-service:8081 (cùng network beverage_net)
       # - Local auth-service   -> http://host.docker.internal:8081
-      #- AUTH_SERVICE_URI=http://auth-service:8081
-      - AUTH_SERVICE_URI=http://host.docker.internal:8081
+      - AUTH_SERVICE_URI=http://auth-service:8081
+      #- AUTH_SERVICE_URI=http://host.docker.internal:8081
       # SWITCH POINT:
-      # - Docker product-service -> http://product-service:8082
+      # - Docker product-service -> http://product-service:8082 (cùng network beverage_net)
       # - Local product-service  -> http://host.docker.internal:8082
-      - PRODUCT_SERVICE_URI=http://host.docker.internal:8082
+      - PRODUCT_SERVICE_URI=http://product-service:8082
+      # - ORDER_SERVICE_URI=http://order-service:8083  # Docker (khi order-service trong docker)
+      - ORDER_SERVICE_URI=http://host.docker.internal:8083  # Local dev
+      - JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=65.0 -XX:+ExitOnOutOfMemoryError
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    mem_limit: 288m
+    cpus: "0.50"
     depends_on:
       - eureka-server
+      - auth-service
+      - product-service
+      # - order-service  # Đang dev local, chạy riêng
     restart: always
     networks:
       - beverage_net
@@ -58,7 +70,15 @@ services:
     volumes:
       - ./db-scripts/01-init-databases.sql:/docker-entrypoint-initdb.d/01-init-databases.sql
       - postgres_common_data:/var/lib/postgresql/data
-    command: sh -c "echo 'host all all 0.0.0.0/0 scram-sha-256' >> /var/lib/postgresql/data/pg_hba.conf && docker-entrypoint.sh postgres"
+    command: >-
+      sh -c "echo 'host all all 0.0.0.0/0 scram-sha-256' >> /var/lib/postgresql/data/pg_hba.conf
+      && exec docker-entrypoint.sh postgres
+      -c shared_buffers=32MB
+      -c work_mem=4MB
+      -c maintenance_work_mem=32MB
+      -c max_connections=80"
+    mem_limit: 192m
+    cpus: "0.50"
     restart: always
     networks:
       - beverage_net
@@ -85,6 +105,9 @@ services:
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
       - JWT_ACCESS_TOKEN_EXPIRATION=${JWT_ACCESS_TOKEN_EXPIRATION}
       - JWT_REFRESH_TOKEN_EXPIRATION=${JWT_REFRESH_TOKEN_EXPIRATION}
+      - JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=65.0 -XX:+ExitOnOutOfMemoryError
+    mem_limit: 448m
+    cpus: "0.75"
     depends_on:
       - eureka-server
       - postgres-common
@@ -96,39 +119,50 @@ services:
   # ============================================================
   # PRODUCT SERVICE
   # ============================================================
-  # product-service:
-  #   build:
-  #     context: ./Springboot
-  #     dockerfile: product-service/Dockerfile
-  #   container_name: beverage_product_service
-  #   ports:
-  #     - "8082:8082"
-  #   environment:
-  #     - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
-  #     - POSTGRES_HOST=postgres-common
-  #     - POSTGRES_PORT=5432
-  #     - POSTGRES_DB=product_db
-  #     - POSTGRES_USER=${POSTGRES_USER}
-  #     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-  #     - REDIS_HOST=redis
-  #     - REDIS_PORT=6379
-  #     - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-  #     - JWT_ACCESS_TOKEN_EXPIRATION=${JWT_ACCESS_TOKEN_EXPIRATION}
-  #     - JWT_REFRESH_TOKEN_EXPIRATION=${JWT_REFRESH_TOKEN_EXPIRATION}
-  #   depends_on:
-  #     - eureka-server
-  #     - postgres-common
-  #     - redis
-  #   restart: always
-  #   networks:
-  #     - beverage_net
+  product-service:
+    build:
+      context: ./Springboot
+      dockerfile: product-service/Dockerfile
+    container_name: beverage_product_service
+    ports:
+      - "8082:8082"
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - POSTGRES_HOST=postgres-common
+      - POSTGRES_DB=product_db
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_ACCESS_TOKEN_EXPIRATION=${JWT_ACCESS_TOKEN_EXPIRATION}
+      - JWT_REFRESH_TOKEN_EXPIRATION=${JWT_REFRESH_TOKEN_EXPIRATION}
+      - BEVERAGE_STORAGE_S3_ENABLED=${BEVERAGE_STORAGE_S3_ENABLED:-true}
+      - AWS_S3_BUCKET=${AWS_S3_BUCKET:-}
+      - AWS_REGION=${AWS_REGION:-ap-southeast-1}
+      - AWS_S3_KEY_PREFIX=${AWS_S3_KEY_PREFIX:-beverage/dev}
+      - AWS_S3_PUBLIC_BASE_URL=${AWS_S3_PUBLIC_BASE_URL:-}
+      # Credential S3 — đặt trong Backend/.env (Compose tự substitute ${...} khi chạy từ thư mục Backend)
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=65.0 -XX:+ExitOnOutOfMemoryError
+    mem_limit: 560m
+    cpus: "0.75"
+    depends_on:
+      - eureka-server
+      - postgres-common
+      - redis
+    restart: always
+    networks:
+      - beverage_net
 
   # # ============================================================
-  # # ORDER SERVICE
+  # # ORDER SERVICE (Đang dev local, chạy riêng bằng IDE)
   # # ============================================================
   # order-service:
   #   build:
-  #     context: ./Springboot/order-service
+  #     context: ./Springboot
+  #     dockerfile: order-service/Dockerfile
   #   container_name: beverage_order_service
   #   ports:
   #     - "8083:8083"
@@ -139,10 +173,20 @@ services:
   #     - POSTGRES_DB=order_db
   #     - POSTGRES_USER=${POSTGRES_USER}
   #     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
+  #     - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+  #     - JWT_ACCESS_TOKEN_EXPIRATION=${JWT_ACCESS_TOKEN_EXPIRATION}
+  #     - JWT_REFRESH_TOKEN_EXPIRATION=${JWT_REFRESH_TOKEN_EXPIRATION}
   #     - PRODUCT_SERVICE_URL=http://product-service:8082
+  #     - JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=65.0 -XX:+ExitOnOutOfMemoryError
+  #   mem_limit: 512m
+  #   cpus: "0.75"
   #   depends_on:
   #     - eureka-server
   #     - postgres-common
+  #     - redis
+  #     - product-service
   #   restart: always
   #   networks:
   #     - beverage_net
@@ -242,6 +286,9 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - JWT_SECRET=${JWT_SECRET}
+      - NODE_OPTIONS=--max-old-space-size=64
+    mem_limit: 96m
+    cpus: "0.25"
     depends_on:
       - redis
       - kafka
@@ -261,6 +308,8 @@ services:
       - ../nginx/nginx.conf:/etc/nginx/nginx.conf
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    mem_limit: 32m
+    cpus: "0.25"
     restart: always
     networks:
       - beverage_net
@@ -273,8 +322,11 @@ services:
     container_name: beverage_redis
     ports:
       - "6379:6379" # 6380 là port để kết nối từ client lưu ý do máy vừa có redis local nên không dùng port 6379  
+    command: redis-server --maxmemory 32mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
+    mem_limit: 48m
+    cpus: "0.25"
     restart: always
     networks:
       - beverage_net
@@ -299,8 +351,11 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_CLUSTER_ID: 5L6g3nShT-eMCtK--X86sw
+      KAFKA_HEAP_OPTS: "-Xmx192m -Xms96m"
     volumes:
       - kafka_data:/var/lib/kafka/data
+    mem_limit: 320m
+    cpus: "0.50"
     restart: always
     networks:
       - beverage_net
