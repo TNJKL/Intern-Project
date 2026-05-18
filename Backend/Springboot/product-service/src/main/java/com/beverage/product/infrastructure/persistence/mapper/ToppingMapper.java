@@ -1,0 +1,40 @@
+package com.beverage.product.infrastructure.persistence.mapper;
+
+import com.beverage.product.domain.entity.Topping;
+import com.beverage.product.infrastructure.persistence.entity.ToppingEntity;
+import org.springframework.stereotype.Component;
+
+@Component
+public class ToppingMapper {
+
+    public ToppingEntity toEntity(Topping topping) {
+        if (topping == null) return null;
+        return ToppingEntity.builder()
+                .id(topping.getId())
+                .name(topping.getName())
+                .imageUrl(topping.getImageUrl())
+                .price(topping.getPrice())
+                .isAvailable(topping.getIsAvailable())
+                .displayOrder(topping.getDisplayOrder())
+                .createdAt(topping.getCreatedAt())
+                .updatedAt(topping.getUpdatedAt())
+                .deletedAt(topping.getDeletedAt())
+                .build();
+    }
+
+    public Topping toDomain(ToppingEntity entity) {
+        if (entity == null) return null;
+        return Topping.builder()
+                .id(entity.getId())
+                .name(entity.getName())
+                .imageUrl(entity.getImageUrl())
+                .price(entity.getPrice())
+                .isAvailable(entity.getIsAvailable())
+                .displayOrder(entity.getDisplayOrder())
+                .createdAt(entity.getCreatedAt())
+                .updatedAt(entity.getUpdatedAt())
+                .deletedAt(entity.getDeletedAt())
+                .build();
+    }
+}
+

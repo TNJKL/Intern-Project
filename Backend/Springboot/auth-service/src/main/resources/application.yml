@@ -1,21 +1,91 @@
+#Do nhiều service quá em sợ bị lẫn lộn với lại đây là project thực tập 
+#Nên cho phép em tạm push các biến môi trường lên luôn nha anh 
+#Khi nào gần xong hết em sẽ trau chuốt sửa lại rồi bỏ vô .env 
+
 server:
   port: 8081
+  # Hai JWT trong Cookie header có thể dài; tránh Tomcat cắt header → mất refresh/access.
+  max-http-request-header-size: 16384
 
 spring:
   application:
     name: auth-service
+  # Đọc .env khi chạy local / IDE (working directory = auth-service)
+  config:
+    import: optional:file:.env[.properties],optional:file:./.env[.properties],optional:file:../auth-service/.env[.properties],optional:file:./Backend/Springboot/auth-service/.env[.properties]
+
   datasource:
-    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:5432/${POSTGRES_DB:beverage_auth_db}
-    username: ${POSTGRES_USER:admin}
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:5432/${POSTGRES_DB:auth_db}
+    username: ${POSTGRES_USER:postgres}
     password: ${POSTGRES_PASSWORD:kakarot1996}
+    driver-class-name: org.postgresql.Driver
+
   jpa:
     hibernate:
       ddl-auto: update
+    show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 5000ms
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
 
 eureka:
   client:
     service-url:
       defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+    enabled: true
+
+jwt:
+  secret-key: ${JWT_SECRET_KEY:dGhpc2lzYXZlcnlsb25nc2VjcmV0a2V5Zm9yand0dG9rZW5nZW5lcmF0aW9uYW5kZGVjcnlwdGlvbg==}
+  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:600000}   # 30 seconds #900000
+  refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:604800000} # #604800000
+
+# Cookie (HttpOnly). Path refresh=/api/v1/auth vẫn gửi cookie trên /api/v1/auth/refresh (prefix khớp RFC6265).
+# Nếu FE (vd localhost) gọi API ngrok bằng fetch credentials: cần SameSite=None + Secure (đặt env AUTH_*_SAME_SITE=None).
+auth:
+  access-cookie:
+    name: ${AUTH_ACCESS_COOKIE_NAME:accessToken}
+    path: ${AUTH_ACCESS_COOKIE_PATH:/}
+    secure: ${AUTH_ACCESS_COOKIE_SECURE:false}
+    same-site: ${AUTH_ACCESS_COOKIE_SAME_SITE:Lax}
+  refresh-cookie:
+    name: ${AUTH_REFRESH_COOKIE_NAME:refreshToken}
+    path: ${AUTH_REFRESH_COOKIE_PATH:/api/v1/auth}
+    # SWITCH POINT:
+    # - local http  : false
+    # - production https / ngrok https: true
+    secure: ${AUTH_REFRESH_COOKIE_SECURE:false}
+    same-site: ${AUTH_REFRESH_COOKIE_SAME_SITE:Lax}
+
+# CORS for FE with withCredentials=true
+app:
+  cors:
+    # comma-separated patterns
+    # Thêm http://<IP_LAN>:* khi FE chạy cùng máy qua IP (port khác :80 là cross-origin, cần pattern khớp)
+    allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:3000,http://localhost:5173,http://127.0.0.1:*,http://10.86.157.43:*,https://*.ngrok-free.app,https://*.ngrok-free.dev}
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    tags-sorter: alpha
+    operations-sorter: alpha
+
+logging:
+  level:
+    com.beverage.auth: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG
