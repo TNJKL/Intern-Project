@@ -142,6 +142,20 @@ public class OrderUseCase {
         return detail;
     }
 
+    @Transactional(readOnly = true)
+    public OrderDetailResponse getOrderDetailByCode(String orderCode) {
+        JwtUserPrincipal actor = orderActorResolver.requirePrincipal();
+
+        OrderEntity order = orderJpaRepository.findByOrderCode(orderCode)
+                .orElseThrow(() -> new ResourceNotFoundException("Đơn hàng", "orderCode", orderCode));
+
+        if (!orderActorResolver.isAdmin(actor) && !order.getUserId().equals(actor.getUserId())) {
+            throw new ForbiddenException("Bạn không có quyền xem đơn hàng này");
+        }
+
+        return loadDetail(order.getId(), actor);
+    }
+
     @Transactional
     public OrderDetailResponse updateStatus(UUID orderId, UpdateOrderStatusRequest request) {
         orderActorResolver.requirePrincipal();
@@ -198,6 +212,16 @@ public class OrderUseCase {
 
     private OrderDetailResponse loadDetail(UUID orderId, JwtUserPrincipal actor) {
         OrderEntity order = findAccessibleOrder(orderId, actor);
+        List<OrderStatusHistoryEntity> history =
+                statusHistoryJpaRepository.findByOrderIdOrderByCreatedAtAsc(orderId);
+        return orderDtoMapper.toDetail(order, history);
+    }
+
+    @Transactional(readOnly = true)
+    public OrderDetailResponse getOrderDetailForAdmin(UUID orderId) {
+        orderActorResolver.requirePrincipal();
+        OrderEntity order = orderJpaRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Đơn hàng", "id", orderId));
         List<OrderStatusHistoryEntity> history =
                 statusHistoryJpaRepository.findByOrderIdOrderByCreatedAtAsc(orderId);
         return orderDtoMapper.toDetail(order, history);

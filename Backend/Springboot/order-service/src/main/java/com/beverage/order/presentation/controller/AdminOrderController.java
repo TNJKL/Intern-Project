@@ -1,10 +1,12 @@
 package com.beverage.order.presentation.controller;
 
+import com.beverage.order.application.dto.response.OrderDetailResponse;
 import com.beverage.order.application.dto.response.OrderSummaryResponse;
 import com.beverage.order.application.usecase.OrderUseCase;
 import com.beverage.order.common.ApiResponse;
 import com.beverage.order.domain.model.OrderStatus;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -22,12 +24,16 @@ import java.util.UUID;
 @RequestMapping("/api/v1/admin/orders")
 @RequiredArgsConstructor
 @Tag(name = "Admin Orders", description = "Quản trị đơn hàng")
+@SecurityRequirement(name = "bearerAuth")
 public class AdminOrderController {
 
     private final OrderUseCase orderUseCase;
 
     @GetMapping
-    @Operation(summary = "ADMIN - Danh sách tất cả đơn, filter status/ngày/user")
+    @Operation(
+            summary = "ADMIN - Danh sách tất cả đơn, filter status/ngày/user",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
     public ResponseEntity<ApiResponse<List<OrderSummaryResponse>>> listAll(
             @RequestParam(required = false) OrderStatus status,
             @RequestParam(required = false) String orderCode,
@@ -40,5 +46,14 @@ public class AdminOrderController {
                 status, orderCode, userId, createdFrom, createdTo, pageable
         );
         return ResponseEntity.ok(ApiResponse.paged(page.getContent(), "Lấy danh sách đơn admin thành công", page));
+    }
+
+    @GetMapping("/{id}")
+    @Operation(
+            summary = "ADMIN - Chi tiết đơn hàng",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<ApiResponse<OrderDetailResponse>> getById(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success(orderUseCase.getOrderDetailForAdmin(id), "Lấy chi tiết đơn thành công"));
     }
 }

@@ -87,4 +87,25 @@ public class VoucherController {
         VoucherResponse voucher = voucherService.updateVoucher(id, request);
         return ResponseEntity.ok(ApiResponse.success(voucher, "Cập nhật voucher thành công"));
     }
+
+    @PatchMapping("/admin/vouchers/{id}/toggle")
+    @Operation(
+            summary = "ADMIN - Bật/Tắt voucher (toggle)",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<ApiResponse<VoucherResponse>> toggle(@PathVariable UUID id) {
+        VoucherResponse voucher = voucherService.toggleVoucher(id);
+        return ResponseEntity.ok(ApiResponse.success(voucher, "Toggle voucher thành công"));
+    }
+
+    @DeleteMapping("/admin/vouchers/{id}")
+    @Operation(
+            summary = "ADMIN - Xóa mềm voucher",
+            description = "Xóa mềm = set isActive = false",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
+        voucherService.deleteVoucher(id);
+        return ResponseEntity.ok(ApiResponse.success(null, "Xóa voucher thành công"));
+    }
 }
