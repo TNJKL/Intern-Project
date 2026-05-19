@@ -4,6 +4,7 @@ import com.beverage.order.application.dto.request.CreateOrderRequest;
 import com.beverage.order.application.dto.request.UpdateOrderStatusRequest;
 import com.beverage.order.application.dto.response.OrderDetailResponse;
 import com.beverage.order.application.dto.response.OrderSummaryResponse;
+import com.beverage.order.application.event.OrderApplicationEvent;
 import com.beverage.order.application.mapper.OrderDtoMapper;
 import com.beverage.order.application.service.IdempotencyService;
 import com.beverage.order.application.service.OrderPricingService;
@@ -24,6 +25,7 @@ import com.beverage.shared.jwt.JwtUserPrincipal;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -49,6 +51,7 @@ public class OrderUseCase {
     private final OrderDetailCacheService orderDetailCacheService;
     private final EntityManager entityManager;
     private final VoucherService voucherService;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Transactional
     public OrderDetailResponse createOrder(CreateOrderRequest request) {
@@ -114,6 +117,8 @@ public class OrderUseCase {
 
         appendStatusHistory(saved.getId(), OrderStatus.PENDING, "Đơn hàng được tạo");
 
+        applicationEventPublisher.publishEvent(new OrderApplicationEvent.OrderCreated(this, saved));
+
         OrderDetailResponse detail = loadDetail(saved.getId(), actor);
         orderDetailCacheService.put(saved.getId(), detail);
         return detail;
@@ -166,9 +171,18 @@ public class OrderUseCase {
             throw new ConflictException("Không thể cập nhật đơn đã hủy");
         }
 
+        OrderStatus previousStatus = order.getStatus();
+        if (previousStatus == request.getStatus()) {
+            orderDetailCacheService.evict(orderId);
+            return loadDetail(orderId, orderActorResolver.requirePrincipal());
+        }
+
         order.setStatus(request.getStatus());
         orderJpaRepository.save(order);
         appendStatusHistory(orderId, request.getStatus(), request.getNote());
+
+        applicationEventPublisher.publishEvent(new OrderApplicationEvent.OrderStatusChanged(
+                this, order, previousStatus, request.getStatus(), request.getNote()));
 
         orderDetailCacheService.evict(orderId);
         return loadDetail(orderId, orderActorResolver.requirePrincipal());
@@ -186,6 +200,8 @@ public class OrderUseCase {
         order.setStatus(OrderStatus.CANCELLED);
         orderJpaRepository.save(order);
         appendStatusHistory(orderId, OrderStatus.CANCELLED, "Khách hủy đơn");
+
+        applicationEventPublisher.publishEvent(new OrderApplicationEvent.OrderCancelled(this, order, "Khách hủy đơn"));
 
         orderDetailCacheService.evict(orderId);
         return loadDetail(orderId, actor);

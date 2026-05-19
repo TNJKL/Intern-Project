@@ -13,13 +13,13 @@ interface ProductListProps {
 }
 
 export function ProductList({ products = [], categories = [] }: ProductListProps) {
-  // Hiển thị tối đa 10 sản phẩm để chia hết cho hàng 5 cột
-  const displayProducts = products.filter(p => p.isAvailable).slice(0, 10);
+  // Hiển thị tối đa 10 sản phẩm nổi bật để chia hết cho hàng 5 cột
+  const displayProducts = products.filter(p => p.isAvailable && p.isFeatured).slice(0, 10);
 
   return (
     <section className="px-6 py-8 max-w-7xl mx-auto w-full">
       <div className="flex items-center justify-between mb-8">
-        <h2 className="text-2xl font-black text-coffee-dark uppercase tracking-tight">Sản Phẩm</h2>
+        <h2 className="text-2xl font-black text-coffee-dark uppercase tracking-tight">Sản Phẩm nổi bật</h2>
         <Link href="/menu" className="text-primary font-black text-[10px] uppercase tracking-widest hover:underline decoration-2 underline-offset-4 transition-all">Xem tất cả</Link>
       </div>
 

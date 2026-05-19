@@ -9,8 +9,8 @@ loadEnvConfig(path.join(projectDir, '..'));
 const nextConfig: NextConfig = {
   env: {
     // Ưu tiên biến từ file .env, nếu không có thì dùng IP mặc định
-    GLOBAL_BACKEND_IP: process.env.GLOBAL_BACKEND_IP || 'http://10.86.157.113',
-    NEXT_PUBLIC_GLOBAL_BACKEND_IP: process.env.NEXT_PUBLIC_GLOBAL_BACKEND_IP || 'http://10.86.157.113',
+    GLOBAL_BACKEND_IP: process.env.GLOBAL_BACKEND_IP || 'http://10.86.156.126',
+    NEXT_PUBLIC_GLOBAL_BACKEND_IP: process.env.NEXT_PUBLIC_GLOBAL_BACKEND_IP || 'http://10.86.156.126',
   },
   images: {
     unoptimized: true,

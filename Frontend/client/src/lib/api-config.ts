@@ -6,7 +6,7 @@
 
 export const API_CONFIG = {
   // Ưu tiên biến môi trường, nếu không có mới dùng fallback
-  BASE_URL: process.env.NEXT_PUBLIC_GLOBAL_BACKEND_IP || 'http://10.86.157.113',
+  BASE_URL: process.env.NEXT_PUBLIC_GLOBAL_BACKEND_IP || 'http://10.86.156.126',
 
   // Các endpoint dùng chung
   ENDPOINTS: {

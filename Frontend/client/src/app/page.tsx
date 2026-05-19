@@ -23,7 +23,7 @@ export default async function Home() {
   try {
     const [categoryRes, productRes] = await Promise.all([
       getServerApi('/api/v1/categories'),
-      getServerApi('/api/v1/products')
+      getServerApi('/api/v1/products?isFeatured=true')
     ]);
 
     if (categoryRes?.success) categories = categoryRes.data;
