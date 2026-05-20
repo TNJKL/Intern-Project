@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS orders (
     user_phone          VARCHAR(20),
     status              VARCHAR(30) NOT NULL DEFAULT 'PENDING'
                         CHECK (status IN (
-                            'PENDING', 'CONFIRMED', 'PREPARING', 'READY',
+                            'PENDING', 'CONFIRMED', 'PREPARING',
                             'DELIVERING', 'COMPLETED', 'CANCELLED'
                         )),
     subtotal            DECIMAL(12,0) NOT NULL,

@@ -194,14 +194,19 @@ public class OrderUseCase {
         OrderEntity order = orderJpaRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Đơn hàng", "id", orderId));
 
-        if (order.getStatus() == OrderStatus.CANCELLED) {
-            throw new ConflictException("Không thể cập nhật đơn đã hủy");
+        if (order.getStatus().isTerminal()) {
+            throw new ConflictException("Không thể cập nhật đơn đã ở trạng thái cuối");
         }
 
         OrderStatus previousStatus = order.getStatus();
         if (previousStatus == request.getStatus()) {
             orderDetailCacheService.evict(orderId);
             return loadDetail(orderId, orderActorResolver.requirePrincipal());
+        }
+
+        if (!previousStatus.canTransitionTo(request.getStatus())) {
+            throw new BadRequestException(
+                    "Không thể chuyển từ " + previousStatus + " sang " + request.getStatus());
         }
 
         order.setStatus(request.getStatus());
