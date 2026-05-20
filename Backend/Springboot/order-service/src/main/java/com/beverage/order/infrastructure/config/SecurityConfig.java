@@ -34,9 +34,10 @@ public class SecurityConfig {
                                 "/order/v3/api-docs",
                                 "/order/v3/api-docs/**",
                                 "/actuator/**",
-                                "/api/v1/vouchers/validate/**"
+                                "/api/v1/vouchers/validate/**",
+                                "/api/v1/orders/track"
                         ).permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/orders").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/orders").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/orders", "/api/v1/orders/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/orders/*/cancel").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/orders/*/status").hasRole("ADMIN")

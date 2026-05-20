@@ -26,7 +26,7 @@ public class OrderEntity {
     @Column(name = "order_code", nullable = false, unique = true, length = 30)
     private String orderCode;
 
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "user_id")
     private UUID userId;
 
     @Column(name = "user_email", nullable = false)

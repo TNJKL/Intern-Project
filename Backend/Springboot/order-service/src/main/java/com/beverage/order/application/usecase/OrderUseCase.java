@@ -12,6 +12,7 @@ import com.beverage.order.application.service.VoucherService;
 import com.beverage.order.domain.exception.ConflictException;
 import com.beverage.order.domain.exception.ForbiddenException;
 import com.beverage.order.domain.exception.ResourceNotFoundException;
+import com.beverage.order.domain.exception.BadRequestException;
 import com.beverage.order.domain.model.OrderStatus;
 import com.beverage.order.infrastructure.cache.OrderDetailCacheService;
 import com.beverage.order.infrastructure.persistence.entity.OrderEntity;
@@ -36,6 +37,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -55,7 +57,32 @@ public class OrderUseCase {
 
     @Transactional
     public OrderDetailResponse createOrder(CreateOrderRequest request) {
-        JwtUserPrincipal actor = orderActorResolver.requirePrincipal();
+        Optional<JwtUserPrincipal> actorOpt = orderActorResolver.getOptionalPrincipal();
+
+        UUID userId;
+        String userEmail;
+        String userName;
+
+        if (actorOpt.isPresent()) {
+            JwtUserPrincipal actor = actorOpt.get();
+            userId = actor.getUserId();
+            userEmail = actor.getEmail();
+            userName = actor.getFullName();
+        } else {
+            userId = null;
+            userEmail = request.getUserEmail();
+            userName = request.getUserName();
+
+            if (userEmail == null || userEmail.isBlank()) {
+                throw new BadRequestException("Email là bắt buộc khi đặt hàng không đăng nhập");
+            }
+            if (userName == null || userName.isBlank()) {
+                throw new BadRequestException("Họ tên là bắt buộc khi đặt hàng không đăng nhập");
+            }
+            if (request.getUserPhone() == null || request.getUserPhone().isBlank()) {
+                throw new BadRequestException("Số điện thoại là bắt buộc khi đặt hàng không đăng nhập");
+            }
+        }
 
         List<OrderItemEntity> lineItems = new ArrayList<>();
         for (var line : request.getItems()) {
@@ -85,9 +112,9 @@ public class OrderUseCase {
 
         OrderEntity order = OrderEntity.builder()
                 .orderCode("")
-                .userId(actor.getUserId())
-                .userEmail(actor.getEmail())
-                .userName(actor.getFullName())
+                .userId(userId)
+                .userEmail(userEmail)
+                .userName(userName)
                 .userPhone(request.getUserPhone())
                 .status(OrderStatus.PENDING)
                 .subtotal(subtotal)
@@ -119,7 +146,7 @@ public class OrderUseCase {
 
         applicationEventPublisher.publishEvent(new OrderApplicationEvent.OrderCreated(this, saved));
 
-        OrderDetailResponse detail = loadDetail(saved.getId(), actor);
+        OrderDetailResponse detail = loadDetailForGuest(saved.getId());
         orderDetailCacheService.put(saved.getId(), detail);
         return detail;
     }
@@ -228,6 +255,14 @@ public class OrderUseCase {
 
     private OrderDetailResponse loadDetail(UUID orderId, JwtUserPrincipal actor) {
         OrderEntity order = findAccessibleOrder(orderId, actor);
+        List<OrderStatusHistoryEntity> history =
+                statusHistoryJpaRepository.findByOrderIdOrderByCreatedAtAsc(orderId);
+        return orderDtoMapper.toDetail(order, history);
+    }
+
+    private OrderDetailResponse loadDetailForGuest(UUID orderId) {
+        OrderEntity order = orderJpaRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Đơn hàng", "id", orderId));
         List<OrderStatusHistoryEntity> history =
                 statusHistoryJpaRepository.findByOrderIdOrderByCreatedAtAsc(orderId);
         return orderDtoMapper.toDetail(order, history);
