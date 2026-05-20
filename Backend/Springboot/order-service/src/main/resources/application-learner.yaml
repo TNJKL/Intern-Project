@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: order-service-learner
+  config:
+    import: optional:file:.env[.properties],optional:file:./.env[.properties]
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+
+server:
+  port: 8085
+
+# Các topic cần tạo sẵn:
+#
+# kafka-topics --create --topic learn.kafka.basic --bootstrap-server localhost:9092 --partitions 3 --replication-factor 1
+# kafka-topics --create --topic learn.kafka.group --bootstrap-server localhost:9092 --partitions 4 --replication-factor 1
+# kafka-topics --create --topic learn.kafka.offset.earliest --bootstrap-server localhost:9092 --partitions 3 --replication-factor 1
+# kafka-topics --create --topic learn.kafka.offset.latest --bootstrap-server localhost:9092 --partitions 3 --replication-factor 1
+# kafka-topics --create --topic learn.kafka.multi-group --bootstrap-server localhost:9092 --partitions 3 --replication-factor 1
+# kafka-topics --create --topic learn.kafka.retry --bootstrap-server localhost:9092 --partitions 3 --replication-factor 1
+# kafka-topics --create --topic learn.kafka.retry.DLT --bootstrap-server localhost:9092 --partitions 3 --replication-factor 1
+# kafka-topics --create --topic learn.kafka.idempotent --bootstrap-server localhost:9092 --partitions 3 --replication-factor 1
+# kafka-topics --create --topic learn.kafka.deserialize --bootstrap-server localhost:9092 --partitions 3 --replication-factor 1
