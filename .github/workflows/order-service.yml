@@ -31,10 +31,20 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Build Order Service
-        working-directory: Backend/Springboot/order-service
-        run: mvn clean compile -DskipTests
+      # - name: Build Order Service
+      #   working-directory: Backend/Springboot/order-service
+      #   run: mvn clean compile -DskipTests
 
+      # - name: Test Order Service
+      #   working-directory: Backend/Springboot/order-service
+      #   run: mvn test
+
+      # Đứng ở thư mục chứa cả 2 module để build
+      - name: Build Order Service and Dependencies
+        working-directory: Backend/Springboot
+        run: mvn clean install -pl order-service --am -DskipTests
+
+      # Chạy test riêng cho order-service
       - name: Test Order Service
         working-directory: Backend/Springboot/order-service
         run: mvn test
