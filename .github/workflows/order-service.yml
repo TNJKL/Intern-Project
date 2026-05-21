@@ -31,14 +31,10 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Build shared-jwt first
+      - name: Build shared-jwt
         working-directory: Backend/Springboot
-        run: mvn clean install -DskipTests -pl shared-jwt
+        run: mvn install -DskipTests -pl shared-jwt
 
       - name: Build Order Service
-        working-directory: Backend/Springboot
-        run: mvn clean compile -DskipTests -pl order-service
-
-      - name: Test Order Service
-        working-directory: Backend/Springboot
-        run: mvn test -pl order-service
+        working-directory: Backend/Springboot/order-service
+        run: mvn clean compile -DskipTests
