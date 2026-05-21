@@ -97,7 +97,8 @@ public class OrderUseCase {
         java.util.UUID voucherId = null;
 
         if (request.getVoucherCode() != null && !request.getVoucherCode().isBlank()) {
-            var voucherValidation = voucherService.validateAndApplyVoucher(request.getVoucherCode(), subtotal);
+            var voucherValidation = voucherService.validateAndApplyVoucher(
+                    request.getVoucherCode(), subtotal, userId);
             discountAmount = voucherValidation.getDiscountAmount();
             try {
                 var voucher = voucherService.getVoucherByCode(request.getVoucherCode().trim().toUpperCase());

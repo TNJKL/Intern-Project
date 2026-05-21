@@ -6,6 +6,7 @@ import com.beverage.order.application.dto.response.VoucherResponse;
 import com.beverage.order.application.dto.response.VoucherValidationResponse;
 import com.beverage.order.domain.exception.BusinessException;
 import com.beverage.order.domain.exception.ResourceNotFoundException;
+import com.beverage.order.domain.model.CustomerTier;
 import com.beverage.order.infrastructure.persistence.entity.VoucherEntity;
 import com.beverage.order.infrastructure.persistence.repository.VoucherJpaRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,9 +25,15 @@ import java.time.Instant;
 public class VoucherService {
 
     private final VoucherJpaRepository voucherRepository;
+    private final CustomerTierService customerTierService;
 
     @Transactional(readOnly = true)
     public VoucherValidationResponse validateVoucher(String code, BigDecimal orderAmount) {
+        return validateVoucher(code, orderAmount, null);
+    }
+
+    @Transactional(readOnly = true)
+    public VoucherValidationResponse validateVoucher(String code, BigDecimal orderAmount, UUID userId) {
         if (code == null || code.isBlank()) {
             return VoucherValidationResponse.builder()
                     .valid(false)
@@ -86,6 +93,16 @@ public class VoucherService {
                     .build();
         }
 
+        CustomerTier userTier = customerTierService.getTier(userId);
+        String applicableTier = voucher.getApplicableTier();
+        if (!userTier.canUseVoucherTier(applicableTier)) {
+            return VoucherValidationResponse.builder()
+                    .valid(false)
+                    .code(code)
+                    .message("Voucher này chỉ dành cho khách hàng " + applicableTier + " trở lên. Hạng của bạn: " + userTier.name())
+                    .build();
+        }
+
         BigDecimal discount = BigDecimal.ZERO;
         if (orderAmount != null) {
             discount = voucher.calculateDiscount(orderAmount);
@@ -101,7 +118,12 @@ public class VoucherService {
 
     @Transactional(readOnly = true)
     public VoucherValidationResponse validateAndApplyVoucher(String code, BigDecimal subtotal) {
-        VoucherValidationResponse validation = validateVoucher(code, subtotal);
+        return validateAndApplyVoucher(code, subtotal, null);
+    }
+
+    @Transactional(readOnly = true)
+    public VoucherValidationResponse validateAndApplyVoucher(String code, BigDecimal subtotal, UUID userId) {
+        VoucherValidationResponse validation = validateVoucher(code, subtotal, userId);
 
         if (!validation.isValid()) {
             throw new BusinessException(validation.getMessage());
@@ -140,6 +162,7 @@ public class VoucherService {
                 .validFrom(request.getValidFrom() != null ? request.getValidFrom() : Instant.now())
                 .validUntil(request.getValidUntil())
                 .isActive(request.getIsActive() != null ? request.getIsActive() : true)
+                .applicableTier(request.getApplicableTier() != null ? request.getApplicableTier() : "ALL")
                 .build();
 
         VoucherEntity saved = voucherRepository.save(voucher);
@@ -161,6 +184,7 @@ public class VoucherService {
         if (request.getValidFrom() != null) voucher.setValidFrom(request.getValidFrom());
         if (request.getValidUntil() != null) voucher.setValidUntil(request.getValidUntil());
         if (request.getIsActive() != null) voucher.setIsActive(request.getIsActive());
+        if (request.getApplicableTier() != null) voucher.setApplicableTier(request.getApplicableTier());
 
         VoucherEntity saved = voucherRepository.save(voucher);
         log.info("Updated voucher: {} ({})", saved.getCode(), saved.getId());
@@ -228,6 +252,7 @@ public class VoucherService {
                 .validFrom(voucher.getValidFrom())
                 .validUntil(voucher.getValidUntil())
                 .isActive(voucher.getIsActive())
+                .applicableTier(voucher.getApplicableTier())
                 .createdAt(voucher.getCreatedAt())
                 .build();
     }
