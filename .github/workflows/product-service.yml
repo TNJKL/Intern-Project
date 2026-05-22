@@ -37,6 +37,10 @@ jobs:
         working-directory: Backend/Springboot
         run: mvn install -DskipTests -pl shared-jwt
 
+      - name: Build shared-storage
+        working-directory: Backend/Springboot
+        run: mvn install -DskipTests -pl shared-storage
+
       - name: Build Product Service
         working-directory: Backend/Springboot/product-service
         run: mvn clean compile -DskipTests
