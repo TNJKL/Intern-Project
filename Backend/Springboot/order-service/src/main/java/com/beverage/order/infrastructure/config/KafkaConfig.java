@@ -1,6 +1,7 @@
 package com.beverage.order.infrastructure.config;
 
 import com.beverage.order.application.event.OrderEventWrapper;
+import com.beverage.order.application.event.OrderTimeoutEvent;
 import com.beverage.order.infrastructure.event.OrderTopics;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -49,6 +50,14 @@ public class KafkaConfig {
     @Bean
     public NewTopic orderEventsTopic() {
         return TopicBuilder.name(OrderTopics.ORDER_EVENTS)
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    public NewTopic orderTimeoutEventsTopic() {
+        return TopicBuilder.name(OrderTopics.ORDER_TIMEOUT_EVENTS)
                 .partitions(3)
                 .replicas(1)
                 .build();

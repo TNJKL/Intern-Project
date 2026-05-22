@@ -6,4 +6,5 @@ public final class OrderTopics {
     private OrderTopics() {}
 
     public static final String ORDER_EVENTS = "order-events";
+    public static final String ORDER_TIMEOUT_EVENTS = "order-timeout-events";
 }

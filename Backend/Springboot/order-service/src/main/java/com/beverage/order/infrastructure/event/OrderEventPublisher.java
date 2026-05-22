@@ -5,6 +5,7 @@ import com.beverage.order.application.event.OrderCompletedEvent;
 import com.beverage.order.application.event.OrderCreatedEvent;
 import com.beverage.order.application.event.OrderEventWrapper;
 import com.beverage.order.application.event.OrderStatusChangedEvent;
+import com.beverage.order.application.event.OrderTimeoutEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -34,6 +35,10 @@ public class OrderEventPublisher {
 
     public void publish(OrderCompletedEvent event) {
         send(OrderTopics.ORDER_EVENTS, event.getOrderId().toString(), event);
+    }
+
+    public void publish(OrderTimeoutEvent event) {
+        send(OrderTopics.ORDER_TIMEOUT_EVENTS, event.getOrderId().toString(), event);
     }
 
     private void send(String topic, String key, OrderEventWrapper payload) {

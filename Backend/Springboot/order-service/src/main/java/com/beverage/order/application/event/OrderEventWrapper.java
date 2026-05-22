@@ -17,7 +17,8 @@ import java.time.Instant;
         @JsonSubTypes.Type(value = OrderCreatedEvent.class, name = "ORDER_CREATED"),
         @JsonSubTypes.Type(value = OrderCancelledEvent.class, name = "ORDER_CANCELLED"),
         @JsonSubTypes.Type(value = OrderStatusChangedEvent.class, name = "ORDER_STATUS_CHANGED"),
-        @JsonSubTypes.Type(value = OrderCompletedEvent.class, name = "ORDER_COMPLETED")
+        @JsonSubTypes.Type(value = OrderCompletedEvent.class, name = "ORDER_COMPLETED"),
+        @JsonSubTypes.Type(value = OrderTimeoutEvent.class, name = "ORDER_TIMEOUT")
 })
 @NoArgsConstructor
 public abstract class OrderEventWrapper {

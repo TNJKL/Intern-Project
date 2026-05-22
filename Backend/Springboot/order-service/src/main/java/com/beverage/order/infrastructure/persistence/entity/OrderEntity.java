@@ -69,6 +69,12 @@ public class OrderEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "payment_deadline")
+    private Instant paymentDeadline;
+
+    @Column(name = "cancellation_reason")
+    private String cancellationReason;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<OrderItemEntity> items = new ArrayList<>();

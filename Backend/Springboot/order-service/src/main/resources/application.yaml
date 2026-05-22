@@ -45,6 +45,9 @@ app:
     read-timeout-ms: 5000
   order-cache:
     detail-ttl-seconds: 60
+  order-payment:
+    # timeout-minutes: ${ORDER_TIMEOUT_MINUTES:30}
+    timeout-minutes: 30
   cache:
     product-ttl-seconds: 300
   idempotency:

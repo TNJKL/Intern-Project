@@ -44,6 +44,8 @@ CREATE TABLE IF NOT EXISTS orders (
     discount_amount     DECIMAL(12,0) NOT NULL DEFAULT 0,
     total_amount        DECIMAL(12,0) NOT NULL,
     voucher_id          UUID,
+    payment_deadline    TIMESTAMP WITH TIME ZONE NOT NULL,
+    cancellation_reason VARCHAR(500),
     delivery_address    TEXT,
     payment_method      VARCHAR(30),
     note                TEXT,
@@ -89,11 +91,14 @@ CREATE INDEX idx_orders_user_id ON orders(user_id);
 CREATE INDEX idx_orders_status ON orders(status);
 CREATE INDEX idx_orders_code ON orders(order_code);
 CREATE INDEX idx_orders_created ON orders(created_at DESC);
+CREATE INDEX idx_orders_pending_timeout ON orders(status, payment_deadline) WHERE status = 'PENDING';
+CREATE INDEX idx_orders_payment_deadline ON orders(payment_deadline) WHERE payment_deadline IS NOT NULL;
 
 CREATE INDEX idx_order_items_order ON order_items(order_id);
 
 CREATE INDEX idx_order_history_order ON order_status_history(order_id);
 CREATE INDEX idx_order_history_created ON order_status_history(created_at DESC);
+
 
 -- ============================================================
 -- AUTO GENERATE ORDER CODE
