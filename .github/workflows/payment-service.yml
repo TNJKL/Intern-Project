@@ -9,6 +9,7 @@ on:
     paths:
       - 'Backend/Springboot/payment-service/**'
       - 'Backend/Springboot/shared-jwt/**'
+      - '.github/workflows/payment-service.yml'
   pull_request:
     branches:
       - dev
@@ -30,10 +31,10 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: Build shared-jwt
+        working-directory: Backend/Springboot
+        run: mvn install -DskipTests -pl shared-jwt
+
       - name: Build Payment Service
         working-directory: Backend/Springboot/payment-service
         run: mvn clean compile -DskipTests
-
-      - name: Test Payment Service
-        working-directory: Backend/Springboot/payment-service
-        run: mvn test

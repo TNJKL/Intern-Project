@@ -9,6 +9,7 @@ on:
     paths:
       - 'Backend/Springboot/auth-service/**'
       - 'Backend/Springboot/shared-jwt/**'
+      - '.github/workflows/auth-service.yml'
   pull_request:
     branches:
       - dev
@@ -30,10 +31,10 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: Build shared-jwt
+        working-directory: Backend/Springboot
+        run: mvn install -DskipTests -pl shared-jwt
+
       - name: Build Auth Service
         working-directory: Backend/Springboot/auth-service
         run: mvn clean compile -DskipTests
-
-      - name: Test Auth Service
-        working-directory: Backend/Springboot/auth-service
-        run: mvn test

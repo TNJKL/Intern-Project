@@ -7,6 +7,7 @@ on:
       - 'feature/**'
     paths:
       - 'Backend/Springboot/shared-jwt/**'
+      - '.github/workflows/shared-jwt.yml'
   pull_request:
     branches:
       - dev
