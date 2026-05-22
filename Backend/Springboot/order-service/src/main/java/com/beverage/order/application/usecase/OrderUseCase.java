@@ -11,6 +11,7 @@ import com.beverage.order.application.service.OrderPricingService;
 import com.beverage.order.application.service.VoucherService;
 import com.beverage.order.domain.exception.ConflictException;
 import com.beverage.order.domain.exception.ForbiddenException;
+import com.beverage.order.domain.exception.BusinessException;
 import com.beverage.order.domain.exception.ResourceNotFoundException;
 import com.beverage.order.domain.exception.BadRequestException;
 import com.beverage.order.domain.model.OrderStatus;
@@ -20,6 +21,7 @@ import com.beverage.order.infrastructure.persistence.entity.OrderItemEntity;
 import com.beverage.order.infrastructure.persistence.entity.OrderStatusHistoryEntity;
 import com.beverage.order.infrastructure.persistence.repository.OrderJpaRepository;
 import com.beverage.order.infrastructure.persistence.repository.OrderStatusHistoryJpaRepository;
+import com.beverage.order.infrastructure.persistence.repository.VoucherJpaRepository;
 import com.beverage.order.infrastructure.persistence.spec.OrderSpecifications;
 import com.beverage.order.infrastructure.security.OrderActorResolver;
 import com.beverage.shared.jwt.JwtUserPrincipal;
@@ -47,6 +49,7 @@ public class OrderUseCase {
 
     private final OrderJpaRepository orderJpaRepository;
     private final OrderStatusHistoryJpaRepository statusHistoryJpaRepository;
+    private final VoucherJpaRepository voucherRepository;
     private final OrderPricingService orderPricingService;
     private final OrderDtoMapper orderDtoMapper;
     private final OrderActorResolver orderActorResolver;
@@ -136,10 +139,10 @@ public class OrderUseCase {
         entityManager.refresh(saved);
 
         if (voucherId != null && request.getVoucherCode() != null) {
-            try {
-                voucherService.incrementUsage(request.getVoucherCode().trim().toUpperCase());
-            } catch (Exception e) {
-                log.warn("Failed to increment voucher usage for code '{}': {}", request.getVoucherCode(), e.getMessage());
+            String voucherCode = request.getVoucherCode().trim().toUpperCase();
+            int updated = voucherRepository.tryIncrementUsage(voucherCode);
+            if (updated == 0) {
+                throw new BusinessException("Voucher đã hết lượt sử dụng");
             }
         }
 

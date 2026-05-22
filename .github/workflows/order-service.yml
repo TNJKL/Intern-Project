@@ -18,8 +18,33 @@ on:
       - 'Backend/Springboot/shared-jwt/**'
 
 jobs:
-  build:
+  test-and-build:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: order_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -35,6 +60,30 @@ jobs:
         working-directory: Backend/Springboot
         run: mvn install -DskipTests -pl shared-jwt
 
+      - name: Run Unit Tests
+        working-directory: Backend/Springboot/order-service
+        run: mvn test
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/order_db
+          SPRING_DATASOURCE_USERNAME: postgres
+          SPRING_DATASOURCE_PASSWORD: postgres
+          SPRING_DATA_REDIS_HOST: localhost
+          SPRING_KAFKA_BOOTSTRAP_SERVERS: localhost:9092
+
       - name: Build Order Service
         working-directory: Backend/Springboot/order-service
-        run: mvn clean compile -DskipTests
+        run: mvn clean package -DskipTests
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: Backend/Springboot/order-service/target/surefire-reports/
+
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: order-service-jar
+          path: Backend/Springboot/order-service/target/*.jar
+
