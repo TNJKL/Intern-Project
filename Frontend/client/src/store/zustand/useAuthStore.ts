@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { User } from '../types/user';
+import { User } from '../../types/user';
 
 /**
  * Zustand store chỉ lưu thông tin User (tên, email...).

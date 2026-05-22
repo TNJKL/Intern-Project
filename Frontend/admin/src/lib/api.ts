@@ -1,12 +1,13 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
-import { useAuthStore } from '../store/useAuthStore';
+import { useAuthStore } from '../store/zustand/useAuthStore';
 
 export const apiClient = axios.create({
   baseURL: '/api/v1',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': '69420',
   },
 });
 
@@ -56,11 +57,30 @@ apiClient.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      // "Ra tín hiệu" cho Backend thông qua refresh endpoint
-      await axios.post('/api/v1/auth/refresh', {}, { withCredentials: true });
+      const isDev = import.meta.env.DEV;
+      const refreshUrl = isDev ? 'http://localhost:3000/api/v1/auth/refresh' : '/api/v1/auth/refresh';
 
-      processQueue(null, "");
-      // Retry request gốc — browser sẽ tự đính kèm cookie mới
+      const response = await axios.post(refreshUrl, {}, {
+        withCredentials: true,
+        headers: {
+          'ngrok-skip-browser-warning': '69420',
+        }
+      });
+      const responseData = response.data;
+      const newToken = responseData?.data?.accessToken || responseData?.accessToken;
+
+      if (!newToken) {
+        throw new Error('No access token returned from refresh');
+      }
+
+      // Cập nhật Zustand Store và Cookie cho Admin
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser) {
+        useAuthStore.getState().setAuth(currentUser, newToken, "");
+      }
+
+      processQueue(null, newToken);
+      originalRequest.headers.Authorization = `Bearer ${newToken}`;
       return apiClient(originalRequest);
     } catch (refreshError) {
       processQueue(refreshError, null);

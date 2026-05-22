@@ -49,10 +49,10 @@ const renderTimeline = (currentStatus: string) => {
   if (currentStepIndex === -1 && currentStatus?.toUpperCase() !== "CANCELLED") currentStepIndex = 0;
 
   return (
-    <div className="relative mt-6 mb-2">
-      <div className="absolute top-1/2 left-0 w-full h-1 bg-gray-100 -translate-y-1/2 rounded-full z-0" />
+    <div className="relative mt-4 mb-1">
+      <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gray-100 -translate-y-1/2 rounded-full z-0" />
       <div
-        className="absolute top-1/2 left-0 h-1 bg-primary -translate-y-1/2 rounded-full z-0 transition-all duration-1000"
+        className="absolute top-1/2 left-0 h-0.5 bg-primary -translate-y-1/2 rounded-full z-0 transition-all duration-1000"
         style={{ width: `${Math.max(0, (currentStepIndex / (steps.length - 1)) * 100)}%` }}
       />
       <div className="relative z-10 flex justify-between">
@@ -60,11 +60,11 @@ const renderTimeline = (currentStatus: string) => {
           const isCompleted = index <= currentStepIndex;
           const isCurrent = index === currentStepIndex;
           return (
-            <div key={step.id} className="flex flex-col items-center gap-2">
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors duration-500 ${isCompleted ? "bg-primary text-white shadow-lg shadow-primary/30" : "bg-white text-gray-300 border-2 border-gray-200"}`}>
+            <div key={step.id} className="flex flex-col items-center gap-1.5">
+              <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors duration-500 ${isCompleted ? "bg-primary text-white shadow-md shadow-primary/20" : "bg-white text-gray-300 border border-gray-200"}`}>
                 {isCompleted ? "✓" : index + 1}
               </div>
-              <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider ${isCurrent ? "text-primary" : isCompleted ? "text-gray-600" : "text-gray-400"}`}>
+              <span className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-wider ${isCurrent ? "text-primary" : isCompleted ? "text-gray-500" : "text-gray-400"}`}>
                 {step.label}
               </span>
             </div>
@@ -77,24 +77,36 @@ const renderTimeline = (currentStatus: string) => {
 
 export default function OrdersClient({ orders }: { orders: OrderSummary[] }) {
   const [activeTab, setActiveTab] = useState("active");
-  
+  const [currentPage, setCurrentPage] = useState(1);
+
   const router = useRouter();
-  
+
   // States for API Order Details
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [orderDetail, setOrderDetail] = useState<OrderDetail | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
-  
+
   // State for Custom Confirmation Modal
   const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
 
-  // Fallback for mocked orders list statuses
+  // Filter orders list statuses
   const filteredOrders = orders.filter((order) => {
     const s = order.status.toLowerCase();
     if (activeTab === "active") return ["pending", "confirmed", "preparing", "ready", "delivering"].includes(s);
     return ["completed", "cancelled"].includes(s);
   });
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    setCurrentPage(1);
+  };
+
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+  const adjustedPage = Math.min(currentPage, Math.max(1, totalPages));
+  const startIndex = (adjustedPage - 1) * itemsPerPage;
+  const paginatedOrders = filteredOrders.slice(startIndex, startIndex + itemsPerPage);
 
   const handleViewDetail = async (id: string) => {
     setIsModalOpen(true);
@@ -118,7 +130,7 @@ export default function OrdersClient({ orders }: { orders: OrderSummary[] }) {
 
   const executeCancelOrder = async () => {
     if (!cancelConfirmId) return;
-    
+
     setIsCancelling(true);
     try {
       const res = await orderService.cancelOrder(cancelConfirmId);
@@ -128,7 +140,7 @@ export default function OrdersClient({ orders }: { orders: OrderSummary[] }) {
           const detailRes = await orderService.getOrderById(cancelConfirmId);
           if (detailRes.success) setOrderDetail(detailRes.data);
         }
-        
+
         // Close confirm modal and refresh the main page to update the list
         setCancelConfirmId(null);
         router.refresh();
@@ -157,8 +169,8 @@ export default function OrdersClient({ orders }: { orders: OrderSummary[] }) {
           {ORDER_TABS.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 py-3 text-sm font-bold uppercase tracking-widest rounded-xl transition-all ${activeTab === tab.id ? "bg-gray-800 text-white shadow-md" : "text-gray-500 hover:text-gray-800"}`}
+              onClick={() => handleTabChange(tab.id)}
+              className={`flex-1 py-3 text-sm font-bold uppercase tracking-widest rounded-xl transition-all ${activeTab === tab.id ? "bg-[#4d362b] text-white shadow-md shadow-[#4d362b]/20" : "text-gray-500 hover:text-[#4d362b]"}`}
             >
               {tab.label}
             </button>
@@ -166,7 +178,7 @@ export default function OrdersClient({ orders }: { orders: OrderSummary[] }) {
         </div>
 
         <div className="space-y-6">
-          <AnimatePresence mode="wait">
+          <AnimatePresence>
             {filteredOrders.length === 0 ? (
               <motion.div key="empty" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="bg-white rounded-3xl p-12 text-center shadow-sm flex flex-col items-center">
                 <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
@@ -179,45 +191,41 @@ export default function OrdersClient({ orders }: { orders: OrderSummary[] }) {
                 </Link>
               </motion.div>
             ) : (
-              filteredOrders.map((order) => {
+              paginatedOrders.map((order) => {
                 const StatusInfo = getStatusDisplay(order.status);
                 const StatusIcon = StatusInfo.icon;
                 return (
-                  <motion.div key={order.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-3xl p-6 shadow-sm border border-transparent hover:border-gray-100 transition-all">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 border-b border-gray-100 pb-4">
+                  <motion.div key={order.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-3xl p-3.5 sm:p-4 shadow-sm border border-transparent hover:border-gray-100 transition-all">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 border-b border-gray-100 pb-3">
                       <div>
                         <div className="flex items-center gap-3 mb-1">
-                          <span className="font-black text-gray-800 text-lg">{order.orderCode || order.id}</span>
-                          <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 ${StatusInfo.bg} ${StatusInfo.color}`}>
+                          <span className="font-extrabold text-gray-800 text-base sm:text-lg">{order.orderCode || order.id}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[11px] sm:text-xs font-bold flex items-center gap-1 ${StatusInfo.bg} ${StatusInfo.color}`}>
                             <StatusIcon className="w-3.5 h-3.5" />
                             {StatusInfo.label}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-500 font-medium">Đặt lúc: {new Date(order.createdAt).toLocaleString('vi-VN')}</p>
+                        <p className="text-xs text-gray-500 font-medium mt-0.5">Đặt lúc: {new Date(order.createdAt).toLocaleString('vi-VN')}</p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-xs text-gray-500 font-bold uppercase mb-1">Tổng tiền</p>
-                        <p className="text-xl font-black text-primary">{order.totalAmount?.toLocaleString("vi-VN") ?? 0}đ</p>
+                      <div className="sm:text-right flex sm:flex-col justify-between sm:justify-start items-center sm:items-end gap-1 sm:gap-0 mt-2 sm:mt-0">
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Tổng tiền</p>
+                        <p className="text-lg sm:text-xl font-black text-primary">{order.totalAmount?.toLocaleString("vi-VN") ?? 0}đ</p>
                       </div>
                     </div>
 
                     {activeTab === "active" && order.status?.toLowerCase() !== "cancelled" && (
-                      <div className="mb-8 px-2 md:px-8">{renderTimeline(order.status)}</div>
+                      <div className="mb-4 px-1 sm:px-6">{renderTimeline(order.status)}</div>
                     )}
 
-                    <div className="space-y-4 mb-6 bg-gray-50 rounded-2xl p-6 text-center">
-                      <p className="text-gray-500 text-sm mb-2">Bấm <strong>Xem chi tiết</strong> để theo dõi các món trong đơn hàng và các thông tin khác.</p>
-                    </div>
-
-                    <div className="flex justify-end gap-3">
+                    <div className="flex justify-end gap-2">
                       {order.status?.toLowerCase() === "completed" && (
-                        <button className="px-6 py-3 bg-primary/10 text-primary rounded-xl font-bold hover:bg-primary/20 transition-colors text-sm uppercase tracking-wider">
+                        <button className="px-4 py-2 bg-[#4d362b]/5 text-[#4d362b] rounded-xl font-extrabold hover:bg-[#4d362b]/10 transition-colors text-xs uppercase tracking-wider">
                           Đánh giá
                         </button>
                       )}
-                      <button onClick={() => handleViewDetail(order.id)} className="px-6 py-3 bg-gray-800 text-white rounded-xl font-bold hover:bg-black transition-colors text-sm uppercase tracking-wider flex items-center gap-2">
+                      <button onClick={() => handleViewDetail(order.id)} className="px-4 py-2.5 bg-[#4d362b] text-white rounded-xl font-extrabold hover:bg-[#3c2a21] transition-colors text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
                         {order.status?.toLowerCase() === "completed" || order.status?.toLowerCase() === "cancelled" ? "Mua lại đơn này" : "Xem chi tiết"}
-                        <ArrowRight className="w-4 h-4" />
+                        <ArrowRight className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </motion.div>
@@ -225,6 +233,69 @@ export default function OrdersClient({ orders }: { orders: OrderSummary[] }) {
               })
             )}
           </AnimatePresence>
+
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 bg-white p-4 rounded-2xl shadow-sm border border-gray-100/80">
+              <span className="text-xs sm:text-sm font-medium text-[#8c7a6b]">
+                Hiển thị đơn hàng <strong className="text-[#4d362b] font-black">{filteredOrders.length > 0 ? (adjustedPage - 1) * itemsPerPage + 1 : 0} - {Math.min(adjustedPage * itemsPerPage, filteredOrders.length)}</strong> trong tổng số <strong className="text-[#4d362b] font-black">{filteredOrders.length}</strong> đơn
+              </span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  disabled={adjustedPage === 1}
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  className="px-3 py-2 bg-gray-50 text-[#4d362b] rounded-xl font-bold hover:bg-gray-100 disabled:opacity-40 disabled:hover:bg-gray-50 transition-all text-xs flex items-center gap-1 border border-gray-200/50"
+                >
+                  <ChevronLeft className="w-4 h-4" /> Trước
+                </button>
+                <div className="flex items-center gap-1 overflow-x-auto px-1">
+                  {(() => {
+                    const pageNumbers = [];
+                    const maxVisible = 5;
+                    let start = Math.max(1, adjustedPage - 2);
+                    let end = Math.min(totalPages, start + maxVisible - 1);
+                    if (end - start < maxVisible - 1) {
+                      start = Math.max(1, end - maxVisible + 1);
+                    }
+                    for (let i = start; i <= end; i++) {
+                      pageNumbers.push(i);
+                    }
+                    return (
+                      <>
+                        {start > 1 && (
+                          <>
+                            <button onClick={() => setCurrentPage(1)} className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-extrabold transition-all ${adjustedPage === 1 ? "bg-[#4d362b] text-white shadow-sm shadow-[#4d362b]/20" : "text-gray-500 hover:bg-gray-50 hover:text-[#4d362b]"}`}>1</button>
+                            {start > 2 && <span className="text-gray-400 text-xs px-0.5">...</span>}
+                          </>
+                        )}
+                        {pageNumbers.map(page => (
+                          <button
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-extrabold transition-all ${adjustedPage === page ? "bg-[#4d362b] text-white shadow-sm shadow-[#4d362b]/20" : "text-gray-500 hover:bg-gray-50 hover:text-[#4d362b]"}`}
+                          >
+                            {page}
+                          </button>
+                        ))}
+                        {end < totalPages && (
+                          <>
+                            {end < totalPages - 1 && <span className="text-gray-400 text-xs px-0.5">...</span>}
+                            <button onClick={() => setCurrentPage(totalPages)} className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-extrabold transition-all ${adjustedPage === totalPages ? "bg-[#4d362b] text-white shadow-sm shadow-[#4d362b]/20" : "text-gray-500 hover:bg-gray-50 hover:text-[#4d362b]"}`}>{totalPages}</button>
+                          </>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+                <button
+                  disabled={adjustedPage === totalPages}
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  className="px-3 py-2 bg-gray-50 text-[#4d362b] rounded-xl font-bold hover:bg-gray-100 disabled:opacity-40 disabled:hover:bg-gray-50 transition-all text-xs flex items-center gap-1 border border-gray-200/50"
+                >
+                  Sau <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -234,7 +305,7 @@ export default function OrdersClient({ orders }: { orders: OrderSummary[] }) {
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsModalOpen(false)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-lg bg-white rounded-[32px] overflow-hidden shadow-2xl z-10 max-h-[90vh] flex flex-col">
-              
+
               <div className="flex items-center justify-between p-6 border-b border-gray-100">
                 <div>
                   <h3 className="text-xl font-black text-gray-800 uppercase">Chi Tiết Đơn Hàng</h3>
@@ -311,7 +382,7 @@ export default function OrdersClient({ orders }: { orders: OrderSummary[] }) {
                       </h4>
                       <div className="bg-gray-50 rounded-2xl p-4">
                         <p className="text-sm font-bold text-gray-800">{orderDetail.paymentMethod === 'cod' ? 'Thanh toán tiền mặt (COD)' : orderDetail.paymentMethod}</p>
-                        
+
                         <div className="mt-4 pt-4 border-t border-gray-200 space-y-2">
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-500">Tạm tính</span>
@@ -341,10 +412,10 @@ export default function OrdersClient({ orders }: { orders: OrderSummary[] }) {
                     <p className="text-2xl font-black text-primary">{orderDetail.totalAmount?.toLocaleString("vi-VN") ?? 0}đ</p>
                   </div>
                   {orderDetail.status?.toUpperCase() === "COMPLETED" && (
-                    <button className="px-6 py-3 bg-gray-800 text-white rounded-xl font-bold hover:bg-black transition-colors uppercase tracking-widest text-sm">Mua lại</button>
+                    <button className="px-6 py-3 bg-[#4d362b] text-white rounded-xl font-bold hover:bg-[#3c2a21] transition-colors uppercase tracking-widest text-sm shadow-sm">Mua lại</button>
                   )}
                   {orderDetail.status?.toUpperCase() === "PENDING" && (
-                    <button 
+                    <button
                       onClick={() => handleCancelOrder(orderDetail.id)}
                       disabled={isCancelling}
                       className="px-6 py-3 bg-red-50 text-red-500 rounded-xl font-bold hover:bg-red-100 transition-colors uppercase tracking-widest text-sm disabled:opacity-50 flex items-center gap-2"
@@ -364,19 +435,19 @@ export default function OrdersClient({ orders }: { orders: OrderSummary[] }) {
       <AnimatePresence>
         {cancelConfirmId && (
           <div style={{ zIndex: 9999 }} className="fixed inset-0 flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               key="cancel-backdrop"
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }} 
-              onClick={() => !isCancelling && setCancelConfirmId(null)} 
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => !isCancelling && setCancelConfirmId(null)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             />
-            <motion.div 
+            <motion.div
               key="cancel-modal"
-              initial={{ opacity: 0, scale: 0.95, y: 20 }} 
-              animate={{ opacity: 1, scale: 1, y: 0 }} 
-              exit={{ opacity: 0, scale: 0.95, y: 20 }} 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className="relative w-full max-w-sm bg-white rounded-3xl overflow-hidden shadow-2xl z-10 p-6 text-center"
             >
               <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -384,16 +455,16 @@ export default function OrdersClient({ orders }: { orders: OrderSummary[] }) {
               </div>
               <h3 className="text-xl font-black text-gray-800 mb-2">Hủy đơn hàng?</h3>
               <p className="text-gray-500 text-sm mb-8">Bạn có chắc chắn muốn hủy đơn hàng này không? Hành động này không thể hoàn tác.</p>
-              
+
               <div className="flex gap-3">
-                <button 
+                <button
                   onClick={() => setCancelConfirmId(null)}
                   disabled={isCancelling}
                   className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors uppercase tracking-widest text-sm disabled:opacity-50"
                 >
                   Không
                 </button>
-                <button 
+                <button
                   onClick={executeCancelOrder}
                   disabled={isCancelling}
                   className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors uppercase tracking-widest text-sm disabled:opacity-50 flex items-center justify-center gap-2"

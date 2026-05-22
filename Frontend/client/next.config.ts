@@ -9,15 +9,32 @@ loadEnvConfig(path.join(projectDir, '..'));
 const nextConfig: NextConfig = {
   env: {
     // Ưu tiên biến từ file .env, nếu không có thì dùng IP mặc định
-    GLOBAL_BACKEND_IP: process.env.GLOBAL_BACKEND_IP || 'http://10.86.157.113',
-    NEXT_PUBLIC_GLOBAL_BACKEND_IP: process.env.NEXT_PUBLIC_GLOBAL_BACKEND_IP || 'http://10.86.157.113',
+    GLOBAL_BACKEND_IP: process.env.GLOBAL_BACKEND_IP || 'https://morbidity-stucco-grower.ngrok-free.dev',
+    NEXT_PUBLIC_GLOBAL_BACKEND_IP: process.env.NEXT_PUBLIC_GLOBAL_BACKEND_IP || 'https://morbidity-stucco-grower.ngrok-free.dev',
   },
   images: {
-    unoptimized: true,
+    unoptimized: false,
+    dangerouslyAllowLocalIP: true,
     remotePatterns: [
       {
         protocol: 'https',
+        hostname: 'bizweb.dktcdn.net',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'amazon-beverage-storage-906024320323-ap-southeast-1-an.s3.ap-southeast-1.amazonaws.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.amazonaws.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
         hostname: '**',
+        pathname: '/**',
       },
     ],
   },

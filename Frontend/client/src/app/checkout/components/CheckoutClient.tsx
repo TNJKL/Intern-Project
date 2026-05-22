@@ -5,7 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { ChevronLeft, MapPin, CreditCard, CheckCircle2, Truck, Ticket } from "lucide-react";
 import { motion } from "framer-motion";
-import { useCartStore } from "@/store/useCartStore";
+import { useCartStore } from "@/store/zustand/useCartStore";
+import { useAuthStore } from "@/store/zustand/useAuthStore";
 import { orderService } from "@/services/order.service";
 import { voucherService } from "@/services/voucher.service";
 import type { Voucher, ValidateVoucherResult } from "@/services/voucher.service";
@@ -13,14 +14,18 @@ import toast from "react-hot-toast";
 
 export default function CheckoutClient() {
   const { items: cartItems, clearCart } = useCartStore();
+  const { user } = useAuthStore();
   const [mounted, setMounted] = useState(false);
   
   const [paymentMethod, setPaymentMethod] = useState("cod");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [note, setNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [createdOrderCode, setCreatedOrderCode] = useState("");
 
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [selectedVoucher, setSelectedVoucher] = useState<ValidateVoucherResult | null>(null);
@@ -29,14 +34,32 @@ export default function CheckoutClient() {
   const subTotal = cartItems.reduce((total, item) => total + (item.unitPrice * item.quantity), 0);
   const shippingFee = 15000;
 
+  // Chỉ dùng cho khách vãng lai (guest)
+  const isGuest = !user;
+
   useEffect(() => {
     setMounted(true);
     const fetchVouchers = async () => {
       try {
         const res = await voucherService.getVouchers();
-        if (res.success) {
+        if (res.success && res.data) {
+          // Lọc voucher theo hạng người dùng:
+          // - Vãng lai chỉ thấy ALL
+          // - MEMBER chỉ thấy ALL và MEMBER
+          // - VIP thấy tất cả
+          const filteredData = res.data.filter(v => {
+            const tier = v.applicableTier || 'ALL';
+            if (!user) {
+              if (tier !== 'ALL') return false;
+            } else {
+              const userTier = (user.tier || 'MEMBER').toUpperCase();
+              if (userTier === 'MEMBER' && tier === 'VIP') return false;
+            }
+            return true;
+          });
+
           const now = new Date();
-          const validVouchers = res.data.filter(v => {
+          const validVouchers = filteredData.filter(v => {
             const validFrom = new Date(v.validFrom);
             const validUntil = v.validUntil ? new Date(v.validUntil) : null;
             const hasStarted = now >= validFrom;
@@ -45,15 +68,50 @@ export default function CheckoutClient() {
             return v.isActive && hasStarted && hasNotExpired && hasUsageLeft;
           });
           setVouchers(validVouchers);
+        } else {
+          setVouchers([]);
         }
-      } catch (err) {
-        console.error("Lỗi khi tải danh sách voucher", err);
+      } catch (err: any) {
+        console.warn("Không thể tải danh sách voucher từ server:", err?.message || err);
+        setVouchers([]);
       }
     };
     fetchVouchers();
-  }, []);
+  }, [user]);
 
   // Tự động quản lý voucher (khôi phục & cập nhật theo giỏ hàng ở checkout)
+  const checkVoucherEligibility = (code: string): { eligible: boolean; message?: string } => {
+    const voucherInfo = vouchers.find(v => v.code.toUpperCase() === code.toUpperCase());
+    if (!voucherInfo) {
+      return { eligible: true };
+    }
+
+    const tier = voucherInfo.applicableTier || 'ALL';
+    if (tier === 'ALL') {
+      return { eligible: true };
+    }
+
+    if (!user) {
+      return { 
+        eligible: false, 
+        message: "Mã giảm giá này chỉ dành cho thành viên. Vui lòng đăng nhập!" 
+      };
+    }
+
+    const userTier = (user.tier || 'MEMBER').toUpperCase();
+
+    if (tier === 'VIP') {
+      if (userTier !== 'VIP') {
+        return { 
+          eligible: false, 
+          message: "Mã giảm giá này chỉ dành cho thành viên VIP!" 
+        };
+      }
+    }
+
+    return { eligible: true };
+  };
+
   useEffect(() => {
     if (!mounted) return;
 
@@ -61,6 +119,15 @@ export default function CheckoutClient() {
 
     // TH1: Có mã lưu trong localStorage nhưng chưa nạp vào state, và giỏ hàng đã có sản phẩm
     if (savedCode && !selectedVoucher && subTotal > 0) {
+      if (vouchers.length > 0) {
+        const eligibility = checkVoucherEligibility(savedCode);
+        if (!eligibility.eligible) {
+          localStorage.removeItem('brewtra_applied_voucher');
+          setSelectedVoucher(null);
+          return;
+        }
+      }
+
       voucherService.validateVoucher(savedCode, subTotal)
         .then(validationRes => {
           if (validationRes.success && validationRes.data && validationRes.data.valid) {
@@ -77,6 +144,15 @@ export default function CheckoutClient() {
 
     // TH2: Đã có voucher, tự động tính toán lại khi subTotal thay đổi
     if (selectedVoucher && subTotal > 0) {
+      if (vouchers.length > 0) {
+        const eligibility = checkVoucherEligibility(selectedVoucher.code);
+        if (!eligibility.eligible) {
+          localStorage.removeItem('brewtra_applied_voucher');
+          setSelectedVoucher(null);
+          return;
+        }
+      }
+
       voucherService.validateVoucher(selectedVoucher.code, subTotal)
         .then(validationRes => {
           if (validationRes.success && validationRes.data) {
@@ -99,7 +175,7 @@ export default function CheckoutClient() {
       setSelectedVoucher(null);
       localStorage.removeItem('brewtra_applied_voucher');
     }
-  }, [subTotal, mounted]);
+  }, [subTotal, mounted, vouchers]);
 
   const discount = selectedVoucher && selectedVoucher.valid ? (selectedVoucher.discountAmount || 0) : 0;
   
@@ -113,6 +189,15 @@ export default function CheckoutClient() {
     }
     const code = voucherInput.trim().toUpperCase();
     
+    // Kiểm tra hạng thành viên trước khi gọi API
+    const eligibility = checkVoucherEligibility(code);
+    if (!eligibility.eligible) {
+      toast.error(eligibility.message || "Bạn không đủ điều kiện sử dụng mã giảm giá này!");
+      setSelectedVoucher(null);
+      localStorage.removeItem('brewtra_applied_voucher');
+      return;
+    }
+
     try {
       const res = await voucherService.validateVoucher(code, subTotal);
       if (res.success && res.data) {
@@ -146,21 +231,49 @@ export default function CheckoutClient() {
 
     setIsSubmitting(true);
     try {
-      const payload = {
-        userPhone: phone,
-        deliveryAddress: address,
-        paymentMethod: paymentMethod,
-        note: note,
-        items: cartItems.map(item => ({
-          productId: item.productId,
-          variantId: item.variantId,
-          quantity: item.quantity,
-          toppingIds: item.toppingIds,
-        })),
-        voucherCode: selectedVoucher ? selectedVoucher.code : undefined
-      };
+      // User đã đăng nhập: gửi thông tin lấy từ object user (nhưng không gửi userId vì backend sẽ bắt lỗi DTO)
+      // Khách vãng lai: gửi thông tin nhập từ form
+      const u = user as any;
+      const actualName = u?.fullName || u?.name || u?.userName || u?.user_name || "Thành viên";
+      const actualEmail = u?.email || u?.userEmail || u?.user_email || "khachhang@thanhvien.com";
+      const actualPhone = u?.phone || u?.userPhone || u?.user_phone || "0999999999";
+
+      const payload = user
+        ? {
+            userName: actualName,
+            userEmail: actualEmail,
+            userPhone: actualPhone,
+            deliveryAddress: address,
+            paymentMethod: paymentMethod,
+            note: note,
+            items: cartItems.map(item => ({
+              productId: item.productId,
+              variantId: item.variantId,
+              quantity: item.quantity,
+              toppingIds: item.toppingIds,
+            })),
+            voucherCode: selectedVoucher ? selectedVoucher.code : undefined
+          }
+        : {
+            userName: name,
+            userEmail: email,
+            userPhone: phone,
+            deliveryAddress: address,
+            paymentMethod: paymentMethod,
+            note: note,
+            items: cartItems.map(item => ({
+              productId: item.productId,
+              variantId: item.variantId,
+              quantity: item.quantity,
+              toppingIds: item.toppingIds,
+            })),
+            voucherCode: selectedVoucher ? selectedVoucher.code : undefined
+          };
       
-      await orderService.createOrder(payload);
+      const res = await orderService.createOrder(payload as any);
+      if (res && res.success && res.data) {
+        setCreatedOrderCode(res.data.orderCode);
+      }
       clearCart();
       localStorage.removeItem('brewtra_applied_voucher');
       setIsSuccess(true);
@@ -185,14 +298,29 @@ export default function CheckoutClient() {
             <CheckCircle2 className="w-10 h-10" />
           </div>
           <h1 className="text-2xl font-black text-gray-800 mb-2 uppercase">Đặt hàng thành công!</h1>
+          
+          {createdOrderCode && (
+            <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 my-6 text-center">
+              <p className="text-xs text-gray-500 font-bold uppercase mb-1">Mã đơn hàng của bạn</p>
+              <p className="text-xl font-black text-primary tracking-wider select-all">{createdOrderCode}</p>
+              <p className="text-[10px] text-gray-400 mt-2">Vui lòng lưu lại mã này để tra cứu trạng thái đơn hàng của bạn.</p>
+            </div>
+          )}
+
           <p className="text-gray-500 mb-8 leading-relaxed">
             Cảm ơn bạn đã đặt hàng. Đơn hàng của bạn đang được xử lý và sẽ sớm giao những ly cà phê tuyệt hảo đến tay bạn.
           </p>
           
           <div className="space-y-3">
-            <Link href="/orders" className="block w-full bg-primary text-white py-4 rounded-2xl font-bold hover:bg-coffee-dark transition-colors">
-              Theo dõi đơn hàng
-            </Link>
+            {user ? (
+              <Link href="/orders" className="block w-full bg-primary text-white py-4 rounded-2xl font-bold hover:bg-coffee-dark transition-colors">
+                Theo dõi đơn hàng
+              </Link>
+            ) : (
+              <Link href={`/orders/track?code=${createdOrderCode}&phone=${phone}`} className="block w-full bg-primary text-white py-4 rounded-2xl font-bold hover:bg-coffee-dark transition-colors text-center">
+                Theo dõi đơn hàng ngay
+              </Link>
+            )}
             <Link href="/" className="block w-full bg-gray-50 text-gray-600 py-4 rounded-2xl font-bold hover:bg-gray-100 transition-colors border border-gray-200">
               Về trang chủ
             </Link>
@@ -225,17 +353,57 @@ export default function CheckoutClient() {
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700 block">Số điện thoại</label>
-                  <input 
-                    required 
-                    type="tel" 
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="Nhập số điện thoại" 
-                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 outline-none focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all" 
-                  />
-                </div>
+                {!isGuest && (
+                  <div className="md:col-span-2 flex flex-col gap-2 mb-2">
+                    <div className="flex items-center gap-3 bg-primary/5 border border-primary/10 rounded-xl px-4 py-3">
+                      <div className="w-9 h-9 bg-primary text-white rounded-full flex items-center justify-center font-black text-sm shrink-0">
+                        {((user as any)?.fullName || (user as any)?.name || (user as any)?.userName || 'U').charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-800 text-sm">{(user as any)?.fullName || (user as any)?.name || (user as any)?.userName || 'Thành viên'}</p>
+                        <p className="text-xs text-gray-500">{(user as any)?.email || (user as any)?.userEmail || 'Chưa cập nhật Email'}</p>
+                      </div>
+                      <span className="ml-auto text-[10px] font-black text-primary bg-primary/10 px-2 py-1 rounded-full uppercase tracking-wide">Đã đăng nhập</span>
+                    </div>
+                  </div>
+                )}
+                {isGuest && (
+                  <>
+                    <div className="space-y-2 md:col-span-2">
+                      <label className="text-sm font-bold text-gray-700 block">Họ và tên</label>
+                      <input 
+                        required 
+                        type="text" 
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Nhập họ và tên" 
+                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 outline-none focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all" 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-gray-700 block">Số điện thoại</label>
+                      <input 
+                        required 
+                        type="tel" 
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="Nhập số điện thoại" 
+                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 outline-none focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all" 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-gray-700 block">Email (Bắt buộc để nhận thông báo)</label>
+                      <input 
+                        required 
+                        type="email" 
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="Nhập địa chỉ email" 
+                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 outline-none focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all" 
+                      />
+                    </div>
+                  </>
+                )}
                 <div className="space-y-2 md:col-span-2">
                   <label className="text-sm font-bold text-gray-700 block">Địa chỉ nhận hàng</label>
                   <input 

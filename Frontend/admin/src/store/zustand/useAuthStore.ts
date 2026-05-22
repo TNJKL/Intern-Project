@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import Cookies from 'js-cookie';
+import axios from 'axios';
 import type { User } from '@/types/user';
-import { userService } from '@/services/userService';
+import { userService } from '@/services/user.service';
 
 interface AuthState {
   user: User | null;
@@ -12,6 +13,7 @@ interface AuthState {
   setAuth: (user: User, accessToken: string, refreshToken: string) => void;
   logout: () => void;
   fetchUser: () => Promise<void>;
+  silentRefresh: () => Promise<boolean>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -47,6 +49,33 @@ export const useAuthStore = create<AuthState>()(
             Cookies.remove('adminAccessToken', { path: '/' });
             set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
           }
+        }
+      },
+
+      silentRefresh: async () => {
+        try {
+          const isDev = import.meta.env.DEV;
+          const refreshUrl = isDev ? 'http://localhost:3000/api/v1/auth/refresh' : '/api/v1/auth/refresh';
+
+          const response = await axios.post(refreshUrl, {}, {
+            withCredentials: true,
+            headers: {
+              'ngrok-skip-browser-warning': '69420',
+            }
+          });
+          const responseData = response.data;
+          const newToken = responseData?.data?.accessToken || responseData?.accessToken;
+          const user = responseData?.data?.user || responseData?.user;
+
+          if (newToken && user && user.role?.toUpperCase() === 'ADMIN') {
+            Cookies.set('adminAccessToken', newToken, { expires: 7, path: '/' });
+            set({ user, accessToken: newToken, isAuthenticated: true });
+            return true;
+          }
+          return false;
+        } catch (error) {
+          console.error('[AuthStore] Silent refresh failed:', error);
+          return false;
         }
       },
     }),

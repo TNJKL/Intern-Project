@@ -1,7 +1,6 @@
 "use client";
 
 import { useMenu } from "../hooks/useMenu";
-import { FloatingNav } from "@/components/layout/FloatingNav";
 import { MenuHeader } from "./parts/MenuHeader";
 import { MenuSearchBar } from "./parts/MenuSearchBar";
 import { SortDropdown } from "./parts/SortDropdown";
@@ -13,10 +12,9 @@ import { Category } from "@/types/category";
 interface MenuClientProps {
   initialProducts: Product[];
   initialCategories: Category[];
-  children: React.ReactNode;
 }
 
-export default function MenuClient({ initialProducts, initialCategories, children }: MenuClientProps) {
+export default function MenuClient({ initialProducts, initialCategories }: MenuClientProps) {
   const {
     categories,
     selectedMenuCategory,
@@ -29,12 +27,19 @@ export default function MenuClient({ initialProducts, initialCategories, childre
     isSearching,
     suggestions,
     setSuggestions,
+    showSuggestions,
+    handleSearchFocus,
+    handleSearchBlur,
     handleCategoryChange,
+    sortedProducts,
+    hasMore,
+    loadMore,
+    isLoadingMore,
+    isLoading,
   } = useMenu({ initialProducts, initialCategories });
 
   return (
     <div className="min-h-screen bg-[#fdfaf5] pb-24">
-      <FloatingNav />
       
       {/* Header & Search & Categories */}
       <div className="bg-[#fdfaf5]/80 backdrop-blur-md sticky top-0 z-40 px-4 pt-6 pb-4 transition-all duration-300">
@@ -49,6 +54,9 @@ export default function MenuClient({ initialProducts, initialCategories, childre
                 isSearching={isSearching}
                 suggestions={suggestions}
                 setSuggestions={setSuggestions}
+                showSuggestions={showSuggestions}
+                onFocus={handleSearchFocus}
+                onBlur={handleSearchBlur}
               />
 
               <SortDropdown 
@@ -68,7 +76,15 @@ export default function MenuClient({ initialProducts, initialCategories, childre
         </div>
       </div>
 
-      {children}
+      {/* Render ProductList trực tiếp với State quản lý Infinite Scroll */}
+      <ProductList 
+        products={sortedProducts} 
+        categories={categories} 
+        isLoading={isLoading} 
+        hasMore={hasMore}
+        loadMore={loadMore}
+        isLoadingMore={isLoadingMore}
+      />
     </div>
   );
 }

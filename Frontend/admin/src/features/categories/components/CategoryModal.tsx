@@ -8,7 +8,7 @@ import {
   AppstoreOutlined
 } from '@ant-design/icons';
 import type { UploadProps } from 'antd';
-import { fileService } from '@/services/fileService';
+import { fileService } from '@/services/file.service';
 
 interface CategoryModalProps {
   isOpen: boolean;
@@ -107,7 +107,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
       styles={{ body: { padding: 0 } }}
     >
       {/* Header */}
-      <div className="bg-white px-10 py-8 border-b border-gray-100 rounded-t-3xl">
+      <div className="bg-white px-10 pt-8 pb-4 border-b border-gray-100 rounded-t-3xl">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center border border-gray-100">
             <AppstoreOutlined className="text-xl text-gray-400" />
@@ -124,26 +124,32 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
         </div>
       </div>
 
-      <Form form={form} layout="vertical" className="p-10 max-h-[75vh] overflow-y-auto scrollbar-hide bg-white">
-        <Space direction="vertical" size={24} className="w-full">
+      <Form form={form} layout="vertical" className="px-10 pb-10 pt-4 max-h-[75vh] overflow-y-auto scrollbar-hide bg-white">
+        <Space orientation="vertical" size={24} className="w-full">
           {/* Nhóm 1: Thông tin cơ bản */}
           <div className="space-y-4">
-            <Form.Item
-              name="name"
-              label={<span className="text-[10px] font-black uppercase text-gray-500">Tên danh mục</span>}
-              rules={[{ required: true, message: 'Vui lòng nhập tên!' }]}
-            >
-              <Input size="large" placeholder="Ví dụ: Cà Phê, Trà Trái Cây..." className="rounded-xl border-gray-200 focus:border-[#d37533] h-12 text-sm font-bold" />
-            </Form.Item>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item
+                  name="name"
+                  label={<span className="text-[10px] font-black uppercase text-gray-500">Tên danh mục</span>}
+                  rules={[{ required: true, message: 'Vui lòng nhập tên!' }]}
+                >
+                  <Input size="large" placeholder="Ví dụ: Cà Phê, Trà Trái Cây..." className="rounded-xl border-gray-200 focus:border-[#d37533] h-12 text-sm font-bold" />
+                </Form.Item>
+              </Col>
 
-            <Form.Item
-              name="slug"
-              label={<span className="text-[10px] font-black uppercase text-gray-500">Đường dẫn (Slug)</span>}
-              rules={[{ required: true, message: 'Vui lòng nhập slug!' }]}
-              extra={<span className="text-[10px] text-gray-400 italic">Đường dẫn không dấu, ví dụ: ca-phe-truyen-thong</span>}
-            >
-              <Input size="large" placeholder="ca-phe" className="rounded-xl border-gray-200 focus:border-[#d37533] h-12 text-sm font-mono" />
-            </Form.Item>
+              <Col span={12}>
+                <Form.Item
+                  name="slug"
+                  label={<span className="text-[10px] font-black uppercase text-gray-500">Đường dẫn (Slug)</span>}
+                  rules={[{ required: true, message: 'Vui lòng nhập slug!' }]}
+                  extra={<span className="text-[10px] text-gray-400 italic">Đường dẫn không dấu, ví dụ: ca-phe-truyen-thong</span>}
+                >
+                  <Input size="large" placeholder="ca-phe" className="rounded-xl border-gray-200 focus:border-[#d37533] h-12 text-sm font-mono" />
+                </Form.Item>
+              </Col>
+            </Row>
 
             <Row gutter={24}>
               <Col span={12}>

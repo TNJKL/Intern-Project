@@ -13,7 +13,7 @@ import {
 } from '@ant-design/icons';
 import { Layout, Menu, Button, theme, Avatar, Dropdown, Space } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuthStore } from '../store/useAuthStore';
+import { useAuthStore } from '../store/zustand/useAuthStore';
 
 const { Header, Sider, Content } = Layout;
 

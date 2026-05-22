@@ -1,5 +1,6 @@
 import { ArrowLeft, Coffee } from "lucide-react";
 import Link from "next/link";
+import { SafeImage } from "@/components/SafeImage";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import ProductDetailClient from "./components/ProductDetailClient";
@@ -66,20 +67,23 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
           {/* Hình ảnh (Trái) */}
           <div className="w-full lg:w-[450px] shrink-0">
-            <div className="aspect-square rounded-lg bg-white border border-gray-100 flex items-center justify-center overflow-hidden">
-              {product.imageUrl ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={product.imageUrl}
-                  alt={product.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="flex flex-col items-center justify-center text-gray-200 w-full h-full bg-gray-50">
-                  <Coffee className="w-20 h-20 mb-3 text-gray-300" />
-                  <span className="text-xs font-bold uppercase tracking-widest text-gray-300">Chưa có ảnh</span>
-                </div>
-              )}
+            <div className="aspect-square rounded-lg bg-white border border-gray-100 flex items-center justify-center overflow-hidden relative">
+              <SafeImage
+                src={product.imageUrl || ""}
+                alt={product.name}
+                fill
+                priority
+                className="object-cover"
+                sizes="(max-width: 1024px) 100vw, 450px"
+                crossOrigin="anonymous"
+                referrerPolicy="no-referrer"
+                fallback={
+                  <div className="flex flex-col items-center justify-center text-gray-200 w-full h-full bg-gray-50">
+                    <Coffee className="w-20 h-20 mb-3 text-gray-300" />
+                    <span className="text-xs font-bold uppercase tracking-widest text-gray-300">Chưa có ảnh</span>
+                  </div>
+                }
+              />
             </div>
           </div>
 

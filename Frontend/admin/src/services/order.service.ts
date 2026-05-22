@@ -6,6 +6,9 @@ export interface Order {
   status: string;
   totalAmount: number;
   createdAt: string;
+  userId?: string | null;
+  userName?: string;
+  userPhone?: string;
 }
 
 export interface OrderTopping {
@@ -73,6 +76,10 @@ export const orderService = {
   },
   updateOrderStatus: async (id: string, status: string) => {
     const response = await apiClient.patch(`/orders/${id}/status`, { status });
+    return response.data;
+  },
+  trackOrder: async (orderCode: string): Promise<OrderDetailResponse> => {
+    const response = await apiClient.post('/orders/track', { orderCode });
     return response.data;
   },
 };

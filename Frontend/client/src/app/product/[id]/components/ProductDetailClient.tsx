@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Product, ProductVariant } from "@/types/product";
-import { ShoppingCart, Truck, RefreshCcw } from "lucide-react";
+import { ShoppingCart, Truck, RefreshCcw, ChevronDown, Check, X } from "lucide-react";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
-import { useCartStore } from "@/store/useCartStore";
+import { useCartStore } from "@/store/zustand/useCartStore";
 import { useRouter } from "next/navigation";
 
 const formatPrice = (price: number) => {
@@ -16,6 +16,21 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [selectedToppings, setSelectedToppings] = useState<string[]>([]);
   const [quantity, setQuantity] = useState(1);
+  const [isToppingDropdownOpen, setIsToppingDropdownOpen] = useState(false);
+  const toppingDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Đóng dropdown Topping khi click ra ngoài vùng hiển thị
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (toppingDropdownRef.current && !toppingDropdownRef.current.contains(event.target as Node)) {
+        setIsToppingDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
   
   const addItem = useCartStore(state => state.addItem);
   const router = useRouter();
@@ -124,29 +139,71 @@ export default function ProductDetailClient({ product }: { product: Product }) {
 
       {/* Topping Selection */}
       {product?.toppings && product?.toppings?.length > 0 && (
-        <div className="grid grid-cols-[110px_1fr] items-start gap-4 text-sm">
-          <span className="text-gray-500 pt-2">Topping</span>
-          <div className="flex flex-wrap gap-3">
-            {product.toppings.map((t: any) => {
-              const isSelected = selectedToppings.includes(t.id);
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => {
-                    setSelectedToppings((prev: string[]) => 
-                      isSelected ? prev.filter((id: string) => id !== t.id) : [...prev, t.id]
-                    );
-                  }}
-                  className={`px-5 py-2.5 border rounded-sm transition-all text-xs font-bold ${
-                    isSelected 
-                    ? "border-[#4d362b] text-[#4d362b] relative after:content-[''] after:absolute after:bottom-0 after:right-0 after:w-3 after:h-3 after:bg-[#4d362b] after:[clip-path:polygon(100%_0,0_100%,100%_100%)]" 
-                    : "border-gray-200 text-gray-700 hover:border-[#4d362b] hover:text-[#4d362b]"
-                  }`}
-                >
-                  {t.name} (+₫{formatPrice(t.price)})
-                </button>
-              );
-            })}
+        <div className="grid grid-cols-[110px_1fr] items-center gap-4 text-sm relative">
+          <span className="text-gray-500">Topping</span>
+          <div className="relative w-full max-w-md" ref={toppingDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsToppingDropdownOpen(!isToppingDropdownOpen)}
+              className="w-full flex items-center justify-between px-4 py-3.5 bg-[#fdfaf5] border border-[#4d362b] rounded-sm focus:outline-none transition-all text-xs font-bold text-gray-700 shadow-sm"
+            >
+              <span className="truncate pr-4 text-left">
+                {selectedToppings.length === 0 
+                  ? "Chọn Topping của bạn..." 
+                  : `Đã chọn ${selectedToppings.length} loại topping: ${
+                      selectedToppingObjs.map(t => t.name).join(", ")
+                    }`}
+              </span>
+              <ChevronDown className={`w-4 h-4 text-gray-400 shrink-0 transition-transform duration-200 ${isToppingDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* Dropdown Menu */}
+            {isToppingDropdownOpen && (
+              <div className="absolute left-0 right-0 mt-1.5 bg-[#fdfaf5] border border-[#4d362b]/30 rounded-sm shadow-xl z-50 py-1.5 max-h-60 overflow-y-auto">
+                {product.toppings.map((t: any) => {
+                  const isSelected = selectedToppings.includes(t.id);
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedToppings((prev: string[]) => 
+                          isSelected ? prev.filter((id: string) => id !== t.id) : [...prev, t.id]
+                        );
+                      }}
+                      className={`w-full flex items-center justify-between px-4 py-3 hover:bg-[#fdf3eb]/60 text-left text-xs font-semibold transition-all ${
+                        isSelected ? 'text-[#4d362b] bg-[#fdf3eb]' : 'text-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className={`w-4 h-4 rounded-sm border flex items-center justify-center transition-all ${
+                          isSelected ? 'border-[#4d362b] bg-[#4d362b] text-white' : 'border-[#4d362b]/30 bg-[#fdfaf5]'
+                        }`}>
+                          {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                        </div>
+                        <span>{t.name}</span>
+                      </div>
+                      <span className={isSelected ? 'font-bold' : 'text-gray-400'}>
+                        +₫{formatPrice(t.price)}
+                      </span>
+                    </button>
+                  );
+                })}
+
+                {selectedToppings.length > 0 && (
+                  <div className="border-t border-[#4d362b]/10 mt-1.5 px-4 pt-2.5 pb-1 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedToppings([])}
+                      className="text-[10px] text-red-500 hover:text-red-700 font-bold uppercase tracking-wider flex items-center gap-1"
+                    >
+                      <X className="w-3 h-3" />
+                      Xóa chọn tất cả
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

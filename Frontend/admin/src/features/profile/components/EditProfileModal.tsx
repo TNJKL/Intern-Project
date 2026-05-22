@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
 import { Modal, Form, Input, Space, Typography } from 'antd';
 import { message } from '@/lib/antd';
-import { userService } from '../../../services/userService';
-import { useAuthStore } from '../../../store/useAuthStore';
+import { userService } from '../../../services/user.service';
+import { useAuthStore } from '../../../store/zustand/useAuthStore';
 
 const { Title } = Typography;
 

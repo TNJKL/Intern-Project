@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Form } from 'antd';
 import { message } from '@/lib/antd';
-import { fileService } from '@/services/fileService';
-import { toppingService, type Topping } from '@/services/toppingService';
+import { fileService } from '@/services/file.service';
+import { toppingService, type Topping } from '@/services/topping.service';
 
 export const useProductForm = (isOpen: boolean, editingRecord: any) => {
   const [form] = Form.useForm();

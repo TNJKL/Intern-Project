@@ -6,6 +6,7 @@ export interface User {
   phone?: string;
   avatarUrl?: string;
   role: string;
+  tier?: 'MEMBER' | 'VIP' | string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

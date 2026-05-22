@@ -13,6 +13,7 @@ export interface Voucher {
   validFrom: string;
   validUntil: string;
   isActive: boolean;
+  applicableTier?: 'ALL' | 'MEMBER' | 'VIP';
   createdAt: string;
 }
 
@@ -27,6 +28,7 @@ export interface VoucherFormData {
   validFrom: string;
   validUntil: string;
   isActive: boolean;
+  applicableTier?: 'ALL' | 'MEMBER' | 'VIP';
 }
 
 export interface ApiResponse<T> {
@@ -56,7 +58,7 @@ export const voucherService = {
     return response.data;
   },
 
-  updateVoucher: async (id: string, data: VoucherFormData) => {
+  updateVoucher: async (id: string, data: Omit<VoucherFormData, 'code'>) => {
     const response = await apiClient.put<ApiResponse<Voucher>>(`/admin/vouchers/${id}`, data);
     return response.data;
   },

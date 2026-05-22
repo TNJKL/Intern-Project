@@ -26,7 +26,11 @@ export default async function RootLayout({
   try {
     // Thử lấy thông tin user trên server
     const response = await getServerApi('/api/v1/auth/me');
-    user = response.data || response;
+    if (response && response.success && response.data && !Array.isArray(response.data)) {
+      user = response.data;
+    } else {
+      user = null;
+    }
   } catch (error) {
     // Nếu lỗi (chưa login) thì user = null, không cần redirect ở đây
     user = null;

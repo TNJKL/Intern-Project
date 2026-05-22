@@ -61,7 +61,8 @@ export async function getServerApi(endpoint: string, options: RequestInit = {}) 
                 'Content-Type': 'application/json',
                 'Cookie': `refreshToken=${refreshToken}`,
                 'ngrok-skip-browser-warning': 'true'
-              }
+              },
+              body: JSON.stringify({ refreshToken })
             });
 
             if (refreshRes.ok) {

@@ -7,6 +7,21 @@ export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   let res = NextResponse.next();
 
+  // CORS Preflight handling for Admin app in Development
+  const origin = request.headers.get('origin');
+  const isAllowedOrigin = origin && (origin === 'http://localhost:5173' || origin === 'http://localhost:5174' || origin === 'http://localhost:3000');
+  
+  if (request.method === 'OPTIONS' && isAllowedOrigin) {
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, ngrok-skip-browser-warning',
+      'Access-Control-Allow-Credentials': 'true',
+      'Access-Control-Max-Age': '86400',
+    };
+    return new NextResponse(null, { status: 204, headers: corsHeaders });
+  }
+
   // 1. Các file tĩnh và hệ thống (bỏ qua middleware)
   if (
     pathname.startsWith('/_next') ||
@@ -32,7 +47,8 @@ export default async function proxy(request: NextRequest) {
           'Content-Type': 'application/json',
           'ngrok-skip-browser-warning': 'true',
           'Cookie': `refreshToken=${refreshToken}`
-        }
+        },
+        body: JSON.stringify({ refreshToken })
       });
 
       if (refreshResponse.ok) {
@@ -57,9 +73,16 @@ export default async function proxy(request: NextRequest) {
       } else {
         // console.log('[Auth] Refresh failed');
         // Refresh token không hợp lệ -> xóa sạch token
-        const protectedPaths = ['/profile', '/admin', '/orders', '/checkout'];
-        if (protectedPaths.some(path => pathname.startsWith(path))) {
+        const protectedPaths = ['/profile', '/admin'];
+        const isProtected = protectedPaths.some(path => pathname.startsWith(path));
+        if (isProtected) {
           const redirectRes = NextResponse.redirect(new URL('/login?logout=true', request.url));
+          redirectRes.cookies.delete('accessToken');
+          redirectRes.cookies.delete('adminAccessToken');
+          redirectRes.cookies.delete('refreshToken');
+          return redirectRes;
+        } else if (pathname.startsWith('/orders') && !pathname.startsWith('/orders/track')) {
+          const redirectRes = NextResponse.redirect(new URL('/orders/track', request.url));
           redirectRes.cookies.delete('accessToken');
           redirectRes.cookies.delete('adminAccessToken');
           redirectRes.cookies.delete('refreshToken');
@@ -68,6 +91,93 @@ export default async function proxy(request: NextRequest) {
       }
     } catch (error) {
       console.error('[Middleware] Error during token refresh:', error);
+    }
+  }
+
+  // 2.5 Intercept direct auth refresh requests to properly forward refreshToken in request body
+  if (pathname === '/api/v1/auth/refresh') {
+    try {
+      if (!refreshToken) {
+        const errorRes = NextResponse.json({ message: 'Refresh token missing' }, { status: 401 });
+        if (isAllowedOrigin) {
+          errorRes.headers.set('Access-Control-Allow-Origin', origin);
+          errorRes.headers.set('Access-Control-Allow-Credentials', 'true');
+        }
+        return errorRes;
+      }
+
+      const refreshResponse = await fetch(`${BACKEND_URL}/api/v1/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
+          'Cookie': `refreshToken=${refreshToken}`
+        },
+        body: JSON.stringify({ refreshToken })
+      });
+
+      const responseData = await refreshResponse.json().catch(() => ({}));
+
+      if (refreshResponse.ok) {
+        const newAccessToken = responseData?.data?.accessToken || responseData?.accessToken;
+        const newRes = NextResponse.json(responseData);
+        
+        if (isAllowedOrigin) {
+          newRes.headers.set('Access-Control-Allow-Origin', origin);
+          newRes.headers.set('Access-Control-Allow-Credentials', 'true');
+        }
+
+        if (newAccessToken) {
+          const hasAdminCookie = request.cookies.has('adminAccessToken') || pathname.startsWith('/admin');
+          if (hasAdminCookie) {
+            newRes.cookies.set('adminAccessToken', newAccessToken, { path: '/', maxAge: 7 * 24 * 60 * 60, sameSite: 'lax', httpOnly: false });
+          } else {
+            newRes.cookies.set('accessToken', newAccessToken, { path: '/', maxAge: 7 * 24 * 60 * 60, sameSite: 'lax', httpOnly: true });
+          }
+        }
+
+        // Synchronize and set other cookies if needed
+        const setCookieHeaders = refreshResponse.headers.getSetCookie();
+        if (setCookieHeaders && setCookieHeaders.length > 0) {
+          setCookieHeaders.forEach(cookieString => {
+            const parts = cookieString.split(';');
+            const [nameValue] = parts;
+            const [name, value] = nameValue.split('=');
+            const cookieName = name.trim();
+            const cookieValue = value.trim();
+            if (cookieName.toLowerCase().includes('token')) {
+              const isHttpOnly = !cookieName.includes('adminAccessToken');
+              newRes.cookies.set(cookieName, cookieValue, {
+                httpOnly: isHttpOnly,
+                secure: true,
+                sameSite: 'lax',
+                path: '/',
+                maxAge: 60 * 60 * 24 * 7
+              });
+            }
+          });
+        }
+
+        return newRes;
+      } else {
+        const errorRes = NextResponse.json(responseData, { status: refreshResponse.status });
+        if (isAllowedOrigin) {
+          errorRes.headers.set('Access-Control-Allow-Origin', origin);
+          errorRes.headers.set('Access-Control-Allow-Credentials', 'true');
+        }
+        errorRes.cookies.delete('accessToken');
+        errorRes.cookies.delete('adminAccessToken');
+        errorRes.cookies.delete('refreshToken');
+        return errorRes;
+      }
+    } catch (error) {
+      console.error('[Middleware] Error proxying direct refresh request:', error);
+      const errorRes = NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+      if (isAllowedOrigin) {
+        errorRes.headers.set('Access-Control-Allow-Origin', origin);
+        errorRes.headers.set('Access-Control-Allow-Credentials', 'true');
+      }
+      return errorRes;
     }
   }
 
@@ -92,11 +202,16 @@ export default async function proxy(request: NextRequest) {
   }
 
   // 4. Bảo vệ các trang nội bộ
-  const protectedPaths = ['/profile', '/admin', '/orders', '/checkout'];
+  const protectedPaths = ['/profile', '/admin'];
   const isProtectedPath = protectedPaths.some(path => pathname.startsWith(path));
 
-  if (!accessToken && !refreshToken && isProtectedPath) {
-    return NextResponse.redirect(new URL('/login', request.url));
+  if (!accessToken && !refreshToken) {
+    if (isProtectedPath) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+    if (pathname.startsWith('/orders') && !pathname.startsWith('/orders/track')) {
+      return NextResponse.redirect(new URL('/orders/track', request.url));
+    }
   }
 
   return res;

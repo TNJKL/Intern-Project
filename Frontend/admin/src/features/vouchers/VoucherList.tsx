@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, Table, Button, Space, Tag, Popconfirm, Switch } from 'antd';
 import { EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
-import type { Voucher } from '@/services/voucherService';
+import type { Voucher } from '@/services/voucher.service';
 import { useVouchers } from './hooks/useVouchers';
 import { VoucherModal } from './components/VoucherModal';
 import { VoucherDetailModal } from './components/VoucherDetailModal';
@@ -53,6 +53,16 @@ const VoucherList: React.FC = () => {
       dataIndex: 'minOrderAmount',
       key: 'minOrderAmount',
       render: (val: number) => `${val.toLocaleString()}đ`,
+    },
+    {
+      title: 'Hạng áp dụng',
+      key: 'applicableTier',
+      render: (_: any, record: Voucher) => {
+        const tier = record.applicableTier || 'ALL';
+        if (tier === 'VIP') return <Tag color="gold" className="font-bold">Chỉ VIP</Tag>;
+        if (tier === 'MEMBER') return <Tag color="orange" className="font-bold">Thành viên</Tag>;
+        return <Tag color="blue" className="font-bold">Tất cả</Tag>;
+      }
     },
     {
       title: 'Đã dùng',
@@ -162,7 +172,8 @@ const VoucherList: React.FC = () => {
         }}
         onSubmit={(data) => {
           if (editingVoucher) {
-            updateVoucher.mutate({ id: editingVoucher.id, data }, {
+            const { code, ...updateData } = data;
+            updateVoucher.mutate({ id: editingVoucher.id, data: updateData }, {
               onSuccess: () => setIsModalOpen(false)
             });
           } else {

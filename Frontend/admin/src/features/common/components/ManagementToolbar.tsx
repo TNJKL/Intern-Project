@@ -112,12 +112,6 @@ export const ManagementToolbar: React.FC<ManagementToolbarProps> = ({
         ]}
       />
 
-      {extraFilters?.showDeletedFilter && (
-        <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-gray-100 ml-auto">
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Hiện món đã xóa</span>
-          <Switch size="small" checked={includeDeleted} onChange={setIncludeDeleted} className={includeDeleted ? 'bg-red-500' : 'bg-gray-200'} />
-        </div>
-      )}
     </div>
   </div>
 );

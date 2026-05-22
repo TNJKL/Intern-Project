@@ -164,7 +164,7 @@ const DashboardOverview: React.FC = () => {
             </div>
           </div>
           <div className="h-72 w-full" style={{ minHeight: '300px' }}>
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={300} minWidth={0}>
               <BarChart data={dataChart} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
@@ -189,7 +189,7 @@ const DashboardOverview: React.FC = () => {
                 <Tooltip 
                   cursor={{ fill: 'rgba(0,0,0,0.02)' }}
                   contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)', fontWeight: 'bold' }}
-                  formatter={(value: number) => [`${value.toLocaleString()}đ`, 'Doanh thu']}
+                  formatter={(value: any) => [`${Number(value).toLocaleString()}đ`, 'Doanh thu']}
                 />
                 <Bar 
                   dataKey="revenue" 

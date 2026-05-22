@@ -1,8 +1,8 @@
 import React from 'react';
 import { ProductModal } from './components/ProductModal';
 import { ProductDetailView } from './components/ProductDetailView';
-import { productService, type Product } from '../../services/productService';
-import { categoryService } from '../../services/categoryService';
+import { productService, type Product } from '../../services/product.service';
+import { categoryService } from '../../services/category.service';
 import { BaseManagement } from '../common/BaseManagement';
 import { useQuery } from '@tanstack/react-query';
 import { OrderedListOutlined } from '@ant-design/icons';

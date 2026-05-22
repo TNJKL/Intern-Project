@@ -68,8 +68,9 @@ export default function RegisterClient() {
         input:-webkit-autofill:hover, 
         input:-webkit-autofill:focus, 
         input:-webkit-autofill:active {
-            transition: background-color 5000s ease-in-out 0s, color 5000s ease-in-out 0s;
-            -webkit-text-fill-color: white !important;
+            -webkit-box-shadow: 0 0 0 1000px #1d130c inset !important;
+            -webkit-text-fill-color: #ffffff !important;
+            caret-color: #ffffff !important;
         }
       `}} />
       {/* Background Image */}

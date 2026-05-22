@@ -6,7 +6,7 @@ import {
   ShoppingOutlined,
   FileTextOutlined
 } from '@ant-design/icons';
-import type { Category } from '@/services/categoryService';
+import type { Category } from '@/services/category.service';
 import { useProductForm } from '../hooks/useProductForm';
 import { ImageUploadSection, VariantSection } from './ProductFormParts';
 
@@ -55,7 +55,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
       )}
       centered width={1000} styles={{ body: { padding: 0 } }}
     >
-      <div className="bg-white px-10 py-8 border-b border-gray-100 rounded-t-3xl">
+      <div className="bg-white px-10 pt-8 pb-4 border-b border-gray-100 rounded-t-3xl">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center border border-gray-100">
             <ShoppingOutlined className="text-xl text-gray-400" />
@@ -69,8 +69,8 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         </div>
       </div>
 
-      <Form form={form} layout="vertical" className="p-10 max-h-[75vh] overflow-y-auto scrollbar-hide bg-white">
-        <Space direction="vertical" size={24} className="w-full">
+      <Form form={form} layout="vertical" className="px-10 pb-10 pt-4 max-h-[75vh] overflow-y-auto scrollbar-hide bg-white">
+        <Space orientation="vertical" size={24} className="w-full">
           {/* Nhóm 1: Thông tin cơ bản */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-100">

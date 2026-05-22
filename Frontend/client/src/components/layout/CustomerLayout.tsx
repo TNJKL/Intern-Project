@@ -5,10 +5,11 @@ import { FloatingNav } from "@/components/layout/FloatingNav";
 import { ChatWidget } from "@/components/layout/ChatWidget";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { useAuthStore } from "@/store/useAuthStore";
-import { useAppDispatch } from "@/store/hooks";
-import { setCredentials, clearCredentials } from "@/store/authSlice";
-import { store } from "@/store/store";
+import { useAuthStore } from "@/store/zustand/useAuthStore";
+import { useCartStore } from "@/store/zustand/useCartStore";
+import { useAppDispatch } from "@/store/redux/hooks";
+import { setCredentials, clearCredentials } from "@/store/redux/authSlice";
+import { store } from "@/store/redux/store";
 import axios from "axios";
 import toast from "react-hot-toast";
 
@@ -22,6 +23,7 @@ interface CustomerLayoutProps {
 export function CustomerLayout({ children, initialUser }: CustomerLayoutProps) {
   const pathname = usePathname();
   const { setUser, clearUser, _hasHydrated } = useAuthStore();
+  const clearCart = useCartStore((s) => s.clearCart);
   const dispatch = useAppDispatch();
 
   const isAuthPage = pathname === "/login" || pathname === "/register";
@@ -39,6 +41,7 @@ export function CustomerLayout({ children, initialUser }: CustomerLayoutProps) {
 
     const silentRefresh = async () => {
       try {
+        if (!useAuthStore.getState().user) return; // Guest vãng lai không cần gọi refresh
         if (initialUser || store.getState().auth.user) return;
         if (store.getState().auth.accessToken) return;
 
@@ -61,6 +64,7 @@ export function CustomerLayout({ children, initialUser }: CustomerLayoutProps) {
       } catch {
         dispatch(clearCredentials());
         clearUser();
+        clearCart();
         // Không gọi logout API ở đây để tránh loop
       }
     };
@@ -89,6 +93,7 @@ export function CustomerLayout({ children, initialUser }: CustomerLayoutProps) {
     if (logoutParam === 'true') {
       dispatch(clearCredentials());
       clearUser();
+      clearCart();
       toast.success('Đã đăng xuất khỏi hệ thống');
       // Xóa tham số logout trên URL để tránh loop khi F5
       const newUrl = window.location.pathname;

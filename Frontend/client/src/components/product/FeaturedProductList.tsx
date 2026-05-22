@@ -1,25 +1,25 @@
 "use client";
 
-import Image from "next/image";
+import { SafeImage } from "@/components/SafeImage";
 import Link from "next/link";
 import { Star, Plus, Coffee } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Product, ProductVariant } from "@/types/product";
 import { Category } from "@/types/category";
 
-interface ProductListProps {
+interface FeaturedProductListProps {
   products: Product[];
   categories: Category[];
 }
 
-export function ProductList({ products = [], categories = [] }: ProductListProps) {
-  // Hiển thị tối đa 10 sản phẩm để chia hết cho hàng 5 cột
-  const displayProducts = products.filter(p => p.isAvailable).slice(0, 10);
+export function FeaturedProductList({ products = [], categories = [] }: FeaturedProductListProps) {
+  // Hiển thị tối đa 10 sản phẩm nổi bật để chia hết cho hàng 5 cột
+  const displayProducts = products.filter(p => p.isAvailable && p.isFeatured).slice(0, 10);
 
   return (
-    <section className="px-6 py-8 max-w-7xl mx-auto w-full">
+    <section id="home-featured" className="px-6 py-8 max-w-7xl mx-auto w-full scroll-mt-24">
       <div className="flex items-center justify-between mb-8">
-        <h2 className="text-2xl font-black text-coffee-dark uppercase tracking-tight">Sản Phẩm</h2>
+        <h2 className="text-2xl font-black text-coffee-dark uppercase tracking-tight">Sản Phẩm nổi bật</h2>
         <Link href="/menu" className="text-primary font-black text-[10px] uppercase tracking-widest hover:underline decoration-2 underline-offset-4 transition-all">Xem tất cả</Link>
       </div>
 
@@ -42,21 +42,22 @@ export function ProductList({ products = [], categories = [] }: ProductListProps
                 <Link href={`/product/${product.id}`} className="block h-full">
                   <div className="bg-[#fdf3eb] p-3 md:p-4 rounded-[28px] hover:shadow-[0_10px_30px_-10px_rgba(60,42,33,0.08)] transition-all duration-500 border border-transparent hover:border-primary/5 relative flex flex-col h-full">
                     <div className="relative aspect-square mb-4 rounded-2xl overflow-hidden bg-white flex items-center justify-center shrink-0 border border-gray-50">
-                      {hasImage ? (
-                        <Image
-                          src={product.imageUrl!}
-                          alt={product.name}
-                          fill
-                          sizes="(max-width: 768px) 50vw, 25vw"
-                          className="object-contain p-2 md:p-4 group-hover:scale-110 transition-transform duration-700"
-                          priority={index < 2}
-                        />
-                      ) : (
-                        <div className="flex flex-col items-center justify-center text-primary/20">
-                          <Coffee className="w-12 h-12 mb-1" />
-                          <span className="text-[10px] font-black uppercase tracking-widest">No Image</span>
-                        </div>
-                      )}
+                      <SafeImage
+                        src={product.imageUrl || ""}
+                        alt={product.name}
+                        fill
+                        sizes="(max-width: 768px) 50vw, 25vw"
+                        className="object-contain p-2 md:p-4 group-hover:scale-110 transition-transform duration-700"
+                        priority={index < 4}
+                        crossOrigin="anonymous"
+                        referrerPolicy="no-referrer"
+                        fallback={
+                          <div className="flex flex-col items-center justify-center text-primary/20">
+                            <Coffee className="w-12 h-12 mb-1" />
+                            <span className="text-[10px] font-black uppercase tracking-widest">No Image</span>
+                          </div>
+                        }
+                      />
                       <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center gap-1 border border-black/5 shadow-sm">
                         <Star className="w-3 h-3 text-orange-400 fill-current" />
                         <span className="text-[10px] font-black">4.9</span>

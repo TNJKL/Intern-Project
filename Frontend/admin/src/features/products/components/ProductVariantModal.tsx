@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { Modal, Form, Input, InputNumber, Button } from 'antd';
 import { CheckOutlined, DeleteOutlined, OrderedListOutlined } from '@ant-design/icons';
 import { message } from '@/lib/antd';
-import { productService, type Product } from '../../../services/productService';
+import { productService, type Product } from '../../../services/product.service';
 import { useQueryClient } from '@tanstack/react-query';
 
 interface ProductVariantModalProps {

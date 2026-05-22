@@ -94,16 +94,6 @@ export default function ProfileClient({ user }: ProfileClientProps) {
             <InfoRow icon={<Mail />} label="Email liên hệ" value={user.email} />
             <InfoRow icon={<MapPin />} label="Địa chỉ mặc định" value="Việt Nam" />
             <InfoRow icon={<Calendar />} label="Ngày đăng ký" value={user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : "---"} />
-            
-            <div className="md:col-span-2 pt-6 border-t border-gray-50 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center text-green-600">
-                <Shield size={20} />
-              </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Trạng thái bảo mật</p>
-                <p className="text-sm font-bold text-green-600">Tài khoản đã được bảo vệ (Mức độ: Cao)</p>
-              </div>
-            </div>
           </div>
         </motion.div>
       </div>

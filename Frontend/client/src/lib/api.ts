@@ -1,6 +1,7 @@
 import axios from 'axios';
-import { store } from '../store/store';
-import { updateAccessToken, clearCredentials } from '../store/authSlice';
+import { store } from '../store/redux/store';
+import { updateAccessToken, clearCredentials } from '../store/redux/authSlice';
+import { useAuthStore } from '../store/zustand/useAuthStore';
 
 export const apiClient = axios.create({
   baseURL: '/api/v1',
@@ -32,8 +33,14 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config;
     const isExpired = error.response?.data?.errorCode === 'TOKEN_EXPIRED';
     const isAuthError = isExpired || error.response?.status === 401 || error.response?.status === 403;
+    const user = useAuthStore.getState().user;
 
-    if (!isAuthError || originalRequest._retry) {
+    if (!isAuthError || originalRequest._retry || !user) {
+      if (isAuthError && !user && typeof window !== 'undefined') {
+        document.cookie = "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+        document.cookie = "adminAccessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+        document.cookie = "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+      }
       return Promise.reject(error);
     }
 
@@ -62,10 +69,17 @@ apiClient.interceptors.response.use(
     } catch (refreshError) {
       processQueue(refreshError, null);
 
-      // Xóa toàn bộ trạng thái auth khỏi RAM và điều hướng về login
+      // Xóa toàn bộ trạng thái auth khỏi RAM
       store.dispatch(clearCredentials());
+      
+      // Chỉ chuyển hướng về login nếu đang truy cập một trang được bảo vệ
       if (typeof window !== 'undefined') {
-        window.location.href = '/login';
+        const pathname = window.location.pathname;
+        const protectedPaths = ['/profile', '/admin', '/orders'];
+        const isProtected = protectedPaths.some(path => pathname.startsWith(path));
+        if (isProtected) {
+          window.location.href = '/login';
+        }
       }
 
       return Promise.reject(refreshError);

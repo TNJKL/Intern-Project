@@ -1,6 +1,6 @@
 import React from 'react';
 import { BaseManagement } from '../common/BaseManagement';
-import { categoryService, type Category } from '@/services/categoryService';
+import { categoryService, type Category } from '@/services/category.service';
 import { Tag, Space, Descriptions } from 'antd';
 import { CategoryModal } from './components/CategoryModal';
 
@@ -30,7 +30,7 @@ const CategoryList: React.FC = () => {
       render: (name: string, record: Category) => {
         const isDeleted = (record as any).isDeleted || (record as any).deleted || (record as any).deletedAt || (record as any).status === 'DELETED';
         return (
-          <Space direction="vertical" size={0}>
+          <Space orientation="vertical" size={0}>
             <span className={`font-bold text-gray-800 ${isDeleted ? 'line-through text-gray-400' : ''}`}>
               {name}
             </span>

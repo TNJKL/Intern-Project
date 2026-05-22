@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { useAuthStore } from '../store/useAuthStore';
+import { useAuthStore } from '../store/zustand/useAuthStore';
 
 export const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, user, setAuth, fetchUser } = useAuthStore();
+  const { isAuthenticated, user, setAuth, fetchUser, silentRefresh } = useAuthStore();
   const [isHydrated, setIsHydrated] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   useEffect(() => {
     // Wait for zustand persist to hydrate
@@ -13,43 +14,59 @@ export const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children })
   useEffect(() => {
     if (!isHydrated) return;
 
-    // Check for auth data in URL (passed from client login)
-    const urlParams = new URLSearchParams(window.location.search);
-    const authDataParam = urlParams.get('auth');
+    const checkAuth = async () => {
+      // 1. Check for auth data in URL (passed from client login)
+      const urlParams = new URLSearchParams(window.location.search);
+      const authDataParam = urlParams.get('auth');
 
-    if (authDataParam) {
-      try {
-        const authData = JSON.parse(decodeURIComponent(authDataParam));
-        setAuth(authData.user, authData.accessToken, authData.refreshToken);
-        
-        // Clean up URL
-        window.history.replaceState({}, document.title, window.location.pathname);
-        return; // Don't redirect if we just authenticated
-      } catch (e) {
-        console.error('Failed to parse auth data', e);
+      if (authDataParam) {
+        try {
+          const authData = JSON.parse(decodeURIComponent(authDataParam));
+          setAuth(authData.user, authData.accessToken, authData.refreshToken);
+          
+          // Clean up URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+          setIsCheckingAuth(false);
+          return;
+        } catch (e) {
+          console.error('Failed to parse auth data', e);
+        }
       }
-    }
 
-    // If authenticated, fetch latest profile to prevent data loss
-    if (isAuthenticated) {
-      fetchUser();
-    }
+      // 2. If not authenticated, try silent refresh
+      if (!isAuthenticated) {
+        const success = await silentRefresh();
+        if (success) {
+          setIsCheckingAuth(false);
+          return;
+        }
+        
+        // If silent refresh failed, redirect to login
+        window.location.href = 'http://localhost:3000/login?logout=true';
+        return;
+      }
 
-    // If not authenticated, redirect to login
-    if (!isAuthenticated) {
-      window.location.href = 'http://localhost:3000/login?logout=true';
-      return;
-    }
+      // 3. If authenticated but NOT an admin, redirect to client homepage
+      if (user && user.role?.toUpperCase() !== 'ADMIN') {
+        window.location.href = 'http://localhost:3000';
+        return;
+      }
 
-    // If authenticated but NOT an admin, redirect to client homepage
-    if (user && user.role !== 'ADMIN') {
-      window.location.href = 'http://localhost:3000';
-      return;
-    }
-  }, [isHydrated, isAuthenticated, setAuth, fetchUser]);
+      // 4. Fetch latest profile
+      try {
+        await fetchUser();
+      } catch (err) {
+        console.error('Failed to fetch user profile:', err);
+      }
+      
+      setIsCheckingAuth(false);
+    };
+
+    checkAuth();
+  }, [isHydrated, isAuthenticated, setAuth, fetchUser, silentRefresh, user]);
 
   // Show loading while hydrating or redirecting
-  if (!isHydrated || !isAuthenticated || user?.role !== 'ADMIN') {
+  if (!isHydrated || isCheckingAuth || user?.role?.toUpperCase() !== 'ADMIN') {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-[#fdfaf5]">
         <div className="flex flex-col items-center gap-4">

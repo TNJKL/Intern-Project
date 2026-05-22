@@ -31,9 +31,34 @@ interface CartStore {
   clearCart: () => void;
 }
 
+import { useAuthStore } from './useAuthStore';
+import { StateStorage, createJSONStorage } from 'zustand/middleware';
+
 // Generate a unique ID based on product, variant, and toppings
 const generateItemId = (productId: string, variantId: string, toppingIds: string[]) => {
   return `${productId}-${variantId}-${[...toppingIds].sort().join(',')}`;
+};
+
+// Custom Storage để phân tách giỏ hàng theo User ID (hoặc guest) trong localStorage
+const customStorage: StateStorage = {
+  getItem: (name) => {
+    if (typeof window === 'undefined') return null;
+    const userId = useAuthStore.getState().user?.id || 'guest';
+    const key = `${name}-${userId}`;
+    return localStorage.getItem(key);
+  },
+  setItem: (name, value) => {
+    if (typeof window === 'undefined') return;
+    const userId = useAuthStore.getState().user?.id || 'guest';
+    const key = `${name}-${userId}`;
+    localStorage.setItem(key, value);
+  },
+  removeItem: (name) => {
+    if (typeof window === 'undefined') return;
+    const userId = useAuthStore.getState().user?.id || 'guest';
+    const key = `${name}-${userId}`;
+    localStorage.removeItem(key);
+  },
 };
 
 export const useCartStore = create<CartStore>()(
@@ -79,6 +104,36 @@ export const useCartStore = create<CartStore>()(
     }),
     {
       name: 'brewtra-cart-storage',
+      storage: createJSONStorage(() => customStorage),
     }
   )
 );
+
+// Tự động đồng bộ giỏ hàng khi trạng thái đăng nhập thay đổi (Login / Logout)
+if (typeof window !== 'undefined') {
+  let currentUser = useAuthStore.getState().user;
+  
+  useAuthStore.subscribe((state) => {
+    const newUser = state.user;
+    if (newUser?.id !== currentUser?.id) {
+      currentUser = newUser;
+      const userId = newUser?.id || 'guest';
+      const key = `brewtra-cart-storage-${userId}`;
+      const savedCart = localStorage.getItem(key);
+      if (savedCart) {
+        try {
+          const parsed = JSON.parse(savedCart);
+          if (parsed && parsed.state) {
+            useCartStore.setState({ items: parsed.state.items || [] });
+          } else {
+            useCartStore.setState({ items: [] });
+          }
+        } catch (e) {
+          useCartStore.setState({ items: [] });
+        }
+      } else {
+        useCartStore.setState({ items: [] });
+      }
+    }
+  });
+}

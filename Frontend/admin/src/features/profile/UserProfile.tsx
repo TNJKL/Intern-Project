@@ -4,7 +4,7 @@ import {
   UserOutlined,
   MailOutlined
 } from '@ant-design/icons';
-import { useAuthStore } from '../../store/useAuthStore';
+import { useAuthStore } from '../../store/zustand/useAuthStore';
 import EditProfileModal from './components/EditProfileModal';
 import ChangePasswordModal from './components/ChangePasswordModal';
 
@@ -100,7 +100,7 @@ const UserProfile: React.FC = () => {
               style={{ borderRadius: '24px', border: '1px solid #f1f1f1', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}
             >
               <Title level={5} style={{ marginBottom: '24px', fontWeight: 800 }}>Thông tin chi tiết</Title>
-              <Descriptions column={1} labelStyle={{ color: '#94a3b8', fontWeight: 600, width: '150px' }} contentStyle={{ color: '#1e293b', fontWeight: 600 }}>
+              <Descriptions column={1} styles={{ label: { color: '#94a3b8', fontWeight: 600, width: '150px' }, content: { color: '#1e293b', fontWeight: 600 } }}>
                 <Descriptions.Item label="SỐ ĐIỆN THOẠI">{user.phone || 'Chưa cập nhật'}</Descriptions.Item>
                 <Descriptions.Item label="ĐỊA CHỈ">Việt Nam</Descriptions.Item>
                 <Descriptions.Item label="NGÀY GIA NHẬP">{user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : '---'}</Descriptions.Item>

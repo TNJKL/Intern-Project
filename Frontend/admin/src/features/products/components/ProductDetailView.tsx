@@ -1,6 +1,6 @@
 import React from 'react';
-import type { Product } from '../../../services/productService';
-import type { Category } from '../../../services/categoryService';
+import type { Product } from '../../../services/product.service';
+import type { Category } from '../../../services/category.service';
 
 interface ProductDetailViewProps {
   product: Product;

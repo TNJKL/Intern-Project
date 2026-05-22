@@ -15,15 +15,15 @@ export default async function OrdersPage() {
   const allCookies = cookieStore.getAll();
   const hasRefreshToken = allCookies.some(c => c.name === 'refreshToken' || c.name === 'refresh_token');
 
-  // Nếu không có bất kỳ auth cookie nào, redirect ngay
+  // Nếu không có bất kỳ auth cookie nào, redirect sang trang tra cứu đơn hàng vãng lai
   if (!hasRefreshToken && allCookies.length === 0) {
-    redirect("/login");
+    redirect("/orders/track");
   }
 
   let orders = [];
   try {
     // Fetch user's orders from the server API
-    const response = await getServerApi('/api/v1/orders');
+    const response = await getServerApi('/api/v1/orders?size=100&sort=createdAt,desc');
     if (response?.success && response?.data) {
       orders = response.data;
     }

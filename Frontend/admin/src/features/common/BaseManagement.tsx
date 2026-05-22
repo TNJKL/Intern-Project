@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from 'react';
-import { Card, Table, Space, Button, Modal, Descriptions } from 'antd';
-import { EditOutlined, DeleteOutlined, UndoOutlined, EyeOutlined } from '@ant-design/icons';
+import { Card, Table, Space, Button, Modal, Descriptions, Tabs, Badge } from 'antd';
+import { EditOutlined, DeleteOutlined, UndoOutlined, EyeOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { useManagement } from './hooks/useManagement';
+import { useQuery as useReactQuery } from '@tanstack/react-query';
 import { ManagementHeader } from './components/ManagementHeader';
 import { ManagementToolbar } from './components/ManagementToolbar';
 import { message } from '@/lib/antd';
@@ -31,6 +32,65 @@ export const BaseManagement = <T extends { id: string }>({
   const { state, data, actions } = useManagement<T>(queryKey, service);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [viewingRecord, setViewingRecord] = useState<T | null>(null);
+  const [activeTab, setActiveTab] = useState<'active' | 'deleted'>('active');
+
+  const handleTabChange = (key: string) => {
+    setActiveTab(key as 'active' | 'deleted');
+    state.setIncludeDeleted(key === 'deleted');
+    state.setCurrentPage(1);
+    
+    // Tăng pageSize khi ở tab Deleted để kéo được toàn bộ dữ liệu về lọc client-side đầy đủ
+    if (key === 'deleted') {
+      state.setPageSize(200);
+    } else {
+      state.setPageSize(20);
+    }
+  };
+
+  const isDeletedRecord = (r: any) => {
+    const isDeleted = !!(r.isDeleted || r.deleted || r.deletedAt || r.status === 'DELETED');
+    const isNotAvailable = r.isAvailable === false;
+    const isNotActive = r.isActive === false;
+    return isDeleted || isNotAvailable || isNotActive;
+  };
+
+  const displayRecords = extraFilters?.showDeletedFilter
+    ? (activeTab === 'deleted'
+      ? data.records.filter(isDeletedRecord)
+      : data.records.filter(r => !isDeletedRecord(r)))
+    : data.records;
+
+  // Query phụ để lấy số lượng đếm chính xác 100% cho cả 2 tab, đồng bộ với các bộ lọc tìm kiếm/danh mục hiện tại
+  const { data: countData } = useReactQuery({
+    queryKey: [
+      queryKey, 
+      'counts', 
+      state.searchText, 
+      state.selectedCategory, 
+      state.availability, 
+      state.featured
+    ],
+    queryFn: () => service.getAll({ 
+      page: 0, 
+      size: 500, 
+      includeDeleted: true,
+      keyword: state.searchText || undefined,
+      categoryId: state.selectedCategory || undefined,
+      isAvailable: state.availability !== undefined ? state.availability : undefined,
+      isFeatured: state.featured !== undefined ? state.featured : undefined
+    }),
+  });
+
+  const allRecordsForCount = Array.isArray(countData) ? countData : (countData?.data || []);
+  
+  // Thuật toán đồng bộ số liệu: Lấy số lượng hoạt động trực tiếp từ totalElements của server khi ở Tab 1 để khớp chính xác 100% với phân trang của bảng
+  const activeCount = activeTab === 'active'
+    ? data.totalElements
+    : allRecordsForCount.filter(r => !isDeletedRecord(r)).length;
+
+  const deletedCount = activeTab === 'active'
+    ? Math.max(0, allRecordsForCount.length - data.totalElements)
+    : allRecordsForCount.filter(isDeletedRecord).length;
 
   const handleView = (record: T) => {
     setViewingRecord(record);
@@ -122,6 +182,49 @@ export const BaseManagement = <T extends { id: string }>({
         isLoading={actions.createMutation.isPending}
       />
 
+      {extraFilters?.showDeletedFilter && (
+        <div className="border-b border-gray-100 pb-1">
+          <Tabs
+            activeKey={activeTab}
+            onChange={handleTabChange}
+            size="large"
+            className="border-none mb-0"
+            items={[
+              {
+                key: 'active',
+                label: (
+                  <span className="flex items-center gap-2 font-bold uppercase text-xs tracking-wider">
+                    <CheckCircleOutlined className="text-emerald-500 text-sm" />
+                    Đang hoạt động
+                    <Badge 
+                      count={activeCount} 
+                      showZero 
+                      color="#10b981" 
+                      className="ml-1 font-bold scale-90"
+                    />
+                  </span>
+                ),
+              },
+              {
+                key: 'deleted',
+                label: (
+                  <span className="flex items-center gap-2 font-bold uppercase text-xs tracking-wider">
+                    <DeleteOutlined className="text-rose-500 text-sm" />
+                    Không hoạt động / Đã xóa
+                    <Badge 
+                      count={deletedCount} 
+                      showZero 
+                      color="#f43f5e" 
+                      className="ml-1 font-bold scale-90"
+                    />
+                  </span>
+                ),
+              },
+            ]}
+          />
+        </div>
+      )}
+
       <ManagementToolbar 
         searchText={state.searchText}
         setSearchText={state.setSearchText}
@@ -146,18 +249,20 @@ export const BaseManagement = <T extends { id: string }>({
       <Card variant="borderless" className="rounded-[32px] shadow-sm border border-gray-100 p-2 overflow-hidden" styles={{ body: { padding: '24px' } }}>
         <Table
           columns={[...columns, actionColumn]}
-          dataSource={data.records}
+          dataSource={displayRecords}
           rowKey="id"
           loading={data.isLoading}
           pagination={{
             current: state.currentPage,
-            pageSize: state.pageSize,
-            total: data.totalElements,
+            pageSize: activeTab === 'deleted' ? 20 : state.pageSize,
+            total: extraFilters?.showDeletedFilter && activeTab === 'deleted' ? displayRecords.length : data.totalElements,
             showSizeChanger: true,
             className: 'custom-pagination',
             onChange: (page, size) => {
               state.setCurrentPage(page);
-              state.setPageSize(size);
+              if (activeTab !== 'deleted') {
+                state.setPageSize(size);
+              }
             }
           }}
           className="custom-admin-table cursor-pointer"
@@ -194,7 +299,7 @@ export const BaseManagement = <T extends { id: string }>({
             {renderDetail ? renderDetail(viewingRecord) : (
               <Descriptions column={1} bordered size="small" className="bg-gray-50 rounded-xl overflow-hidden">
                 {Object.entries(viewingRecord).map(([key, value]) => (
-                  <Descriptions.Item key={key} label={key} labelStyle={{ fontWeight: 'bold' }}>
+                  <Descriptions.Item key={key} label={<span className="font-bold">{key}</span>}>
                     {String(value)}
                   </Descriptions.Item>
                 ))}
