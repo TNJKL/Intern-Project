@@ -24,5 +24,6 @@ public class VoucherResponse {
     private Instant validFrom;
     private Instant validUntil;
     private Boolean isActive;
+    private String applicableTier;
     private Instant createdAt;
 }

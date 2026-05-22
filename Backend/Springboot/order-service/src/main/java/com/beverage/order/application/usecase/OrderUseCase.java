@@ -4,13 +4,16 @@ import com.beverage.order.application.dto.request.CreateOrderRequest;
 import com.beverage.order.application.dto.request.UpdateOrderStatusRequest;
 import com.beverage.order.application.dto.response.OrderDetailResponse;
 import com.beverage.order.application.dto.response.OrderSummaryResponse;
+import com.beverage.order.application.event.OrderApplicationEvent;
 import com.beverage.order.application.mapper.OrderDtoMapper;
 import com.beverage.order.application.service.IdempotencyService;
 import com.beverage.order.application.service.OrderPricingService;
 import com.beverage.order.application.service.VoucherService;
 import com.beverage.order.domain.exception.ConflictException;
 import com.beverage.order.domain.exception.ForbiddenException;
+import com.beverage.order.domain.exception.BusinessException;
 import com.beverage.order.domain.exception.ResourceNotFoundException;
+import com.beverage.order.domain.exception.BadRequestException;
 import com.beverage.order.domain.model.OrderStatus;
 import com.beverage.order.infrastructure.cache.OrderDetailCacheService;
 import com.beverage.order.infrastructure.persistence.entity.OrderEntity;
@@ -18,12 +21,15 @@ import com.beverage.order.infrastructure.persistence.entity.OrderItemEntity;
 import com.beverage.order.infrastructure.persistence.entity.OrderStatusHistoryEntity;
 import com.beverage.order.infrastructure.persistence.repository.OrderJpaRepository;
 import com.beverage.order.infrastructure.persistence.repository.OrderStatusHistoryJpaRepository;
+import com.beverage.order.infrastructure.persistence.repository.VoucherJpaRepository;
 import com.beverage.order.infrastructure.persistence.spec.OrderSpecifications;
 import com.beverage.order.infrastructure.security.OrderActorResolver;
 import com.beverage.shared.jwt.JwtUserPrincipal;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -34,6 +40,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -41,18 +48,48 @@ import java.util.UUID;
 @Slf4j
 public class OrderUseCase {
 
+    @Value("${app.order-payment.timeout-minutes:30}")
+    private int paymentTimeoutMinutes;
+
     private final OrderJpaRepository orderJpaRepository;
     private final OrderStatusHistoryJpaRepository statusHistoryJpaRepository;
+    private final VoucherJpaRepository voucherRepository;
     private final OrderPricingService orderPricingService;
     private final OrderDtoMapper orderDtoMapper;
     private final OrderActorResolver orderActorResolver;
     private final OrderDetailCacheService orderDetailCacheService;
     private final EntityManager entityManager;
     private final VoucherService voucherService;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Transactional
     public OrderDetailResponse createOrder(CreateOrderRequest request) {
-        JwtUserPrincipal actor = orderActorResolver.requirePrincipal();
+        Optional<JwtUserPrincipal> actorOpt = orderActorResolver.getOptionalPrincipal();
+
+        UUID userId;
+        String userEmail;
+        String userName;
+
+        if (actorOpt.isPresent()) {
+            JwtUserPrincipal actor = actorOpt.get();
+            userId = actor.getUserId();
+            userEmail = actor.getEmail();
+            userName = actor.getFullName();
+        } else {
+            userId = null;
+            userEmail = request.getUserEmail();
+            userName = request.getUserName();
+
+            if (userEmail == null || userEmail.isBlank()) {
+                throw new BadRequestException("Email là bắt buộc khi đặt hàng không đăng nhập");
+            }
+            if (userName == null || userName.isBlank()) {
+                throw new BadRequestException("Họ tên là bắt buộc khi đặt hàng không đăng nhập");
+            }
+            if (request.getUserPhone() == null || request.getUserPhone().isBlank()) {
+                throw new BadRequestException("Số điện thoại là bắt buộc khi đặt hàng không đăng nhập");
+            }
+        }
 
         List<OrderItemEntity> lineItems = new ArrayList<>();
         for (var line : request.getItems()) {
@@ -67,7 +104,8 @@ public class OrderUseCase {
         java.util.UUID voucherId = null;
 
         if (request.getVoucherCode() != null && !request.getVoucherCode().isBlank()) {
-            var voucherValidation = voucherService.validateAndApplyVoucher(request.getVoucherCode(), subtotal);
+            var voucherValidation = voucherService.validateAndApplyVoucher(
+                    request.getVoucherCode(), subtotal, userId);
             discountAmount = voucherValidation.getDiscountAmount();
             try {
                 var voucher = voucherService.getVoucherByCode(request.getVoucherCode().trim().toUpperCase());
@@ -82,9 +120,9 @@ public class OrderUseCase {
 
         OrderEntity order = OrderEntity.builder()
                 .orderCode("")
-                .userId(actor.getUserId())
-                .userEmail(actor.getEmail())
-                .userName(actor.getFullName())
+                .userId(userId)
+                .userEmail(userEmail)
+                .userName(userName)
                 .userPhone(request.getUserPhone())
                 .status(OrderStatus.PENDING)
                 .subtotal(subtotal)
@@ -94,6 +132,7 @@ public class OrderUseCase {
                 .deliveryAddress(request.getDeliveryAddress())
                 .paymentMethod(request.getPaymentMethod())
                 .note(request.getNote())
+                .paymentDeadline(Instant.now().plusSeconds(paymentTimeoutMinutes * 60L))
                 .build();
 
         for (OrderItemEntity item : lineItems) {
@@ -105,16 +144,18 @@ public class OrderUseCase {
         entityManager.refresh(saved);
 
         if (voucherId != null && request.getVoucherCode() != null) {
-            try {
-                voucherService.incrementUsage(request.getVoucherCode().trim().toUpperCase());
-            } catch (Exception e) {
-                log.warn("Failed to increment voucher usage for code '{}': {}", request.getVoucherCode(), e.getMessage());
+            String voucherCode = request.getVoucherCode().trim().toUpperCase();
+            int updated = voucherRepository.tryIncrementUsage(voucherCode);
+            if (updated == 0) {
+                throw new BusinessException("Voucher đã hết lượt sử dụng");
             }
         }
 
         appendStatusHistory(saved.getId(), OrderStatus.PENDING, "Đơn hàng được tạo");
 
-        OrderDetailResponse detail = loadDetail(saved.getId(), actor);
+        applicationEventPublisher.publishEvent(new OrderApplicationEvent.OrderCreated(this, saved));
+
+        OrderDetailResponse detail = loadDetailForGuest(saved.getId());
         orderDetailCacheService.put(saved.getId(), detail);
         return detail;
     }
@@ -162,13 +203,27 @@ public class OrderUseCase {
         OrderEntity order = orderJpaRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Đơn hàng", "id", orderId));
 
-        if (order.getStatus() == OrderStatus.CANCELLED) {
-            throw new ConflictException("Không thể cập nhật đơn đã hủy");
+        if (order.getStatus().isTerminal()) {
+            throw new ConflictException("Không thể cập nhật đơn đã ở trạng thái cuối");
+        }
+
+        OrderStatus previousStatus = order.getStatus();
+        if (previousStatus == request.getStatus()) {
+            orderDetailCacheService.evict(orderId);
+            return loadDetail(orderId, orderActorResolver.requirePrincipal());
+        }
+
+        if (!previousStatus.canTransitionTo(request.getStatus())) {
+            throw new BadRequestException(
+                    "Không thể chuyển từ " + previousStatus + " sang " + request.getStatus());
         }
 
         order.setStatus(request.getStatus());
         orderJpaRepository.save(order);
         appendStatusHistory(orderId, request.getStatus(), request.getNote());
+
+        applicationEventPublisher.publishEvent(new OrderApplicationEvent.OrderStatusChanged(
+                this, order, previousStatus, request.getStatus(), request.getNote()));
 
         orderDetailCacheService.evict(orderId);
         return loadDetail(orderId, orderActorResolver.requirePrincipal());
@@ -186,6 +241,8 @@ public class OrderUseCase {
         order.setStatus(OrderStatus.CANCELLED);
         orderJpaRepository.save(order);
         appendStatusHistory(orderId, OrderStatus.CANCELLED, "Khách hủy đơn");
+
+        applicationEventPublisher.publishEvent(new OrderApplicationEvent.OrderCancelled(this, order, "Khách hủy đơn"));
 
         orderDetailCacheService.evict(orderId);
         return loadDetail(orderId, actor);
@@ -212,6 +269,14 @@ public class OrderUseCase {
 
     private OrderDetailResponse loadDetail(UUID orderId, JwtUserPrincipal actor) {
         OrderEntity order = findAccessibleOrder(orderId, actor);
+        List<OrderStatusHistoryEntity> history =
+                statusHistoryJpaRepository.findByOrderIdOrderByCreatedAtAsc(orderId);
+        return orderDtoMapper.toDetail(order, history);
+    }
+
+    private OrderDetailResponse loadDetailForGuest(UUID orderId) {
+        OrderEntity order = orderJpaRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Đơn hàng", "id", orderId));
         List<OrderStatusHistoryEntity> history =
                 statusHistoryJpaRepository.findByOrderIdOrderByCreatedAtAsc(orderId);
         return orderDtoMapper.toDetail(order, history);

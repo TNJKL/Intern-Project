@@ -55,6 +55,9 @@ public class VoucherEntity {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive;
 
+    @Column(name = "applicable_tier", nullable = false, length = 20)
+    private String applicableTier = "ALL";
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -68,6 +71,7 @@ public class VoucherEntity {
         if (updatedAt == null) updatedAt = now;
         if (currentUsageCount == null) currentUsageCount = 0;
         if (isActive == null) isActive = true;
+        if (applicableTier == null) applicableTier = "ALL";
     }
 
     @PreUpdate

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
-const BACKEND_URL = 'https://morbidity-stucco-grower.ngrok-free.dev/api/v1';
+const BACKEND_URL = `${process.env.NEXT_PUBLIC_GLOBAL_BACKEND_IP}/api/v1`;
 
 export async function POST() {
   const cookieStore = await cookies();

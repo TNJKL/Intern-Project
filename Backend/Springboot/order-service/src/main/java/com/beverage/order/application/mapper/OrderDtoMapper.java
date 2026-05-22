@@ -4,6 +4,7 @@ import com.beverage.order.application.dto.response.OrderDetailResponse;
 import com.beverage.order.application.dto.response.OrderItemResponse;
 import com.beverage.order.application.dto.response.OrderStatusHistoryResponse;
 import com.beverage.order.application.dto.response.OrderSummaryResponse;
+import com.beverage.order.application.dto.response.OrderTrackingResponse;
 import com.beverage.order.infrastructure.persistence.entity.OrderEntity;
 import com.beverage.order.infrastructure.persistence.entity.OrderItemEntity;
 import com.beverage.order.infrastructure.persistence.entity.OrderStatusHistoryEntity;
@@ -87,5 +88,43 @@ public class OrderDtoMapper {
                 .note(entity.getNote())
                 .createdAt(entity.getCreatedAt())
                 .build();
+    }
+
+    public OrderTrackingResponse toTracking(
+            OrderEntity entity,
+            List<OrderStatusHistoryEntity> history
+    ) {
+        String maskedPhone = maskPhone(entity.getUserPhone());
+
+        String voucherMessage = entity.getVoucherId() != null
+                ? voucherRepository.findById(entity.getVoucherId())
+                        .map(v -> "Đã áp dụng Voucher: " + v.getCode())
+                        .orElse(null)
+                : null;
+
+        return OrderTrackingResponse.builder()
+                .orderCode(entity.getOrderCode())
+                .status(entity.getStatus())
+                .userName(entity.getUserName())
+                .userPhone(maskedPhone)
+                .deliveryAddress(entity.getDeliveryAddress())
+                .paymentMethod(entity.getPaymentMethod())
+                .voucherMessage(voucherMessage)
+                .subtotal(entity.getSubtotal())
+                .discountAmount(entity.getDiscountAmount())
+                .totalAmount(entity.getTotalAmount())
+                .note(entity.getNote())
+                .createdAt(entity.getCreatedAt())
+                .items(entity.getItems().stream().map(this::toItem).toList())
+                .statusHistory(history.stream().map(this::toHistory).toList())
+                .build();
+    }
+
+    private String maskPhone(String phone) {
+        if (phone == null || phone.length() < 7) {
+            return phone;
+        }
+        int len = phone.length();
+        return phone.substring(0, 3) + "****" + phone.substring(len - 4);
     }
 }

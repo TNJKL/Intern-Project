@@ -3,6 +3,7 @@
 import { Search, Menu, User, Coffee, ShoppingCart, LogOut, LayoutDashboard } from "lucide-react";
 import Link from "next/link";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useCartStore } from "@/store/useCartStore";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { clearCredentials } from "@/store/authSlice";
 import { useEffect, useState } from "react";
@@ -22,6 +23,7 @@ export function Navbar({ initialUser }: NavbarProps) {
   const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+  const cartItemsCount = useCartStore((state) => state.items.reduce((total, item) => total + item.quantity, 0));
 
   useEffect(() => {
     setIsMounted(true);
@@ -45,23 +47,8 @@ export function Navbar({ initialUser }: NavbarProps) {
         </div>
       </Link>
 
-      {/* Search Bar - Hidden on very small screens, expanded on others */}
-      <div className="hidden sm:flex flex-1 max-w-md mx-auto relative group">
-        <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none text-gray-400 group-focus-within:text-primary transition-colors">
-          <Search className="w-4 h-4" />
-        </div>
-        <input
-          type="text"
-          placeholder="Tìm kiếm hương vị cà phê..."
-          className="w-full bg-[#fdfaf5] border border-gray-200 text-gray-800 text-sm font-medium rounded-full pl-12 pr-4 py-3 outline-none focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all shadow-sm"
-        />
-      </div>
-
       {/* Actions */}
       <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-        <button className="sm:hidden p-2.5 text-gray-500 hover:bg-gray-100 rounded-full transition-all active:scale-90">
-          <Search className="w-5 h-5" />
-        </button>
 
         {((isMounted && isAuthenticated && user) || initialUser) ? (
           <div className="flex items-center gap-2 sm:gap-4">
@@ -130,9 +117,11 @@ export function Navbar({ initialUser }: NavbarProps) {
 
         <Link href="/cart" className="relative p-2.5 text-gray-600 hover:bg-gray-100 rounded-full transition-all group active:scale-90">
           <ShoppingCart className="w-6 h-6 group-hover:text-primary transition-colors" />
-          <span className="absolute top-1.5 right-1.5 w-4.5 h-4.5 bg-primary text-white text-[9px] font-black flex items-center justify-center rounded-full border-2 border-white shadow-sm group-hover:scale-110 transition-transform">
-            3
-          </span>
+          {isMounted && cartItemsCount > 0 && (
+            <span className="absolute top-1.5 right-1.5 w-4.5 h-4.5 bg-primary text-white text-[9px] font-black flex items-center justify-center rounded-full border-2 border-white shadow-sm group-hover:scale-110 transition-transform p-1">
+              {cartItemsCount}
+            </span>
+          )}
         </Link>
 
         <button className="p-2.5 text-gray-600 hover:bg-gray-100 rounded-full transition-all active:scale-90">

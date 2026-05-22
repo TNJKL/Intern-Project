@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -21,6 +22,17 @@ public interface VoucherJpaRepository extends JpaRepository<VoucherEntity, UUID>
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT v FROM VoucherEntity v WHERE v.code = :code")
     Optional<VoucherEntity> findByCodeForUpdate(@Param("code") String code);
+
+    @Modifying
+    @Query(value = """
+        UPDATE vouchers
+        SET current_usage_count = current_usage_count + 1,
+            updated_at = NOW()
+        WHERE code = :code
+          AND is_active = TRUE
+          AND (max_usage_count IS NULL OR current_usage_count < max_usage_count)
+        """, nativeQuery = true)
+    int tryIncrementUsage(@Param("code") String code);
 
     Page<VoucherEntity> findAll(Pageable pageable);
 

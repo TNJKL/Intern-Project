@@ -351,10 +351,10 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_CLUSTER_ID: 5L6g3nShT-eMCtK--X86sw
-      KAFKA_HEAP_OPTS: "-Xmx192m -Xms96m"
+      KAFKA_HEAP_OPTS: "-Xmx512m -Xms256m"
     volumes:
       - kafka_data:/var/lib/kafka/data
-    mem_limit: 320m
+    mem_limit: 768m
     cpus: "0.50"
     restart: always
     networks:

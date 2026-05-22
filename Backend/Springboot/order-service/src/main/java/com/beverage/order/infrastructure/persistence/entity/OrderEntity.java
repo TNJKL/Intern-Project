@@ -26,7 +26,7 @@ public class OrderEntity {
     @Column(name = "order_code", nullable = false, unique = true, length = 30)
     private String orderCode;
 
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "user_id")
     private UUID userId;
 
     @Column(name = "user_email", nullable = false)
@@ -68,6 +68,12 @@ public class OrderEntity {
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @Column(name = "payment_deadline")
+    private Instant paymentDeadline;
+
+    @Column(name = "cancellation_reason")
+    private String cancellationReason;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

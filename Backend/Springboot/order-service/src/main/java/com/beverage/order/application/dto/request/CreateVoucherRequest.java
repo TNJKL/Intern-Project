@@ -38,4 +38,7 @@ public class CreateVoucherRequest {
     private Instant validUntil;
 
     private Boolean isActive = true;
+
+    @Pattern(regexp = "^(ALL|MEMBER|VIP)$", message = "applicableTier must be ALL, MEMBER, or VIP")
+    private String applicableTier;
 }

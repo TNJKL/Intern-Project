@@ -6,6 +6,8 @@ import { userService, UpdateProfileData } from "@/services/userService";
 import { useAuthStore } from "@/store/useAuthStore";
 import toast from "react-hot-toast";
 
+import { useRouter } from "next/navigation";
+
 interface EditProfileModalProps {
   open: boolean;
   onClose: () => void;
@@ -13,6 +15,7 @@ interface EditProfileModalProps {
 }
 
 const EditProfileModal: React.FC<EditProfileModalProps> = ({ open, onClose, user }) => {
+  const router = useRouter();
   const [form, setForm] = useState({ fullName: '', email: '', phone: '' });
   const [isSaving, setIsSaving] = useState(false);
   const { setUser } = useAuthStore();
@@ -39,7 +42,13 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ open, onClose, user
 
       const response = await userService.updateProfile(updateData);
       const updatedUser = response.data || { ...user, ...updateData };
+      
+      // Cập nhật client state
       setUser(updatedUser);
+      
+      // Làm mới dữ liệu SSR
+      router.refresh();
+      
       toast.success('Cập nhật hồ sơ thành công!');
       onClose();
     } catch (error: any) {

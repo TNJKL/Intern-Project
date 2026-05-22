@@ -21,6 +21,16 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       timeout: 5000ms
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+      properties:
+        spring.json.add.type.headers: false
+        spring.json.value.type.method: com.beverage.order.application.event.OrderEventWrapper
   jackson:
     serialization:
       write-dates-as-timestamps: false
@@ -35,6 +45,9 @@ app:
     read-timeout-ms: 5000
   order-cache:
     detail-ttl-seconds: 60
+  order-payment:
+    # timeout-minutes: ${ORDER_TIMEOUT_MINUTES:30}
+    timeout-minutes: 30
   cache:
     product-ttl-seconds: 300
   idempotency:

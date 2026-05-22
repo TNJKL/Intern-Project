@@ -17,128 +17,92 @@ export default function ProfileClient({ user }: ProfileClientProps) {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#fdfaf5] pt-32 pb-20 px-6 relative overflow-hidden">
-      {/* Dynamic Background Elements */}
-      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/5 blur-[120px] rounded-full translate-x-1/3 -translate-y-1/3"></div>
-      <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-coffee-light/5 blur-[100px] rounded-full -translate-x-1/3 translate-y-1/3"></div>
-
-      <div className="max-w-5xl mx-auto relative z-10">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
+    <div className="min-h-screen bg-[#fdfaf5] pt-32 pb-20 px-6 font-sans">
+      <div className="max-w-4xl mx-auto">
+        
+        {/* Profile Header Card */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7 }}
-          className="bg-white/70 backdrop-blur-3xl rounded-[3rem] shadow-[0_32px_64px_-16px_rgba(60,42,33,0.1)] overflow-hidden border border-white/40"
+          className="bg-white rounded-[32px] p-8 md:p-12 shadow-sm border border-gray-100 mb-8 flex flex-col md:flex-row items-center gap-8 md:gap-12"
         >
-          {/* Header Area */}
-          <div className="relative h-64 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#3c2a21] via-[#4a352a] to-[#d37533]"></div>
-            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/coffee-beans.png')] opacity-15"></div>
-            
-            <div className="absolute inset-0 flex items-center px-12 pt-8">
-              <div className="flex items-center gap-10">
-                {/* Avatar */}
-                <motion.div whileHover={{ scale: 1.05 }} className="relative">
-                  <div className="w-40 h-40 rounded-[2.5rem] bg-white p-2 shadow-2xl overflow-hidden relative">
-                    <div className="w-full h-full rounded-[2rem] bg-gradient-to-br from-coffee-light/10 to-coffee-light/5 flex items-center justify-center overflow-hidden group">
-                      {user.avatarUrl ? (
-                        <Image src={user.avatarUrl} alt="Avatar" fill className="object-cover" />
-                      ) : (
-                        <User className="w-20 h-20 text-coffee-dark/10" />
-                      )}
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center cursor-pointer">
-                        <Camera className="w-8 h-8 text-white" />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="absolute -right-2 -bottom-2 w-10 h-10 bg-primary rounded-2xl flex items-center justify-center text-white border-4 border-white shadow-lg">
-                    <Sparkles size={18} />
-                  </div>
-                </motion.div>
-
-                {/* Name & Role next to Avatar */}
-                <div className="text-white space-y-3">
-                  <motion.h1 
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="text-5xl font-black tracking-tight"
-                  >
-                    {user.fullName}
-                  </motion.h1>
-                  <div className="flex items-center gap-3">
-                    <span className="px-4 py-1.5 rounded-xl bg-white/20 backdrop-blur-md text-white font-black text-[10px] uppercase tracking-widest border border-white/20">
-                      {user.role}
-                    </span>
-                    <span className="text-white/60 text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-green-400"></div> Trực tuyến
-                    </span>
-                  </div>
+          <div className="relative group">
+            <div className="w-32 h-32 md:w-40 md:h-40 rounded-[40px] bg-[#fdf3eb] p-1 shadow-inner overflow-hidden">
+              <div className="w-full h-full rounded-[36px] bg-white flex items-center justify-center overflow-hidden relative">
+                {user.avatarUrl ? (
+                  <Image src={user.avatarUrl} alt="Avatar" fill className="object-cover" />
+                ) : (
+                  <User size={64} className="text-gray-200" />
+                )}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
+                  <Camera className="text-white w-8 h-8" />
                 </div>
+              </div>
+            </div>
+            <div className="absolute -bottom-2 -right-2 bg-primary text-white p-2.5 rounded-2xl border-4 border-white shadow-lg">
+              <Sparkles size={16} />
+            </div>
+          </div>
+
+          <div className="flex-1 text-center md:text-left">
+            <div className="flex flex-col md:flex-row items-center gap-4 mb-4">
+              <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">{user.fullName}</h1>
+              <span className="px-4 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest">
+                {user.role}
+              </span>
+            </div>
+            <div className="flex flex-wrap justify-center md:justify-start gap-4">
+              <div className="flex items-center gap-2 text-gray-500 text-sm font-medium">
+                <Mail size={16} className="text-primary/60" /> {user.email}
+              </div>
+              <div className="flex items-center gap-2 text-green-600 text-[10px] font-black uppercase tracking-widest">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> Trực tuyến
               </div>
             </div>
           </div>
 
-          {/* Content Grid */}
-          <div className="p-12">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-              
-              {/* Left & Center: Basic Info */}
-              <div className="lg:col-span-2 space-y-10">
-                <div className="flex items-center gap-4">
-                  <div className="w-1.5 h-8 bg-primary rounded-full"></div>
-                  <h3 className="text-xl font-black text-coffee-dark uppercase tracking-wider">Thông tin cơ bản</h3>
-                </div>
+          <div className="flex flex-col gap-3 min-w-[180px]">
+            <button 
+              onClick={() => setIsEditModalOpen(true)}
+              className="w-full py-3 px-6 rounded-2xl bg-white border border-gray-200 text-gray-700 font-bold text-sm hover:bg-gray-50 transition-all active:scale-95"
+            >
+              Chỉnh sửa hồ sơ
+            </button>
+            <button 
+              onClick={() => setIsPasswordModalOpen(true)}
+              className="w-full py-3 px-6 rounded-2xl bg-[#4d362b] text-white font-bold text-sm shadow-lg shadow-[#4d362b]/20 hover:bg-[#3c2a21] transition-all active:scale-95 flex items-center justify-center gap-2"
+            >
+              <Lock size={16} /> Đổi mật khẩu
+            </button>
+          </div>
+        </motion.div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <InfoItem icon={<Mail />} label="Email liên hệ" value={user.email} />
-                  <InfoItem icon={<Phone />} label="Số điện thoại" value={user.phone || "Chưa cập nhật"} />
-                  <InfoItem icon={<MapPin />} label="Địa chỉ" value="Việt Nam" />
-                  <InfoItem icon={<Calendar />} label="Ngày tham gia" value={user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : "---"} />
-                </div>
+        {/* Info Card - Centered and Full Width */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white rounded-[32px] p-8 md:p-12 shadow-sm border border-gray-100"
+        >
+          <div className="flex items-center gap-3 mb-10">
+            <div className="w-1.5 h-6 bg-primary rounded-full" />
+            <h3 className="text-lg font-black text-gray-900 uppercase tracking-wider">Thông tin tài khoản</h3>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
+            <InfoRow icon={<Phone />} label="Số điện thoại" value={user.phone || "Chưa cập nhật"} />
+            <InfoRow icon={<Mail />} label="Email liên hệ" value={user.email} />
+            <InfoRow icon={<MapPin />} label="Địa chỉ mặc định" value="Việt Nam" />
+            <InfoRow icon={<Calendar />} label="Ngày đăng ký" value={user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : "---"} />
+            
+            <div className="md:col-span-2 pt-6 border-t border-gray-50 flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center text-green-600">
+                <Shield size={20} />
               </div>
-
-              {/* Right: Actions Form */}
-              <div className="space-y-10">
-                <div className="flex items-center gap-4">
-                  <div className="w-1.5 h-8 bg-coffee-dark rounded-full"></div>
-                  <h3 className="text-xl font-black text-coffee-dark uppercase tracking-wider">Tùy chỉnh</h3>
-                </div>
-
-                <div className="bg-coffee-light/5 rounded-[2.5rem] p-8 border border-coffee-light/10 space-y-4">
-                  <p className="text-xs font-bold text-coffee-medium/60 uppercase tracking-widest px-2 mb-4">Quản lý tài khoản</p>
-                  
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setIsEditModalOpen(true)}
-                    className="w-full flex items-center gap-4 p-5 rounded-2xl bg-white border border-coffee-light/20 text-coffee-dark font-black text-[11px] uppercase tracking-widest shadow-sm hover:shadow-md transition-all"
-                  >
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                      <Settings size={20} />
-                    </div>
-                    Cập nhật hồ sơ
-                  </motion.button>
-
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setIsPasswordModalOpen(true)}
-                    className="w-full flex items-center gap-4 p-5 rounded-2xl bg-coffee-dark text-white font-black text-[11px] uppercase tracking-widest shadow-lg shadow-coffee-dark/20 hover:bg-[#4a352a] transition-all"
-                  >
-                    <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white">
-                      <Lock size={20} />
-                    </div>
-                    Đổi mật khẩu
-                  </motion.button>
-
-                  <div className="mt-6 pt-6 border-t border-coffee-light/10">
-                    <div className="flex items-center gap-3 text-green-600 px-2">
-                      <Shield size={16} />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Tài khoản bảo mật</span>
-                    </div>
-                  </div>
-                </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Trạng thái bảo mật</p>
+                <p className="text-sm font-bold text-green-600">Tài khoản đã được bảo vệ (Mức độ: Cao)</p>
               </div>
-
             </div>
           </div>
         </motion.div>
@@ -150,19 +114,16 @@ export default function ProfileClient({ user }: ProfileClientProps) {
   );
 }
 
-function InfoItem({ icon, label, value }: { icon: React.ReactNode, label: string, value: string }) {
+function InfoRow({ icon, label, value }: { icon: React.ReactNode, label: string, value: string }) {
   return (
-    <motion.div 
-      whileHover={{ x: 5 }}
-      className="flex items-center gap-5 p-6 bg-white rounded-3xl border border-coffee-light/5 shadow-sm"
-    >
-      <div className="w-14 h-14 rounded-2xl bg-coffee-light/5 flex items-center justify-center text-primary">
-        {React.cloneElement(icon as any, { size: 24 })}
+    <div className="flex items-center gap-5 group">
+      <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors duration-300">
+        {React.cloneElement(icon as any, { size: 20 })}
       </div>
       <div>
-        <p className="text-[10px] font-black uppercase tracking-widest text-coffee-medium/40 mb-1">{label}</p>
-        <p className="text-lg font-bold text-coffee-dark truncate">{value}</p>
+        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-0.5">{label}</p>
+        <p className="text-base font-bold text-gray-800">{value}</p>
       </div>
-    </motion.div>
+    </div>
   );
 }

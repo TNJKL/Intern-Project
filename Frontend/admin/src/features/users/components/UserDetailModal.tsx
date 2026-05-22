@@ -1,5 +1,5 @@
 import { Modal, Tag } from 'antd';
-import { UserOutlined, CalendarOutlined, HistoryOutlined } from '@ant-design/icons';
+import { UserOutlined } from '@ant-design/icons';
 import type { User } from '@/types/user';
 
 interface UserDetailModalProps {
@@ -28,113 +28,71 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
 
   return (
     <Modal
-      title={
-        <div className="flex items-center gap-3 pb-3">
-          <div className="w-10 h-10 bg-gradient-to-tr from-[#3c2a21] to-[#634832] rounded-xl flex items-center justify-center shadow-lg shadow-coffee-dark/10">
-            <UserOutlined className="text-white text-lg" />
-          </div>
-          <div className="space-y-0.5">
-            <h2 className="text-xl font-bold uppercase tracking-tight text-coffee-dark leading-none">Thông tin tài khoản</h2>
-            <div className="flex items-center gap-2">
-              <span className="text-[9px] font-bold text-primary uppercase tracking-widest">Hệ thống Brewtra</span>
-              <span className="text-[9px] font-bold text-gray-300">|</span>
-              <span className="text-[9px] font-medium text-gray-400">ID: {user.id.substring(0, 8)}...</span>
-            </div>
-          </div>
-        </div>
-      }
+      title={null}
       open={isOpen}
       onCancel={onClose}
       footer={null}
       centered
-      width={500}
-      className="custom-detail-modal"
+      width={550}
       styles={{
-        body: { padding: '24px 32px', backgroundColor: '#ffffff' },
-        mask: { backdropFilter: 'blur(4px)', backgroundColor: 'rgba(0, 0, 0, 0.4)' }
+        body: { padding: '40px', backgroundColor: '#ffffff', borderRadius: '24px' },
+        mask: { backdropFilter: 'blur(8px)', backgroundColor: 'rgba(0, 0, 0, 0.2)' }
       }}
     >
-      <div className="space-y-6 relative">
-        {/* Information Grid */}
-        <div className="grid grid-cols-2 gap-x-8 gap-y-6">
-          <div className="space-y-1">
-            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block">Chủ tài khoản</label>
-            <p className="text-base font-bold text-gray-800 tracking-tight leading-tight">{user.fullName || 'Chưa cập nhật'}</p>
-          </div>
+      <div className="flex flex-col items-center mb-10">
+        <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-4 border-2 border-gray-100 shadow-sm overflow-hidden">
+          {user.avatarUrl ? (
+            <img src={user.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+          ) : (
+            <UserOutlined className="text-4xl text-[#4d362b]" />
+          )}
+        </div>
+        <h2 className="text-2xl font-black text-[#4d362b] uppercase tracking-tight mb-1">{user.fullName || 'Người dùng'}</h2>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-50 px-2 py-0.5 rounded">ID: {user.id.substring(0, 8)}</span>
+          <Tag className={`border-none rounded-full px-3 py-0.5 text-[9px] font-black uppercase tracking-wider ${user.role === 'ADMIN' ? 'bg-purple-600 text-white' : 'bg-blue-600 text-white'}`}>
+            {user.role}
+          </Tag>
+        </div>
+      </div>
 
-          <div className="space-y-1">
-            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block">Địa chỉ liên hệ</label>
-            <p className="text-sm font-semibold text-gray-700 tracking-tight truncate" title={user.email}>{user.email}</p>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block">Số điện thoại</label>
-            <p className="text-sm font-semibold text-gray-700 tracking-tight">{user.phone || 'Chưa có số'}</p>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block">Vai trò quản trị</label>
-            <div>
-              <Tag className={`border-none rounded px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider shadow-sm ${user.role === 'ADMIN'
-                ? 'bg-purple-600 text-white'
-                : 'bg-blue-500 text-white'
-                }`}>
-                {user.role}
-              </Tag>
-            </div>
-          </div>
+      <div className="space-y-5">
+        <div className="flex justify-between items-center border-b border-gray-50 pb-3">
+          <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Email liên hệ</span>
+          <span className="text-sm font-semibold text-gray-700">{user.email}</span>
         </div>
 
-        <div className="h-px bg-gray-100 my-1" />
-
-        {/* Status and Dates Section */}
-        <div className="grid grid-cols-1 gap-3">
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
-            <div className="flex items-center gap-3">
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shadow-inner ${user.isActive ? 'bg-green-100' : 'bg-red-100'}`}>
-                <div className={`w-2 h-2 rounded-full ${user.isActive ? 'bg-green-500' : 'bg-red-500'}`} />
-              </div>
-              <div className="space-y-0.5">
-                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Trạng thái hiện tại</span>
-                <span className={`text-xs font-bold uppercase tracking-tight ${user.isActive ? 'text-green-600' : 'text-red-600'}`}>
-                  {user.isActive ? 'Đang hoạt động' : 'Đang bị khóa'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 bg-gray-50 rounded-2xl border border-gray-100 flex items-center gap-3">
-              <div className="w-7 h-7 bg-white rounded-lg flex items-center justify-center border border-gray-100">
-                <CalendarOutlined className="text-gray-400 text-xs" />
-              </div>
-              <div className="space-y-0.5">
-                <span className="text-[8px] font-bold text-gray-400 uppercase tracking-wider block">Ngày tham gia</span>
-                <span className="text-[11px] font-semibold text-gray-600">{formatDate(user.createdAt)}</span>
-              </div>
-            </div>
-
-            <div className="p-3 bg-gray-50 rounded-2xl border border-gray-100 flex items-center gap-3">
-              <div className="w-7 h-7 bg-white rounded-lg flex items-center justify-center border border-gray-100">
-                <HistoryOutlined className="text-gray-400 text-xs" />
-              </div>
-              <div className="space-y-0.5">
-                <span className="text-[8px] font-bold text-gray-400 uppercase tracking-wider block">Cập nhật cuối</span>
-                <span className="text-[11px] font-semibold text-gray-600">{formatDate(user.updatedAt)}</span>
-              </div>
-            </div>
-          </div>
+        <div className="flex justify-between items-center border-b border-gray-50 pb-3">
+          <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Số điện thoại</span>
+          <span className="text-sm font-semibold text-gray-700">{user.phone || 'Chưa cập nhật'}</span>
         </div>
 
-        {/* Footer Actions */}
-        <div className="pt-2 flex justify-center">
-          <button
-            onClick={onClose}
-            className="px-8 py-2.5 bg-coffee-light text-white rounded-xl font-bold uppercase tracking-widest text-[9px] transition-all hover:bg-coffee-medium active:scale-95 shadow-md shadow-coffee-light/10"
-          >
-            Đóng thông tin
-          </button>
+        <div className="flex justify-between items-center border-b border-gray-50 pb-3">
+          <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Trạng thái</span>
+          <span className={`text-[10px] font-black uppercase tracking-widest ${user.isActive ? 'text-green-600' : 'text-red-600'}`}>
+            {user.isActive ? 'Đang hoạt động' : 'Đang bị khóa'}
+          </span>
         </div>
+
+        <div className="grid grid-cols-2 gap-4 mt-6">
+          <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 flex flex-col items-center">
+            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Ngày tham gia</span>
+            <span className="text-[11px] font-bold text-gray-600 text-center">{formatDate(user.createdAt)}</span>
+          </div>
+          <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 flex flex-col items-center">
+            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Cập nhật cuối</span>
+            <span className="text-[11px] font-bold text-gray-600 text-center">{formatDate(user.updatedAt)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-8 flex justify-center">
+        <button
+          onClick={onClose}
+          className="w-full py-4 bg-[#d37533] text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] transition-all hover:bg-[#b85c1e] active:scale-[0.98] shadow-lg shadow-[#d37533]/20"
+        >
+          Đóng thông tin
+        </button>
       </div>
     </Modal>
   );

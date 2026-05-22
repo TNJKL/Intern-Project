@@ -30,7 +30,8 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    const isAuthError = error.response?.status === 401 || error.response?.status === 403;
+    const isExpired = error.response?.data?.errorCode === 'TOKEN_EXPIRED';
+    const isAuthError = isExpired || error.response?.status === 401 || error.response?.status === 403;
 
     if (!isAuthError || originalRequest._retry) {
       return Promise.reject(error);
@@ -51,27 +52,12 @@ apiClient.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      // Gửi body rỗng + withCredentials — Browser tự gửi refreshToken cookie
-      const { data } = await axios.post(
-        '/api/v1/auth/refresh',
-        {},
-        {
-          withCredentials: true,
-          headers: {
-            'Content-Type': 'application/json',
-            'ngrok-skip-browser-warning': '69420',
-          },
-        }
-      );
+      // Chỉ cần "ra tín hiệu" bằng cách gọi POST tới refresh. 
+      // Browser sẽ tự gửi refreshToken cookie và tự nhận Set-Cookie mới từ Backend.
+      await axios.post('/api/v1/auth/refresh', {}, { withCredentials: true });
 
-      const newAccessToken: string = data?.data?.accessToken ?? data?.accessToken;
-      const user = data?.data?.user ?? data?.user;
-
-      // Cập nhật Redux (RAM) — KHÔNG lưu vào Cookie hay localStorage
-      store.dispatch(updateAccessToken({ accessToken: newAccessToken, user }));
-
-      processQueue(null, newAccessToken);
-      originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+      processQueue(null, ""); 
+      // Retry request gốc — lúc này browser đã có accessToken cookie mới
       return apiClient(originalRequest);
     } catch (refreshError) {
       processQueue(refreshError, null);

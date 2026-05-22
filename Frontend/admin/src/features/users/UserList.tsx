@@ -110,18 +110,18 @@ const UserList: React.FC = () => {
 
   const columns = [
     {
-      title: 'TÊN NGƯỜI DÙNG',
+      title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">TÊN NGƯỜI DÙNG</span>,
       dataIndex: 'fullName',
       key: 'fullName',
       render: (text: string) => <span className="font-bold text-gray-800">{text || 'N/A'}</span>
     },
     {
-      title: 'EMAIL',
+      title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">EMAIL</span>,
       dataIndex: 'email',
       key: 'email',
     },
     {
-      title: 'VAI TRÒ',
+      title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">VAI TRÒ</span>,
       dataIndex: 'role',
       key: 'role',
       render: (role: string) => (
@@ -131,7 +131,7 @@ const UserList: React.FC = () => {
       )
     },
     {
-      title: 'TRẠNG THÁI',
+      title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">TRẠNG THÁI</span>,
       dataIndex: 'isActive',
       key: 'isActive',
       render: (isActive: boolean) => (
@@ -141,7 +141,7 @@ const UserList: React.FC = () => {
       )
     },
     {
-      title: 'HÀNH ĐỘNG',
+      title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">HÀNH ĐỘNG</span>,
       key: 'action',
       align: 'right' as const,
       render: (_: any, record: User) => (
@@ -180,7 +180,7 @@ const UserList: React.FC = () => {
         </Button>
       </div>
 
-      <Card className="rounded-[32px] shadow-sm border border-gray-100 p-2" styles={{ body: { padding: '24px' } }}>
+      <Card variant="borderless" className="rounded-[32px] shadow-sm border border-gray-100 p-2" styles={{ body: { padding: '24px' } }}>
         <div className="mb-6 flex gap-4 max-w-md">
           <Input
             size="large"

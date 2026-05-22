@@ -11,4 +11,15 @@ export interface Product {
   displayOrder: number;
   createdAt: string;
   updatedAt: string;
+  toppingIds?: string[];
+  toppings?: any[];
+  variants?: ProductVariant[];
+}
+
+export interface ProductVariant {
+  id: string;
+  productId: string;
+  sizeLabel: string;
+  price: number;
+  isAvailable: boolean;
 }

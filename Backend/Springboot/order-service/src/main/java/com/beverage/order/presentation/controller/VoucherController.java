@@ -6,6 +6,8 @@ import com.beverage.order.application.dto.response.VoucherResponse;
 import com.beverage.order.application.dto.response.VoucherValidationResponse;
 import com.beverage.order.application.service.VoucherService;
 import com.beverage.order.common.ApiResponse;
+import com.beverage.order.infrastructure.security.OrderActorResolver;
+import com.beverage.shared.jwt.JwtUserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -19,6 +21,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.util.Optional;
 import java.util.UUID;
 
 @RestController
@@ -28,17 +31,21 @@ import java.util.UUID;
 public class VoucherController {
 
     private final VoucherService voucherService;
+    private final OrderActorResolver orderActorResolver;
 
     @GetMapping("/vouchers/validate/{code}")
     @Operation(
             summary = "Validate voucher - Kiểm tra mã voucher",
-            description = "Public endpoint để validate voucher với số tiền đơn hàng"
+            description = "Public endpoint để validate voucher với số tiền đơn hàng. Nếu đã đăng nhập sẽ kiểm tra theo tier của user."
     )
     public ResponseEntity<ApiResponse<VoucherValidationResponse>> validate(
             @PathVariable String code,
             @RequestParam(required = false) BigDecimal orderAmount
     ) {
-        VoucherValidationResponse result = voucherService.validateVoucher(code, orderAmount);
+        Optional<JwtUserPrincipal> actorOpt = orderActorResolver.getOptionalPrincipal();
+        UUID userId = actorOpt.map(JwtUserPrincipal::getUserId).orElse(null);
+
+        VoucherValidationResponse result = voucherService.validateVoucher(code, orderAmount, userId);
         return ResponseEntity.ok(ApiResponse.success(result, "Kiểm tra voucher thành công"));
     }
 

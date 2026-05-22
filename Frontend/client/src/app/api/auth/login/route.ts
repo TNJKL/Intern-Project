@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { API_CONFIG } from '@/lib/api-config';
 
-const BACKEND_URL = 'https://morbidity-stucco-grower.ngrok-free.dev/api/v1';
+const BACKEND_URL = `${API_CONFIG.BASE_URL}/api/v1`;
 
 export async function POST(request: Request) {
   try {
@@ -25,15 +26,15 @@ export async function POST(request: Request) {
 
     // 2. Lấy TẤT CẢ cookie từ Backend gửi về
     const cookieStore = await cookies();
-    const setCookieHeaders = response.headers.getSetCookie(); 
-    
+    const setCookieHeaders = response.headers.getSetCookie();
+
 
     if (setCookieHeaders && setCookieHeaders.length > 0) {
       setCookieHeaders.forEach(cookieString => {
         const parts = cookieString.split(';');
         const [nameValue] = parts;
         const [name, value] = nameValue.split('=');
-        
+
         const cookieName = name.trim();
         const cookieValue = value.trim();
 
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
             secure: true,
             sameSite: 'lax',
             path: '/',
-            maxAge: 60 * 60 * 24 * 7 
+            maxAge: 60 * 60 * 24 * 7
           });
         }
       });
