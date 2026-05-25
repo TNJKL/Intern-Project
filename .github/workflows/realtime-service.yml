@@ -32,7 +32,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: Backend/NestJS/realtime-service
-        run: npm ci
+        run: npm install
 
       - name: Run Lint
         working-directory: Backend/NestJS/realtime-service
