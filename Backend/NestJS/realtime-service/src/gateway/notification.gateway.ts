@@ -14,7 +14,8 @@ import { WsJwtGuard } from '../common/guards/ws-jwt.guard';
 import { NotificationEmitterService, NotificationPayload } from '../notification/notification-emitter.service';
 
 @WebSocketGateway({
-  namespace: '/ws/notifications',
+  path: '/ws',
+  namespace: '/notifications',
   cors: {
     origin: '*',
     credentials: true,
@@ -58,8 +59,11 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
     if (userId) {
       client.join(`user:${userId}`);
       this.logger.log(`User ${userId} joined room user:${userId}`);
+      // Phát trực tiếp sự kiện về client để hiển thị trên Postman (không cần Ack)
+      client.emit('joined', { room: `user:${userId}`, success: true });
       return { event: 'joined', room: `user:${userId}`, success: true };
     }
+    client.emit('error', { message: 'User not authenticated', success: false });
     return { event: 'error', message: 'User not authenticated', success: false };
   }
 
@@ -73,8 +77,11 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
     if (userId) {
       client.leave(`user:${userId}`);
       this.logger.log(`User ${userId} left room user:${userId}`);
+      // Phát trực tiếp sự kiện về client
+      client.emit('left', { room: `user:${userId}`, success: true });
       return { event: 'left', room: `user:${userId}`, success: true };
     }
+    client.emit('error', { message: 'User not authenticated', success: false });
     return { event: 'error', message: 'User not authenticated', success: false };
   }
 

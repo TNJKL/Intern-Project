@@ -63,8 +63,6 @@ CREATE INDEX IF NOT EXISTS idx_notifications_reference ON notifications(referenc
 CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_processed_events_at ON processed_events(processed_at);
 
-CREATE INDEX idx_processed_events_at ON processed_events(processed_at);
-
 -- Chạy định kỳ xóa event cũ hơn 7 ngày
 DELETE FROM processed_events WHERE processed_at < NOW() - INTERVAL '7 days';
 

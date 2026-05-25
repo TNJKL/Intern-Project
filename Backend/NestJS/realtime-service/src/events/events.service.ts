@@ -18,13 +18,13 @@ export class EventsService {
     private emailService: EmailService,
   ) {}
 
-  async processOrderEvent(eventType: string, payload: OrderEventPayload) {
+  async processOrderEvent(eventType: string, payload: OrderEventPayload | TierUpdateEventPayload) {
     switch (eventType) {
       case 'ORDER_CREATED':
-        await this.handleOrderCreated(payload);
+        await this.handleOrderCreated(payload as OrderEventPayload);
         break;
       case 'ORDER_CANCELLED':
-        await this.handleOrderCancelled(payload);
+        await this.handleOrderCancelled(payload as OrderEventPayload);
         break;
       // Spring Boot bắn "ORDER_STATUS_CHANGED" (không phải ORDER_STATUS_UPDATED)
       case 'ORDER_STATUS_CHANGED':
@@ -39,7 +39,7 @@ export class EventsService {
         break;
       // TIER_UPGRADED: bắn bởi service khác nếu có
       case 'TIER_UPGRADED':
-        await this.handleTierUpgraded(payload as TierUpdateEventPayload);
+        await this.handleTierUpgraded(payload as unknown as TierUpdateEventPayload);
         break;
       default:
         this.logger.warn(`Unknown event type: ${eventType}`);
@@ -54,6 +54,7 @@ export class EventsService {
 
     await this.notificationService.createNotification({
       userId,
+      userEmail,
       channel: 'IN_APP',
       title: `Đơn hàng #${payload.orderCode} đã được tạo`,
       body: `Cảm ơn bạn đã đặt hàng! Đơn hàng #${payload.orderCode} đang được xử lý.`,
@@ -113,6 +114,7 @@ export class EventsService {
 
     await this.notificationService.createNotification({
       userId,
+      userEmail,
       channel: 'IN_APP',
       title: `Đơn hàng #${payload.orderCode} đã bị hủy`,
       body: `Đơn hàng #${payload.orderCode} đã bị hủy. Lý do: ${reason}`,
@@ -126,14 +128,36 @@ export class EventsService {
     });
 
     if (userEmail) {
+      const emailNotification = await this.notificationService.createNotification({
+        userId,
+        userEmail,
+        channel: 'EMAIL',
+        title: `Đơn hàng #${payload.orderCode} đã bị hủy`,
+        body: `Đơn hàng #${payload.orderCode} đã bị hủy. Lý do: ${reason}`,
+        referenceType: 'ORDER',
+        referenceId: payload.orderId,
+        data: {
+          orderCode: payload.orderCode,
+          reason,
+          customerName,
+        },
+      });
+
       try {
-        // Dùng template order-cancelled riêng biệt
         await this.emailService.sendOrderCancelled(userEmail, payload.orderCode, {
           customerName,
           reason,
         });
+        await this.notificationService.updateNotificationStatusById(
+          emailNotification.id,
+          'SENT',
+        );
       } catch (error) {
         this.logger.error('Failed to send order cancellation email:', error);
+        await this.notificationService.updateNotificationStatusById(
+          emailNotification.id,
+          'FAILED',
+        );
       }
     }
   }
@@ -141,6 +165,7 @@ export class EventsService {
   // ORDER_STATUS_CHANGED: Spring Boot gửi currentStatus / previousStatus / note
   private async handleOrderStatusChanged(payload: OrderStatusChangedEventPayload) {
     const userId = payload.userId;
+    const userEmail = payload.userEmail;
     // currentStatus là enum OrderStatus từ Spring Boot (VD: PENDING, PREPARING, READY, ...)
     const currentStatus = payload.currentStatus || payload.status || 'Cập nhật';
     const previousStatus = payload.previousStatus || '';
@@ -153,6 +178,7 @@ export class EventsService {
 
     await this.notificationService.createNotification({
       userId,
+      userEmail,
       channel: 'IN_APP',
       title: `Đơn hàng #${payload.orderCode} - ${currentStatus}`,
       body,
@@ -177,6 +203,7 @@ export class EventsService {
 
     await this.notificationService.createNotification({
       userId,
+      userEmail,
       channel: 'IN_APP',
       title: 'Đơn hàng hoàn thành',
       body: `Đơn hàng #${payload.orderCode} đã hoàn thành. Cảm ơn bạn!`,
@@ -236,6 +263,7 @@ export class EventsService {
 
     await this.notificationService.createNotification({
       userId,
+      userEmail,
       channel: 'IN_APP',
       title: `Đơn hàng #${payload.orderCode} đã bị hủy`,
       body: `Đơn hàng #${payload.orderCode} đã bị hủy do quá hạn thanh toán.`,
@@ -251,10 +279,35 @@ export class EventsService {
     });
 
     if (userEmail) {
+      const emailNotification = await this.notificationService.createNotification({
+        userId,
+        userEmail,
+        channel: 'EMAIL',
+        title: `Đơn hàng #${payload.orderCode} đã bị hủy do quá hạn thanh toán`,
+        body: `Đơn hàng #${payload.orderCode} đã bị hủy do quá hạn thanh toán.`,
+        referenceType: 'ORDER',
+        referenceId: payload.orderId,
+        data: {
+          orderCode: payload.orderCode,
+          reason,
+          customerName,
+          paymentDeadline: payload.paymentDeadline,
+          expiredAt: payload.expiredAt,
+        },
+      });
+
       try {
         await this.emailService.sendOrderTimeout(userEmail, payload.orderCode, customerName);
+        await this.notificationService.updateNotificationStatusById(
+          emailNotification.id,
+          'SENT',
+        );
       } catch (error) {
         this.logger.error('Failed to send order timeout email:', error);
+        await this.notificationService.updateNotificationStatusById(
+          emailNotification.id,
+          'FAILED',
+        );
       }
     }
   }
@@ -268,6 +321,7 @@ export class EventsService {
 
     await this.notificationService.createNotification({
       userId,
+      userEmail,
       channel: 'IN_APP',
       title: `Chúc mừng bạn lên hạng ${tier}!`,
       body: `Bạn đã đạt hạng ${tier} với tổng chi tiêu ${totalSpent}đ.`,

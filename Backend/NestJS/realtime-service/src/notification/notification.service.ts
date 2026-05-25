@@ -36,7 +36,7 @@ export class NotificationService {
 
     const saved = await this.notificationRepository.save(notification);
 
-    if (dto.userId) {
+    if (dto.userId && saved.channel === 'IN_APP') {
       this.notificationEmitter.emit({
         id: saved.id,
         userId: saved.userId,
@@ -52,6 +52,34 @@ export class NotificationService {
     }
 
     return saved;
+  }
+
+  async adminGetAllNotifications(
+    page: number = 1,
+    limit: number = 20,
+    channel?: string,
+    isRead?: boolean,
+  ): Promise<PaginatedNotificationsDto> {
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (channel) where.channel = channel;
+    if (isRead !== undefined) where.isRead = isRead;
+
+    const [data, total] = await this.notificationRepository.findAndCount({
+      where,
+      order: { createdAt: 'DESC' },
+      skip,
+      take: limit,
+    });
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async getUserNotifications(

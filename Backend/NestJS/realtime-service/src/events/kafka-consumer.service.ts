@@ -217,8 +217,8 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
       await this.processedEventRepository
         .createQueryBuilder()
         .insert()
-        .into('processed_events')
-        .values({ event_id: eventId, processed_at: new Date() })
+        .into(ProcessedEvent)
+        .values({ eventId: eventId, processedAt: new Date() })
         .orIgnore() // ON CONFLICT DO NOTHING
         .execute();
     } catch (error) {

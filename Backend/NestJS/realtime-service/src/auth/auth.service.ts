@@ -54,10 +54,11 @@ export class AuthService implements OnModuleInit {
   }
 
   async verifyToken(token: string): Promise<VerifyResult> {
-    const secret = process.env.JWT_SECRET_KEY;
-    if (!secret) {
+    const rawSecret = process.env.JWT_SECRET_KEY;
+    if (!rawSecret) {
       throw new Error('JWT_SECRET_KEY environment variable is required');
     }
+    const secret = Buffer.from(rawSecret, 'base64');
 
     try {
       const payload = this.jwtService.verify<JwtPayload>(token, { secret });

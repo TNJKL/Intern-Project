@@ -7,9 +7,25 @@ import { AuthService } from '../auth.service';
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private authService: AuthService) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+        (req: any) => {
+          let token = null;
+          if (req && req.cookies) {
+            token = req.cookies['accessToken'];
+          }
+          if (!token && req && req.headers && req.headers.cookie) {
+            const cookies = req.headers.cookie.split(';').map((c) => c.trim());
+            const cookie = cookies.find((c) => c.startsWith('accessToken='));
+            if (cookie) {
+              token = cookie.substring('accessToken='.length);
+            }
+          }
+          return token;
+        },
+      ]),
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET_KEY,
+      secretOrKey: Buffer.from(process.env.JWT_SECRET_KEY || '', 'base64'),
     });
   }
 

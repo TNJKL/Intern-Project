@@ -275,37 +275,37 @@ services:
   # ============================================================
   # NOTIFICATION SERVICE (NestJS)
   # ============================================================
-  notification-service:
-    build:
-      context: ./NestJS/realtime-service
-    container_name: beverage_notification
-    ports:
-      - "3001:3001"
-    environment:
-      - POSTGRES_HOST=beverage_postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_DB=notification_db
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - KAFKA_BOOTSTRAP_SERVERS=beverage_kafka:29092
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - MAIL_HOST=${MAIL_HOST:-smtp.gmail.com}
-      - MAIL_PORT=${MAIL_PORT:-587}
-      - MAIL_USER=${MAIL_USER}
-      - MAIL_PASSWORD=${MAIL_PASSWORD}
-      - MAIL_FROM=${MAIL_FROM:-"Beverage Shop" <noreply@beverage.shop>}
-      - NODE_OPTIONS=--max-old-space-size=128
-    mem_limit: 256m
-    cpus: "0.50"
-    depends_on:
-      - postgres-common
-      - redis
-      - kafka
-    restart: always
-    networks:
-      - beverage_net
+  # notification-service:
+  #   build:
+  #     context: ./NestJS/realtime-service
+  #   container_name: beverage_notification
+  #   ports:
+  #     - "3001:3001"
+  #   environment:
+  #     - POSTGRES_HOST=beverage_postgres
+  #     - POSTGRES_PORT=5432
+  #     - POSTGRES_DB=notification_db
+  #     - POSTGRES_USER=${POSTGRES_USER}
+  #     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
+  #     - KAFKA_BOOTSTRAP_SERVERS=beverage_kafka:29092
+  #     - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+  #     - MAIL_HOST=${MAIL_HOST:-smtp.gmail.com}
+  #     - MAIL_PORT=${MAIL_PORT:-587}
+  #     - MAIL_USER=${MAIL_USER}
+  #     - MAIL_PASSWORD=${MAIL_PASSWORD}
+  #     - MAIL_FROM=${MAIL_FROM:-"Beverage Shop" <noreply@beverage.shop>}
+  #     - NODE_OPTIONS=--max-old-space-size=128
+  #   mem_limit: 256m
+  #   cpus: "0.50"
+  #   depends_on:
+  #     - postgres-common
+  #     - redis
+  #     - kafka
+  #   restart: always
+  #   networks:
+  #     - beverage_net
 
   # ============================================================
   # NGINX GATEWAY
