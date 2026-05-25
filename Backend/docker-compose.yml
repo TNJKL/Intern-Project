@@ -273,28 +273,39 @@ services:
   #     - beverage_net
 
   # ============================================================
-  # NESTJS CLUSTER (Chat/Realtime Service)
+  # NOTIFICATION SERVICE (NestJS)
   # ============================================================
-  nestjs-cluster:
-    build:
-      context: ./NestJS/realtime-service
-    container_name: beverage_nestjs_cluster
-    ports:
-      - "3001:3001"
-    environment:
-      - MONGODB_URI=${MONGODB_URI:-mongodb://localhost:27017/chat_db}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - JWT_SECRET=${JWT_SECRET}
-      - NODE_OPTIONS=--max-old-space-size=64
-    mem_limit: 96m
-    cpus: "0.25"
-    depends_on:
-      - redis
-      - kafka
-    restart: always
-    networks:
-      - beverage_net
+  # notification-service:
+  #   build:
+  #     context: ./NestJS/realtime-service
+  #   container_name: beverage_notification
+  #   ports:
+  #     - "3001:3001"
+  #   environment:
+  #     - POSTGRES_HOST=beverage_postgres
+  #     - POSTGRES_PORT=5432
+  #     - POSTGRES_DB=notification_db
+  #     - POSTGRES_USER=${POSTGRES_USER}
+  #     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
+  #     - KAFKA_BOOTSTRAP_SERVERS=beverage_kafka:29092
+  #     - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+  #     - MAIL_HOST=${MAIL_HOST:-smtp.gmail.com}
+  #     - MAIL_PORT=${MAIL_PORT:-587}
+  #     - MAIL_USER=${MAIL_USER}
+  #     - MAIL_PASSWORD=${MAIL_PASSWORD}
+  #     - MAIL_FROM=${MAIL_FROM:-"Beverage Shop" <noreply@beverage.shop>}
+  #     - NODE_OPTIONS=--max-old-space-size=128
+  #   mem_limit: 256m
+  #   cpus: "0.50"
+  #   depends_on:
+  #     - postgres-common
+  #     - redis
+  #     - kafka
+  #   restart: always
+  #   networks:
+  #     - beverage_net
 
   # ============================================================
   # NGINX GATEWAY
@@ -352,6 +363,7 @@ services:
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_CLUSTER_ID: 5L6g3nShT-eMCtK--X86sw
       KAFKA_HEAP_OPTS: "-Xmx512m -Xms256m"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     volumes:
       - kafka_data:/var/lib/kafka/data
     mem_limit: 768m

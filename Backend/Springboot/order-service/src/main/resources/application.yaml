@@ -47,7 +47,7 @@ app:
     detail-ttl-seconds: 60
   order-payment:
     # timeout-minutes: ${ORDER_TIMEOUT_MINUTES:30}
-    timeout-minutes: 30
+    timeout-minutes: 1
   cache:
     product-ttl-seconds: 300
   idempotency:
@@ -64,7 +64,7 @@ eureka:
 
 jwt:
   secret-key: ${JWT_SECRET_KEY:dGhpc2lzYXZlcnlsb25nc2VjcmV0a2V5Zm9yand0dG9rZW5nZW5lcmF0aW9uYW5kZGVjcnlwdGlvbg==}
-  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:900000}
+  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:60000}
   refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:604800000}
 
 auth:
