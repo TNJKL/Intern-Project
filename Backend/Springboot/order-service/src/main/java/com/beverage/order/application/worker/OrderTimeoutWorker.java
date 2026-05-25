@@ -32,14 +32,14 @@ public class OrderTimeoutWorker {
     private final OrderDetailCacheService orderDetailCacheService;
     private final ApplicationEventPublisher applicationEventPublisher;
     
-    @Scheduled(cron = "0 */5 * * * *") 
-    //@Scheduled(fixedDelayString = "70000")
+    //@Scheduled(cron = "0 */1000000 * * * *") 
+    @Scheduled(fixedDelayString = "70000")
     @SchedulerLock(
             name = "orderTimeoutJob",
-            //lockAtMostFor = "60s",
-            //lockAtLeastFor = "30s"
-        lockAtMostFor = "4m",
-        lockAtLeastFor = "1m"
+            lockAtMostFor = "60s",
+            lockAtLeastFor = "30s"
+        //lockAtMostFor = "400m",
+        //lockAtLeastFor = "10000m"
     )
     public void scanAndCancelExpiredOrders() {
         log.info("Starting order timeout scan...");
