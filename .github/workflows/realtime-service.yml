@@ -39,6 +39,10 @@ jobs:
         run: npm run lint
         continue-on-error: true # Cho phép bypass nếu có lỗi lint nhỏ, hoặc bạn có thể bỏ dòng này nếu muốn bắt buộc code sạch lint.
 
+      - name: Run Unit Tests
+        working-directory: Backend/NestJS/realtime-service
+        run: npm test
+
       - name: Build Realtime Service
         working-directory: Backend/NestJS/realtime-service
         run: npm run build
