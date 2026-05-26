@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { NotificationService } from '../notification/notification.service';
 import { EmailService } from '../email/email.service';
+import { GuestSessionService } from '../gateway/guest-session.service';
 import {
   OrderEventPayload,
   OrderCompletedEventPayload,
@@ -16,6 +17,8 @@ export class EventsService {
   constructor(
     private notificationService: NotificationService,
     private emailService: EmailService,
+    @Inject(forwardRef(() => GuestSessionService))
+    private guestSessionService: GuestSessionService,
   ) { }
 
   async processOrderEvent(eventType: string, payload: OrderEventPayload | TierUpdateEventPayload) {
@@ -160,6 +163,9 @@ export class EventsService {
         );
       }
     }
+
+    // Revoke guest session — đơn đã hủy, không cần theo dõi nữa
+    await this.guestSessionService.revokeByOrderCode(payload.orderCode);
   }
 
   // ORDER_STATUS_CHANGED: Spring Boot gửi currentStatus / previousStatus / note
@@ -252,8 +258,10 @@ export class EventsService {
         );
       }
     }
-  }
 
+    // Revoke guest session — đơn đã hoàn thành, không cần theo dõi nữa
+    await this.guestSessionService.revokeByOrderCode(payload.orderCode);
+  }
   // ORDER_TIMEOUT: Spring Boot gửi paymentDeadline, expiredAt (không có reason)
   private async handleOrderTimeout(payload: OrderTimeoutEventPayload) {
     const userId = payload.userId;
@@ -310,6 +318,9 @@ export class EventsService {
         );
       }
     }
+
+    // Revoke guest session — đơn timeout/hủy tự động, không cần theo dõi nữa
+    await this.guestSessionService.revokeByOrderCode(payload.orderCode);
   }
 
   private async handleTierUpgraded(payload: TierUpdateEventPayload) {

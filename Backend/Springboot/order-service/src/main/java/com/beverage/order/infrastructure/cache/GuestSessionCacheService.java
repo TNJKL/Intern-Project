@@ -36,8 +36,16 @@ public class GuestSessionCacheService {
     public String create(String orderCode) {
         // Dùng UUID v4 — đủ ngẫu nhiên, không thể brute-force
         String guestSessionId = UUID.randomUUID().toString();
-        String key = KEY_PREFIX + guestSessionId;
-        redisTemplate.opsForValue().set(key, orderCode, ttlHours, TimeUnit.HOURS);
+
+        // Forward mapping: guest:session:{guestSessionId} → orderCode
+        String sessionKey = KEY_PREFIX + guestSessionId;
+        redisTemplate.opsForValue().set(sessionKey, orderCode, ttlHours, TimeUnit.HOURS);
+
+        // Reverse mapping: guest:order:{orderCode} → guestSessionId
+        // Dùng để Notification Service có thể revoke theo orderCode khi đơn kết thúc
+        String orderKey = "guest:order:" + orderCode;
+        redisTemplate.opsForValue().set(orderKey, guestSessionId, ttlHours, TimeUnit.HOURS);
+
         log.debug("Created guest session {} for order {}", guestSessionId, orderCode);
         return guestSessionId;
     }

@@ -56,4 +56,34 @@ export class GuestSessionService implements OnModuleInit, OnModuleDestroy {
       return null;
     }
   }
+
+  /**
+   * Revoke guest session theo orderCode.
+   * Dùng khi đơn hàng kết thúc (COMPLETED / CANCELLED / TIMEOUT).
+   * Xóa cả 2 key: forward (guest:session:...) và reverse (guest:order:...).
+   * Best-effort — không throw nếu thất bại để không ảnh hưởng luồng chính.
+   */
+  async revokeByOrderCode(orderCode: string): Promise<void> {
+    try {
+      const orderKey = `guest:order:${orderCode}`;
+      let guestSessionId = await this.redis.get(orderKey);
+
+      if (!guestSessionId) {
+        // Không có session — guest chưa dùng Socket hoặc TTL đã hết
+        return;
+      }
+
+      // Strip JSON quotes do Spring Boot Jackson serializer
+      if (guestSessionId.startsWith('"') && guestSessionId.endsWith('"')) {
+        guestSessionId = guestSessionId.slice(1, -1);
+      }
+
+      // Xóa cả 2 key đồng thời
+      await this.redis.del(`guest:session:${guestSessionId}`, orderKey);
+
+      this.logger.log(`Revoked guest session for order ${orderCode} (session: ${guestSessionId})`);
+    } catch (error) {
+      this.logger.error(`Failed to revoke guest session for order ${orderCode}:`, error.message);
+    }
+  }
 }
