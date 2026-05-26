@@ -77,6 +77,23 @@ export class EmailService {
     });
   }
 
+  /**
+   * Email thông báo đơn hàng giao thành công.
+   * @param isGuest - true nếu là khách vãng lai (guest), false nếu là member đã đăng ký
+   */
+  async sendOrderCompleted(
+    email: string,
+    orderCode: string,
+    data: { customerName: string; isGuest?: boolean },
+  ): Promise<void> {
+    await this.send({
+      to: email,
+      subject: `Đơn hàng #${orderCode} đã giao thành công`,
+      template: 'order-completed',
+      context: { orderCode, ...data },
+    });
+  }
+
   async sendTierUpgraded(
     email: string,
     tier: string,

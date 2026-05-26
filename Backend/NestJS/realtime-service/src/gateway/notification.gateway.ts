@@ -12,6 +12,7 @@ import { Server, Socket } from 'socket.io';
 import { Logger, UseGuards, Inject, forwardRef } from '@nestjs/common';
 import { WsJwtGuard } from '../common/guards/ws-jwt.guard';
 import { NotificationEmitterService, NotificationPayload } from '../notification/notification-emitter.service';
+import { GuestSessionService } from './guest-session.service';
 
 @WebSocketGateway({
   path: '/ws',
@@ -30,12 +31,17 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
   constructor(
     @Inject(forwardRef(() => NotificationEmitterService))
     private notificationEmitter: NotificationEmitterService,
+    private guestSessionService: GuestSessionService,
   ) {}
 
   afterInit() {
     this.notificationEmitter.registerHandler((notification: NotificationPayload) => {
       if (notification.userId) {
+        // Member đã đăng nhập → emit vào room user:{userId}
         this.emitToUser(notification.userId, notification);
+      } else if (notification.data?.orderCode) {
+        // Guest → emit vào room order:{orderCode}
+        this.emitToOrder(notification.data.orderCode, notification);
       }
     });
     this.logger.log('NotificationGateway initialized with emitter handler');
@@ -48,6 +54,8 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
   handleDisconnect(client: Socket) {
     this.logger.log(`Client disconnected: ${client.id}`);
   }
+
+  // ─── Member (JWT) ─────────────────────────────────────────────────────────
 
   @SubscribeMessage('join')
   @UseGuards(WsJwtGuard)
@@ -85,6 +93,42 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
     return { event: 'error', message: 'User not authenticated', success: false };
   }
 
+  // ─── Guest (Redis guestSessionId) ────────────────────────────────────────
+
+  /**
+   * Guest join room theo orderCode sau khi validate guestSessionId qua Redis.
+   * Không dùng JWT guard — xác thực thông qua guestSessionId do Order Service cấp.
+   */
+  @SubscribeMessage('join-guest')
+  async handleJoinGuest(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { guestSessionId: string },
+  ) {
+    const { guestSessionId } = payload || {};
+
+    if (!guestSessionId) {
+      client.emit('error', { message: 'guestSessionId is required', success: false });
+      return { event: 'error', message: 'guestSessionId is required', success: false };
+    }
+
+    const orderCode = await this.guestSessionService.getOrderCode(guestSessionId);
+
+    if (!orderCode) {
+      this.logger.warn(`Invalid or expired guestSessionId: ${guestSessionId}`);
+      client.emit('error', { message: 'Invalid or expired guest session', success: false });
+      return { event: 'error', message: 'Invalid or expired guest session', success: false };
+    }
+
+    const room = `order:${orderCode}`;
+    client.join(room);
+    this.logger.log(`Guest joined room ${room} via session ${guestSessionId}`);
+    client.emit('joined-guest', { room, orderCode, success: true });
+    return { event: 'joined-guest', room, orderCode, success: true };
+  }
+
+  // ─── Emit helpers ─────────────────────────────────────────────────────────
+
+  /** Emit notification tới room của member đã đăng nhập. */
   emitToUser(userId: string, notification: any) {
     this.server.to(`user:${userId}`).emit('notification', {
       event: 'notification',
@@ -92,6 +136,16 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
       timestamp: new Date().toISOString(),
     });
     this.logger.debug(`Emitted notification to user:${userId}`);
+  }
+
+  /** Emit notification tới room của guest theo orderCode. */
+  emitToOrder(orderCode: string, notification: any) {
+    this.server.to(`order:${orderCode}`).emit('notification', {
+      event: 'notification',
+      data: notification,
+      timestamp: new Date().toISOString(),
+    });
+    this.logger.debug(`Emitted notification to order:${orderCode}`);
   }
 
   emitToMultipleUsers(userIds: string[], notification: any) {

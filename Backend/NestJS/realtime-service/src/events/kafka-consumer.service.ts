@@ -16,7 +16,7 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
   private kafka: Kafka;
   private consumer: Consumer;
   private readonly TOPICS = ['order-events', 'order-timeout-events'];
-  private readonly GROUP_ID = 'notification-service-group';
+  private readonly GROUP_ID = 'notification-service-group-v3';
   private isConnected = false;
   private reconnectAttempts = 0;
   private readonly MAX_RECONNECT_ATTEMPTS = 10;

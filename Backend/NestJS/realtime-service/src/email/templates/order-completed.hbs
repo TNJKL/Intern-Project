@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
+    .container { background: white; border-radius: 8px; padding: 30px; max-width: 600px; margin: 0 auto; }
+    .header { text-align: center; border-bottom: 2px solid #4caf50; padding-bottom: 20px; }
+    .header h1 { color: #4caf50; margin: 0; }
+    .badge { display: inline-block; background: #4caf50; color: white; border-radius: 20px; padding: 6px 18px; font-size: 14px; margin-top: 10px; }
+    .content { padding: 20px 0; }
+    .order-code { font-size: 22px; font-weight: bold; color: #333; text-align: center; margin: 20px 0; }
+    .thank-you { background: #f0fff4; border-left: 4px solid #4caf50; border-radius: 4px; padding: 15px 20px; margin: 15px 0; }
+    .reorder { background: #fff8e1; border: 1px solid #ffc107; border-radius: 6px; padding: 15px 20px; margin: 20px 0; text-align: center; }
+    .reorder p { margin: 0 0 10px 0; color: #555; }
+    .reorder a { display: inline-block; background: #ff9800; color: white; padding: 10px 24px; border-radius: 20px; text-decoration: none; font-weight: bold; font-size: 14px; }
+    .footer { text-align: center; color: #888; font-size: 12px; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Beverage Shop</h1>
+      <span class="badge">✓ Đơn hàng đã giao thành công</span>
+    </div>
+    <div class="content">
+      <p>Xin chào <strong>{{customerName}}</strong>,</p>
+      <div class="order-code">Mã đơn hàng: #{{orderCode}}</div>
+      <div class="thank-you">
+        <p>🎉 Đơn hàng của bạn đã được giao thành công!</p>
+        <p>Cảm ơn bạn đã tin tưởng và lựa chọn <strong>Beverage Shop</strong>. Chúng tôi rất vui khi được phục vụ bạn và hy vọng bạn hài lòng với sản phẩm nhận được.</p>
+      </div>
+      {{#if isGuest}}
+      <div class="reorder">
+        <p>☕ Bạn thích vị đồ uống hôm nay? Đặt lại ngay để thưởng thức lần nữa!</p>
+        <a href="https://beverage.shop/menu">Đặt hàng ngay</a>
+      </div>
+      {{else}}
+      <div class="reorder">
+        <p>☕ Muốn thưởng thức lại? Đặt hàng tiếp để tích điểm và nhận ưu đãi hạng thành viên!</p>
+        <a href="https://beverage.shop/menu">Đặt hàng ngay</a>
+      </div>
+      {{/if}}
+      <p>Nếu có bất kỳ thắc mắc nào về đơn hàng, hãy liên hệ với chúng tôi:</p>
+      <ul>
+        <li>Email: support@beverage.shop</li>
+        <li>Hotline: 1900-xxxx</li>
+      </ul>
+      <p>Trân trọng,<br><strong>Beverage Shop</strong></p>
+    </div>
+    <div class="footer">
+      <p>Email này được gửi tự động. Vui lòng không trả lời email này.</p>
+    </div>
+  </div>
+</body>
+</html>
