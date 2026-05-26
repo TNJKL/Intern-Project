@@ -36,19 +36,36 @@ export class NotificationService {
 
     const saved = await this.notificationRepository.save(notification);
 
-    if (dto.userId && saved.channel === 'IN_APP') {
-      this.notificationEmitter.emit({
-        id: saved.id,
-        userId: saved.userId,
-        userEmail: saved.userEmail,
-        channel: saved.channel,
-        title: saved.title,
-        body: saved.body,
-        data: saved.data,
-        status: saved.status,
-        isRead: saved.isRead,
-        createdAt: saved.createdAt,
-      });
+    if (saved.channel === 'IN_APP') {
+      if (saved.userId) {
+        // Member đã đăng nhập → emit theo userId
+        this.notificationEmitter.emit({
+          id: saved.id,
+          userId: saved.userId,
+          userEmail: saved.userEmail,
+          channel: saved.channel,
+          title: saved.title,
+          body: saved.body,
+          data: saved.data,
+          status: saved.status,
+          isRead: saved.isRead,
+          createdAt: saved.createdAt,
+        });
+      } else if ((saved.data as any)?.orderCode) {
+        // Guest → emit theo orderCode (gateway sẽ route vào room order:{orderCode})
+        this.notificationEmitter.emit({
+          id: saved.id,
+          userId: null,
+          userEmail: saved.userEmail,
+          channel: saved.channel,
+          title: saved.title,
+          body: saved.body,
+          data: saved.data,
+          status: saved.status,
+          isRead: saved.isRead,
+          createdAt: saved.createdAt,
+        });
+      }
     }
 
     return saved;

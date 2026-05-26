@@ -15,6 +15,7 @@ import com.beverage.order.domain.exception.BusinessException;
 import com.beverage.order.domain.exception.ResourceNotFoundException;
 import com.beverage.order.domain.exception.BadRequestException;
 import com.beverage.order.domain.model.OrderStatus;
+import com.beverage.order.infrastructure.cache.GuestSessionCacheService;
 import com.beverage.order.infrastructure.cache.OrderDetailCacheService;
 import com.beverage.order.infrastructure.persistence.entity.OrderEntity;
 import com.beverage.order.infrastructure.persistence.entity.OrderItemEntity;
@@ -58,6 +59,7 @@ public class OrderUseCase {
     private final OrderDtoMapper orderDtoMapper;
     private final OrderActorResolver orderActorResolver;
     private final OrderDetailCacheService orderDetailCacheService;
+    private final GuestSessionCacheService guestSessionCacheService;
     private final EntityManager entityManager;
     private final VoucherService voucherService;
     private final ApplicationEventPublisher applicationEventPublisher;
@@ -157,6 +159,14 @@ public class OrderUseCase {
 
         OrderDetailResponse detail = loadDetailForGuest(saved.getId());
         orderDetailCacheService.put(saved.getId(), detail);
+
+        // Nếu là guest (userId == null) → sinh guestSessionId để FE kết nối WebSocket
+        if (userId == null) {
+            String guestSessionId = guestSessionCacheService.create(saved.getOrderCode());
+            detail.setGuestSessionId(guestSessionId);
+            log.debug("Guest session created for order {}: {}", saved.getOrderCode(), guestSessionId);
+        }
+
         return detail;
     }
 
