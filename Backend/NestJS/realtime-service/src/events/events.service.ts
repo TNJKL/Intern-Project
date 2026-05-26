@@ -16,7 +16,7 @@ export class EventsService {
   constructor(
     private notificationService: NotificationService,
     private emailService: EmailService,
-  ) {}
+  ) { }
 
   async processOrderEvent(eventType: string, payload: OrderEventPayload | TierUpdateEventPayload) {
     switch (eventType) {
@@ -234,11 +234,11 @@ export class EventsService {
       });
 
       try {
-        await this.emailService.sendOrderConfirmation(userEmail, payload.orderCode, {
+        // Guest: userId không tồn tại hoặc là null → isGuest = true
+        const isGuest = !payload.userId;
+        await this.emailService.sendOrderCompleted(userEmail, payload.orderCode, {
           customerName,
-          items: payload.items,
-          totalAmount: payload.totalAmount,
-          isCompleted: true,
+          isGuest,
         });
         await this.notificationService.updateNotificationStatusById(
           emailNotification.id,
