@@ -3,6 +3,18 @@ import type { NextRequest } from 'next/server';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_GLOBAL_BACKEND_IP;
 
+function isTokenExpired(token: string) {
+  try {
+    const payloadBase64 = token.split('.')[1];
+    const decodedJson = atob(payloadBase64);
+    const decoded = JSON.parse(decodedJson);
+    const exp = decoded.exp;
+    return exp * 1000 < (Date.now() + 10000); // Thêm buffer 10s
+  } catch (e) {
+    return true;
+  }
+}
+
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   let res = NextResponse.next();
@@ -32,12 +44,21 @@ export default async function proxy(request: NextRequest) {
   }
 
   // Đọc cookies
-  const accessToken = request.cookies.get('accessToken')?.value || request.cookies.get('adminAccessToken')?.value;
+  let accessToken = request.cookies.get('accessToken')?.value || request.cookies.get('adminAccessToken')?.value;
+  if (accessToken === 'undefined' || accessToken === 'null') {
+    accessToken = undefined;
+  }
+  
+  if (accessToken && isTokenExpired(accessToken)) {
+    accessToken = undefined;
+  }
+
   const adminAccessToken = request.cookies.get('adminAccessToken')?.value;
   const refreshToken = request.cookies.get('refreshToken')?.value;
 
-  // 2. Cơ chế Silent Refresh cho tất cả các request
-  if (!accessToken && refreshToken) {
+  // 2. Cơ chế Silent Refresh (chỉ bỏ qua trang đăng nhập/đăng ký để tránh loop, cho phép chạy trên các trang public như trang chủ)
+  const isAuthPage = pathname === '/login' || pathname === '/register';
+  if (!accessToken && refreshToken && !isAuthPage) {
     try {
       // console.log('[Auth] Token missing, refreshing...');
 
@@ -68,6 +89,29 @@ export default async function proxy(request: NextRequest) {
           } else {
             redirectRes.cookies.set('accessToken', newAccessToken, { path: '/', maxAge: 7 * 24 * 60 * 60, sameSite: 'lax' });
           }
+
+          // Đồng bộ và gán các cookie khác (đặc biệt là refreshToken mới sau khi xoay vòng - RTR)
+          const setCookieHeaders = refreshResponse.headers.getSetCookie();
+          if (setCookieHeaders && setCookieHeaders.length > 0) {
+            setCookieHeaders.forEach(cookieString => {
+              const parts = cookieString.split(';');
+              const [nameValue] = parts;
+              const [name, value] = nameValue.split('=');
+              const cookieName = name.trim();
+              const cookieValue = value.trim();
+              if (cookieName.toLowerCase().includes('token')) {
+                const isHttpOnly = !cookieName.includes('adminAccessToken');
+                redirectRes.cookies.set(cookieName, cookieValue, {
+                  httpOnly: isHttpOnly,
+                  secure: true,
+                  sameSite: 'lax',
+                  path: '/',
+                  maxAge: 60 * 60 * 24 * 7
+                });
+              }
+            });
+          }
+
           return redirectRes;
         }
       } else {
@@ -83,6 +127,13 @@ export default async function proxy(request: NextRequest) {
           return redirectRes;
         } else if (pathname.startsWith('/orders') && !pathname.startsWith('/orders/track')) {
           const redirectRes = NextResponse.redirect(new URL('/orders/track', request.url));
+          redirectRes.cookies.delete('accessToken');
+          redirectRes.cookies.delete('adminAccessToken');
+          redirectRes.cookies.delete('refreshToken');
+          return redirectRes;
+        } else {
+          // Với các trang public khác (như trang chủ /), xóa cookie và redirect về chính nó để clear sạch trên browser
+          const redirectRes = NextResponse.redirect(request.url);
           redirectRes.cookies.delete('accessToken');
           redirectRes.cookies.delete('adminAccessToken');
           redirectRes.cookies.delete('refreshToken');
@@ -111,7 +162,8 @@ export default async function proxy(request: NextRequest) {
         headers: {
           'Content-Type': 'application/json',
           'ngrok-skip-browser-warning': 'true',
-          'Cookie': `refreshToken=${refreshToken}`
+          'Cookie': `refreshToken=${refreshToken}`,
+          ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {})
         },
         body: JSON.stringify({ refreshToken })
       });
@@ -134,6 +186,11 @@ export default async function proxy(request: NextRequest) {
           } else {
             newRes.cookies.set('accessToken', newAccessToken, { path: '/', maxAge: 7 * 24 * 60 * 60, sameSite: 'lax', httpOnly: true });
           }
+        }
+        
+        const newRefreshToken = responseData?.data?.refreshToken || responseData?.refreshToken;
+        if (newRefreshToken) {
+          newRes.cookies.set('refreshToken', newRefreshToken, { path: '/', maxAge: 7 * 24 * 60 * 60, sameSite: 'lax', httpOnly: true });
         }
 
         // Synchronize and set other cookies if needed
@@ -181,8 +238,8 @@ export default async function proxy(request: NextRequest) {
     }
   }
 
-  // 3. Xử lý Proxy cho /api (TRỪ /api/auth của Next.js route handlers)
-  if (pathname.startsWith('/api') && !pathname.startsWith('/api/auth/login') && !pathname.startsWith('/api/auth/logout')) {
+  // 3. Xử lý Proxy cho /api (TRỪ /api/auth và /api/orders của Next.js route handlers)
+  if (pathname.startsWith('/api') && !pathname.startsWith('/api/auth/login') && !pathname.startsWith('/api/auth/logout') && !pathname.startsWith('/api/orders')) {
     const targetUrl = `${BACKEND_URL}${pathname}${request.nextUrl.search}`;
     const headers = new Headers(request.headers);
     headers.delete('host'); // Bắt buộc phải xóa host header khi dùng proxy với Ngrok

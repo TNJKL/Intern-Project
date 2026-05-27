@@ -4,17 +4,32 @@ import { API_CONFIG } from './api-config';
 const API_URL = API_CONFIG.BASE_URL;
 
 /**
- * Gọi API từ Server Side.
- * Sử dụng accessToken trực tiếp từ Cookie do Backend quản lý.
+ * Gọi API từ Server Side (Server Components, layout.tsx, page.tsx).
+ * Đọc accessToken từ Cookie và gắn vào Authorization header.
+ *
+ * Lưu ý về Refresh Token:
+ * - Luồng refresh token được xử lý hoàn toàn bởi Middleware (proxy.ts).
+ * - proxy.ts phát hiện accessToken hết hạn, gọi refresh, set cookie mới
+ *   và redirect về trang hiện tại TRƯỚC khi Server Component này render.
+ * - Do đó, server-api.ts KHÔNG cần tự refresh lại, vì:
+ *   1. Nếu proxy.ts đã chạy → accessToken đã hợp lệ khi hàm này chạy.
+ *   2. Nếu server-api.ts tự refresh → không thể ghi cookie mới trở lại
+ *      browser (Server Component render phase không hỗ trợ Set-Cookie),
+ *      nên token mới đó bị bỏ đi và lần sau vẫn bị 401.
  */
 export async function getServerApi(endpoint: string, options: RequestInit = {}) {
   const cookieStore = await cookies();
+
   // Đọc accessToken hoặc adminAccessToken từ cookie
   const accessTokenCookie = cookieStore.get('accessToken');
   const adminAccessTokenCookie = cookieStore.get('adminAccessToken');
-  const accessToken = accessTokenCookie?.value || adminAccessTokenCookie?.value;
+  let accessToken = accessTokenCookie?.value || adminAccessTokenCookie?.value;
 
-  
+  // Tránh gửi chuỗi malformed 'undefined' hoặc 'null' lên Backend
+  if (accessToken === 'undefined' || accessToken === 'null') {
+    accessToken = undefined;
+  }
+
   const headers = new Headers(options.headers);
   headers.set('Content-Type', 'application/json');
   headers.set('ngrok-skip-browser-warning', 'true');
@@ -24,9 +39,9 @@ export async function getServerApi(endpoint: string, options: RequestInit = {}) 
     headers.set('Authorization', `Bearer ${accessToken}`);
   }
 
-  // Thiết lập Timeout 5 giây để tránh treo trang quá lâu
+  // Timeout 15 giây để tránh treo trang khi backend chậm
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
 
   const fetchOptions: RequestInit = {
     ...options,
@@ -35,54 +50,26 @@ export async function getServerApi(endpoint: string, options: RequestInit = {}) 
     cache: 'no-store',
   };
 
-  // Mặc định không cache để dữ liệu luôn mới (quan trọng khi đồng bộ giữa Admin và Client)
-  if (!fetchOptions.method || fetchOptions.method === 'GET') {
-    if (!fetchOptions.cache && !fetchOptions.next) {
-      fetchOptions.next = { revalidate: 0 }; 
-    }
-  }
-
   try {
     const response = await fetch(`${API_URL}${endpoint}`, fetchOptions);
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const isExpired = errorData?.errorCode === 'TOKEN_EXPIRED' || response.status === 401 || response.status === 403;
-
-      if (isExpired) {
-        const refreshToken = cookieStore.get('refreshToken')?.value;
-        if (refreshToken) {
-          // Thử refresh token ngay tại Server
-          try {
-            const refreshRes = await fetch(`${API_URL}/api/v1/auth/refresh`, {
-              method: 'POST',
-              headers: { 
-                'Content-Type': 'application/json',
-                'Cookie': `refreshToken=${refreshToken}`,
-                'ngrok-skip-browser-warning': 'true'
-              },
-              body: JSON.stringify({ refreshToken })
-            });
-
-            if (refreshRes.ok) {
-              const refreshData = await refreshRes.json();
-              const newToken = refreshData?.data?.accessToken || refreshData?.accessToken;
-              if (newToken) {
-                // Thử gọi lại request gốc với token mới
-                headers.set('Authorization', `Bearer ${newToken}`);
-                const retryResponse = await fetch(`${API_URL}${endpoint}`, { ...fetchOptions, headers });
-                if (retryResponse.ok) return retryResponse.json();
-              }
-            }
-          } catch (refreshErr) {
-            console.error('[SSR Refresh Error]', refreshErr);
-          }
-        }
-        return { success: false, data: [], message: 'Unauthorized' };
+      // 401/403 là trường hợp bình thường khi chưa đăng nhập → im lặng, không log
+      if (response.status === 401 || response.status === 403) {
+        return { success: false, data: null, message: 'Unauthorized', status: response.status };
       }
-      console.error(`[SSR ERROR] ${endpoint} (${response.status})`);
-      throw new Error(`API Error: ${response.status}`);
+
+      const errorData = await response.json().catch(() => ({}));
+      console.error(`[SSR ERROR] ${endpoint} (${response.status})`, errorData);
+      
+      // Không throw error gây sập trang, trả về kết quả lỗi an toàn để UI tự xử lý
+      return { 
+        success: false, 
+        data: null, 
+        message: errorData?.message || `API Error: ${response.status}`,
+        status: response.status 
+      };
     }
 
     return response.json();
@@ -91,6 +78,7 @@ export async function getServerApi(endpoint: string, options: RequestInit = {}) 
     if (error.name !== 'AbortError') {
       console.error(`[SSR ERROR] ${endpoint}: ${error.message}`);
     }
-    throw error;
+    // Trả về kết quả lỗi an toàn thay vì throw gây sập trang
+    return { success: false, data: null, message: error.message };
   }
 }

@@ -113,9 +113,10 @@ export default function OrdersClient({ orders }: { orders: OrderSummary[] }) {
     setIsLoadingDetail(true);
     setOrderDetail(null);
     try {
-      const res = await orderService.getOrderById(id);
-      if (res.success) {
-        setOrderDetail(res.data);
+      const res = await fetch(`/api/orders/${id}`);
+      const data = await res.json();
+      if (data?.success && data?.data) {
+        setOrderDetail(data.data);
       }
     } catch (error) {
       console.error("Failed to fetch order detail", error);
@@ -137,8 +138,9 @@ export default function OrdersClient({ orders }: { orders: OrderSummary[] }) {
       if (res.success) {
         // Refresh the detail modal if it's the one being cancelled
         if (isModalOpen && orderDetail?.id === cancelConfirmId) {
-          const detailRes = await orderService.getOrderById(cancelConfirmId);
-          if (detailRes.success) setOrderDetail(detailRes.data);
+          const detailRes = await fetch(`/api/orders/${cancelConfirmId}`);
+          const detailData = await detailRes.json();
+          if (detailData?.success && detailData?.data) setOrderDetail(detailData.data);
         }
 
         // Close confirm modal and refresh the main page to update the list
@@ -170,7 +172,7 @@ export default function OrdersClient({ orders }: { orders: OrderSummary[] }) {
             <button
               key={tab.id}
               onClick={() => handleTabChange(tab.id)}
-              className={`flex-1 py-3 text-sm font-bold uppercase tracking-widest rounded-xl transition-all ${activeTab === tab.id ? "bg-[#4d362b] text-white shadow-md shadow-[#4d362b]/20" : "text-gray-500 hover:text-[#4d362b]"}`}
+              className={`flex-1 py-3 text-sm font-bold uppercase tracking-widest rounded-xl transition-all ${activeTab === tab.id ? "bg-primary text-white shadow-md shadow-primary/20" : "text-gray-500 hover:text-primary"}`}
             >
               {tab.label}
             </button>
@@ -219,11 +221,11 @@ export default function OrdersClient({ orders }: { orders: OrderSummary[] }) {
 
                     <div className="flex justify-end gap-2">
                       {order.status?.toLowerCase() === "completed" && (
-                        <button className="px-4 py-2 bg-[#4d362b]/5 text-[#4d362b] rounded-xl font-extrabold hover:bg-[#4d362b]/10 transition-colors text-xs uppercase tracking-wider">
+                        <button className="px-4 py-2 bg-primary/5 text-primary rounded-xl font-extrabold hover:bg-primary/10 transition-colors text-xs uppercase tracking-wider">
                           Đánh giá
                         </button>
                       )}
-                      <button onClick={() => handleViewDetail(order.id)} className="px-4 py-2.5 bg-[#4d362b] text-white rounded-xl font-extrabold hover:bg-[#3c2a21] transition-colors text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
+                      <button onClick={() => handleViewDetail(order.id)} className="px-4 py-2.5 bg-primary text-white rounded-xl font-extrabold hover:bg-primary/80 transition-colors text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
                         {order.status?.toLowerCase() === "completed" || order.status?.toLowerCase() === "cancelled" ? "Mua lại đơn này" : "Xem chi tiết"}
                         <ArrowRight className="w-3.5 h-3.5" />
                       </button>
@@ -236,14 +238,14 @@ export default function OrdersClient({ orders }: { orders: OrderSummary[] }) {
 
           {totalPages > 1 && (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 bg-white p-4 rounded-2xl shadow-sm border border-gray-100/80">
-              <span className="text-xs sm:text-sm font-medium text-[#8c7a6b]">
-                Hiển thị đơn hàng <strong className="text-[#4d362b] font-black">{filteredOrders.length > 0 ? (adjustedPage - 1) * itemsPerPage + 1 : 0} - {Math.min(adjustedPage * itemsPerPage, filteredOrders.length)}</strong> trong tổng số <strong className="text-[#4d362b] font-black">{filteredOrders.length}</strong> đơn
+              <span className="text-xs sm:text-sm font-medium text-gray-500">
+                Hiển thị đơn hàng <strong className="text-primary font-black">{filteredOrders.length > 0 ? (adjustedPage - 1) * itemsPerPage + 1 : 0} - {Math.min(adjustedPage * itemsPerPage, filteredOrders.length)}</strong> trong tổng số <strong className="text-primary font-black">{filteredOrders.length}</strong> đơn
               </span>
               <div className="flex items-center gap-1.5">
                 <button
                   disabled={adjustedPage === 1}
                   onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  className="px-3 py-2 bg-gray-50 text-[#4d362b] rounded-xl font-bold hover:bg-gray-100 disabled:opacity-40 disabled:hover:bg-gray-50 transition-all text-xs flex items-center gap-1 border border-gray-200/50"
+                  className="px-3 py-2 bg-gray-50 text-primary rounded-xl font-bold hover:bg-gray-100 disabled:opacity-40 disabled:hover:bg-gray-50 transition-all text-xs flex items-center gap-1 border border-gray-200/50"
                 >
                   <ChevronLeft className="w-4 h-4" /> Trước
                 </button>
@@ -263,7 +265,7 @@ export default function OrdersClient({ orders }: { orders: OrderSummary[] }) {
                       <>
                         {start > 1 && (
                           <>
-                            <button onClick={() => setCurrentPage(1)} className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-extrabold transition-all ${adjustedPage === 1 ? "bg-[#4d362b] text-white shadow-sm shadow-[#4d362b]/20" : "text-gray-500 hover:bg-gray-50 hover:text-[#4d362b]"}`}>1</button>
+                            <button onClick={() => setCurrentPage(1)} className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-extrabold transition-all ${adjustedPage === 1 ? "bg-primary text-white shadow-sm shadow-primary/20" : "text-gray-500 hover:bg-gray-50 hover:text-primary"}`}>1</button>
                             {start > 2 && <span className="text-gray-400 text-xs px-0.5">...</span>}
                           </>
                         )}
@@ -271,7 +273,7 @@ export default function OrdersClient({ orders }: { orders: OrderSummary[] }) {
                           <button
                             key={page}
                             onClick={() => setCurrentPage(page)}
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-extrabold transition-all ${adjustedPage === page ? "bg-[#4d362b] text-white shadow-sm shadow-[#4d362b]/20" : "text-gray-500 hover:bg-gray-50 hover:text-[#4d362b]"}`}
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-extrabold transition-all ${adjustedPage === page ? "bg-primary text-white shadow-sm shadow-primary/20" : "text-gray-500 hover:bg-gray-50 hover:text-primary"}`}
                           >
                             {page}
                           </button>
@@ -279,7 +281,7 @@ export default function OrdersClient({ orders }: { orders: OrderSummary[] }) {
                         {end < totalPages && (
                           <>
                             {end < totalPages - 1 && <span className="text-gray-400 text-xs px-0.5">...</span>}
-                            <button onClick={() => setCurrentPage(totalPages)} className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-extrabold transition-all ${adjustedPage === totalPages ? "bg-[#4d362b] text-white shadow-sm shadow-[#4d362b]/20" : "text-gray-500 hover:bg-gray-50 hover:text-[#4d362b]"}`}>{totalPages}</button>
+                            <button onClick={() => setCurrentPage(totalPages)} className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-extrabold transition-all ${adjustedPage === totalPages ? "bg-primary text-white shadow-sm shadow-primary/20" : "text-gray-500 hover:bg-gray-50 hover:text-primary"}`}>{totalPages}</button>
                           </>
                         )}
                       </>
@@ -289,7 +291,7 @@ export default function OrdersClient({ orders }: { orders: OrderSummary[] }) {
                 <button
                   disabled={adjustedPage === totalPages}
                   onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  className="px-3 py-2 bg-gray-50 text-[#4d362b] rounded-xl font-bold hover:bg-gray-100 disabled:opacity-40 disabled:hover:bg-gray-50 transition-all text-xs flex items-center gap-1 border border-gray-200/50"
+                  className="px-3 py-2 bg-gray-50 text-primary rounded-xl font-bold hover:bg-gray-100 disabled:opacity-40 disabled:hover:bg-gray-50 transition-all text-xs flex items-center gap-1 border border-gray-200/50"
                 >
                   Sau <ArrowRight className="w-4 h-4" />
                 </button>
@@ -412,7 +414,7 @@ export default function OrdersClient({ orders }: { orders: OrderSummary[] }) {
                     <p className="text-2xl font-black text-primary">{orderDetail.totalAmount?.toLocaleString("vi-VN") ?? 0}đ</p>
                   </div>
                   {orderDetail.status?.toUpperCase() === "COMPLETED" && (
-                    <button className="px-6 py-3 bg-[#4d362b] text-white rounded-xl font-bold hover:bg-[#3c2a21] transition-colors uppercase tracking-widest text-sm shadow-sm">Mua lại</button>
+                    <button className="px-6 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary/80 transition-colors uppercase tracking-widest text-sm shadow-sm">Mua lại</button>
                   )}
                   {orderDetail.status?.toUpperCase() === "PENDING" && (
                     <button

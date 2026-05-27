@@ -14,27 +14,8 @@ export function FloatingNav() {
   const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
   const [isMounted, setIsMounted] = useState(false);
   const [activeId, setActiveId] = useState("home");
-  const [isVisible, setIsVisible] = useState(false);
-
   useEffect(() => {
     setIsMounted(true);
-  }, []);
-
-  // Monitor scroll height to show/hide floating navigation bar
-  useEffect(() => {
-    const handleScroll = () => {
-      // Show only when scrolled down past 120px
-      if (window.scrollY > 120) {
-        setIsVisible(true);
-      } else {
-        setIsVisible(false);
-      }
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    // Initial check
-    handleScroll();
-    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const isHomepage = pathname === "/";
@@ -74,10 +55,7 @@ export function FloatingNav() {
   }, [pathname, navItems, isMounted]);
 
   return (
-    <div className={cn(
-      "fixed bottom-8 left-1/2 -translate-x-1/2 z-50 transition-all duration-500 ease-out transform",
-      isVisible ? "translate-y-0 opacity-100 scale-100" : "translate-y-12 opacity-0 scale-95 pointer-events-none"
-    )}>
+    <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50">
       <div className="bg-white/80 backdrop-blur-xl px-6 py-3 rounded-full shadow-2xl border border-white/50 flex items-center gap-6 md:gap-8">
         {navItems.map((item) => {
           const isActive = activeId === item.id;

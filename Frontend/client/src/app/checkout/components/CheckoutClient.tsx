@@ -11,10 +11,12 @@ import { orderService } from "@/services/order.service";
 import { voucherService } from "@/services/voucher.service";
 import type { Voucher, ValidateVoucherResult } from "@/services/voucher.service";
 import toast from "react-hot-toast";
+import { useSocket } from "@/components/providers/SocketProvider";
 
 export default function CheckoutClient() {
   const { items: cartItems, clearCart } = useCartStore();
   const { user } = useAuthStore();
+  const { joinGuestRoom } = useSocket();
   const [mounted, setMounted] = useState(false);
   
   const [paymentMethod, setPaymentMethod] = useState("cod");
@@ -273,6 +275,15 @@ export default function CheckoutClient() {
       const res = await orderService.createOrder(payload as any);
       if (res && res.success && res.data) {
         setCreatedOrderCode(res.data.orderCode);
+
+        // ─── Guest: lưu guestSessionId để theo dõi đơn hàng realtime ───
+        if (!user && res.data.guestSessionId) {
+          const { guestSessionId, orderCode } = res.data;
+          localStorage.setItem('brewtra_guest_session_id', guestSessionId);
+          localStorage.setItem('brewtra_guest_order_code', orderCode);
+          // Kết nối socket và join room ngay lập tức
+          joinGuestRoom(guestSessionId);
+        }
       }
       clearCart();
       localStorage.removeItem('brewtra_applied_voucher');

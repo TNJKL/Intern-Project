@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Menu, User, Coffee, ShoppingCart, LogOut, LayoutDashboard, X, Home, Tag, Package } from "lucide-react";
+import { Search, Menu, User, Coffee, ShoppingCart, LogOut, LayoutDashboard, X, Home, Tag, Package, Settings, Sun, Moon, Sparkles, Check } from "lucide-react";
 import Link from "next/link";
 import { useAuthStore } from "@/store/zustand/useAuthStore";
 import { useCartStore } from "@/store/zustand/useCartStore";
@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 import { User as UserType } from "@/types/user";
+import { createPortal } from "react-dom";
 
 interface NavbarProps {
   initialUser?: UserType | null;
@@ -30,9 +31,31 @@ export function Navbar({ initialUser }: NavbarProps) {
   const pathname = usePathname();
   const cartItemsCount = useCartStore((state) => state.items.reduce((total, item) => total + item.quantity, 0));
 
+  const [preset, setPreset] = useState<"espresso" | "matcha" | "berry">("espresso");
+  const [steamEffect, setSteamEffect] = useState(false);
+
   useEffect(() => {
     setIsMounted(true);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("theme");
+      document.documentElement.classList.remove("dark");
+      const savedPreset = (localStorage.getItem("preset") as "espresso" | "matcha" | "berry") || "espresso";
+      const savedSteam = localStorage.getItem("steamEffect") === "true";
+      setPreset(savedPreset);
+      setSteamEffect(savedSteam);
+    }
   }, []);
+
+  const changePreset = (newPreset: "espresso" | "matcha" | "berry") => {
+    setPreset(newPreset);
+    localStorage.setItem("preset", newPreset);
+    document.documentElement.classList.remove("preset-matcha", "preset-berry");
+    if (newPreset === "matcha") {
+      document.documentElement.classList.add("preset-matcha");
+    } else if (newPreset === "berry") {
+      document.documentElement.classList.add("preset-berry");
+    }
+  };
 
   const navItems = useMemo(() => [
     { id: "home", icon: Home, label: "Trang chủ", href: "/" },
@@ -61,15 +84,24 @@ export function Navbar({ initialUser }: NavbarProps) {
   }, [pathname, navItems, isMounted]);
 
   return (
-    <nav className="flex items-center justify-between px-6 py-6 max-w-7xl mx-auto w-full gap-4 relative">
+    <nav className="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto w-full gap-4 relative">
       {/* Logo */}
       <Link href="/" className="flex items-center gap-2 group shrink-0">
-        <div className="bg-primary text-white p-2 rounded-xl group-hover:bg-coffee-dark transition-colors duration-300 shadow-lg shadow-primary/20">
-          <Coffee className="w-5 h-5 md:w-6 md:h-6" />
+        <div className="relative">
+          <div className="bg-primary text-white p-2 rounded-xl group-hover:bg-coffee-dark transition-colors duration-300 shadow-lg shadow-primary/20">
+            <Coffee className="w-5 h-5 md:w-6 md:h-6" />
+          </div>
+          {isMounted && steamEffect && (
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex gap-1 pointer-events-none z-20">
+              <span className="w-[1.5px] h-3 bg-primary/60 rounded-full steam-line steam-line-1"></span>
+              <span className="w-[1.5px] h-4.5 bg-primary/70 rounded-full steam-line steam-line-2"></span>
+              <span className="w-[1.5px] h-3 bg-primary/60 rounded-full steam-line steam-line-3"></span>
+            </div>
+          )}
         </div>
         <div className="flex flex-col leading-none">
           <span className="text-2xl md:text-3xl font-black tracking-widest uppercase">
-            <span className="text-coffee-dark">Brew</span>
+            <span className="text-coffee-dark dark:text-foreground">Brew</span>
             <span className="text-primary">tra</span>
           </span>
           {isMounted && isAuthenticated && user?.role === 'ADMIN' && (
@@ -77,6 +109,29 @@ export function Navbar({ initialUser }: NavbarProps) {
           )}
         </div>
       </Link>
+
+      {/* Center Nav Items */}
+      <div className="hidden md:flex items-center gap-1">
+        {navItems.filter(item => item.id !== 'account').map((item) => {
+          const isActive = activeId === item.id;
+          return (
+            <Link
+              key={item.id}
+              href={item.href}
+              onClick={() => setActiveId(item.id)}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all duration-200",
+                isActive
+                  ? "bg-primary text-white shadow-md shadow-primary/20"
+                  : "text-gray-500 hover:text-coffee-dark hover:bg-gray-100"
+              )}
+            >
+              <item.icon className="w-4 h-4" />
+              {item.label}
+            </Link>
+          );
+        })}
+      </div>
 
       {/* Actions */}
       <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
@@ -155,123 +210,215 @@ export function Navbar({ initialUser }: NavbarProps) {
           )}
         </Link>
 
-        {/* 3 Gạch Menu (Burger Icon) */}
+        {/* Cài đặt / Tùy biến Giao diện (Settings Icon) */}
         <button 
           onClick={() => setIsDrawerOpen(true)}
-          className="p-2.5 text-gray-600 hover:bg-gray-100 rounded-full transition-all active:scale-90"
+          className="p-2.5 text-gray-600 dark:text-gray-300 hover:bg-primary/10 rounded-full transition-all duration-300 active:scale-90 group relative"
+          title="Thiết lập & Tiện ích"
         >
-          <Menu className="w-6 h-6 animate-pulse" />
+          <Settings className="w-5.5 h-5.5 group-hover:rotate-90 transition-transform duration-500 text-gray-600 dark:text-gray-300 relative z-10" />
         </button>
       </div>
 
       {/* Drawer menu điều hướng (Slide out from Right) */}
-      <AnimatePresence>
-        {isDrawerOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsDrawerOpen(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100]"
-            />
+      {isMounted && typeof window !== "undefined" && createPortal(
+        <AnimatePresence>
+          {isDrawerOpen && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsDrawerOpen(false)}
+                className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100]"
+              />
 
-            {/* Sidebar Panel */}
-            <motion.div
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 h-full w-[300px] bg-[#fdfaf5] shadow-2xl z-[101] p-6 flex flex-col justify-between border-l border-white/20"
-            >
-              <div>
-                {/* Header */}
-                <div className="flex items-center justify-between pb-6 border-b border-gray-100 mb-6">
-                  <div className="flex items-center gap-2">
-                    <div className="bg-primary text-white p-2 rounded-xl">
-                      <Coffee className="w-5 h-5" />
-                    </div>
-                    <span className="text-xl font-black uppercase tracking-wider text-coffee-dark">Brewtra</span>
-                  </div>
-                  <button 
-                    onClick={() => setIsDrawerOpen(false)}
-                    className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"
-                  >
-                    <X className="w-4 h-4 text-gray-500" />
-                  </button>
-                </div>
-
-                {/* Nav Items list */}
-                <div className="space-y-2">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4 px-2">Khám phá Brewtra</p>
-                  {navItems.map((item) => {
-                    const isActive = activeId === item.id;
-
-                    return (
-                      <Link
-                        key={item.id}
-                        href={item.href}
-                        onClick={() => setIsDrawerOpen(false)}
-                        className={cn(
-                          "flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 group",
-                          isActive 
-                            ? "bg-primary text-white shadow-lg shadow-primary/20 font-bold" 
-                            : "text-gray-600 hover:bg-gray-100 hover:text-coffee-dark"
-                        )}
-                      >
-                        <item.icon className={cn("w-5 h-5 transition-transform duration-300 group-hover:scale-110", isActive ? "text-white" : "text-gray-400 group-hover:text-primary")} />
-                        <span className="text-sm font-semibold tracking-wide">{item.label}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Bottom footer/account area */}
-              <div className="pt-6 border-t border-gray-100">
-                {isMounted && isAuthenticated && user ? (
-                  <div className="flex flex-col gap-4">
-                    <div className="flex items-center gap-3 px-2">
-                      <div className="w-9 h-9 bg-primary text-white rounded-full flex items-center justify-center text-xs font-black">
-                        {user.fullName?.charAt(0).toUpperCase()}
+              {/* Sidebar Panel */}
+              <motion.div
+                initial={{ x: "100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                className="fixed top-0 right-0 h-full w-[320px] bg-background border-l border-gray-100 dark:border-zinc-800/80 shadow-2xl z-[101] p-6 flex flex-col justify-between transition-colors duration-500"
+              >
+                <div className="overflow-y-auto no-scrollbar flex-grow pb-4">
+                  {/* Header */}
+                  <div className="flex items-center justify-between pb-6 border-b border-gray-100 dark:border-zinc-800/80 mb-6">
+                    <div className="flex items-center gap-2">
+                      <div className="bg-primary text-white p-2 rounded-xl">
+                        <Settings className="w-5 h-5 animate-spin-slow" />
                       </div>
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-sm font-bold text-gray-800 truncate">{user.fullName}</span>
-                        <span className="text-[10px] text-gray-400 truncate">{user.email}</span>
-                      </div>
+                      <span className="text-xl font-black uppercase tracking-wider text-coffee-dark dark:text-foreground">Thiết lập</span>
                     </div>
-                    <button
-                      onClick={() => {
-                        setIsDrawerOpen(false);
-                        dispatch(clearCredentials());
-                        clearUser();
-                        clearCart();
-                        axios.post('/api/auth/logout').then(() => {
-                          router.push('/');
-                        });
-                      }}
-                      className="w-full py-3 bg-red-50 text-red-500 rounded-xl font-bold hover:bg-red-100 transition-colors text-xs uppercase tracking-wider flex items-center justify-center gap-2"
+                    <button 
+                      onClick={() => setIsDrawerOpen(false)}
+                      className="w-8 h-8 rounded-full bg-gray-100 dark:bg-zinc-800 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
                     >
-                      <LogOut className="w-4 h-4" />
-                      Đăng xuất
+                      <X className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                     </button>
                   </div>
-                ) : (
-                  <Link
-                    href="/login"
-                    onClick={() => setIsDrawerOpen(false)}
-                    className="w-full py-3 bg-coffee-dark text-white rounded-xl font-bold hover:bg-primary transition-colors text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-md"
-                  >
-                    <User className="w-4 h-4" />
-                    Đăng nhập ngay
-                  </Link>
-                )}
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+
+                  {/* Settings list */}
+                  <div className="space-y-6">
+                    {/* Preset Select */}
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3 px-1">Tông màu chủ đạo</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        <button
+                          onClick={() => changePreset("espresso")}
+                          className={cn(
+                            "flex flex-col items-center p-2.5 rounded-2xl border transition-all duration-300 gap-1.5",
+                            preset === "espresso"
+                              ? "bg-primary/5 border-primary/50 text-primary font-bold shadow-sm"
+                              : "bg-gray-50/50 dark:bg-zinc-900/50 border-gray-100 dark:border-zinc-800/60 text-gray-500 dark:text-gray-400 hover:bg-gray-100/50 dark:hover:bg-zinc-800/50"
+                          )}
+                        >
+                          <div className="w-5 h-5 rounded-full bg-[#6f4e37] border-2 border-white dark:border-zinc-800 shadow-sm flex items-center justify-center">
+                            {preset === "espresso" && <Check className="w-3 h-3 text-white" />}
+                          </div>
+                          <span className="text-[10px]">Espresso</span>
+                        </button>
+
+                        <button
+                          onClick={() => changePreset("matcha")}
+                          className={cn(
+                            "flex flex-col items-center p-2.5 rounded-2xl border transition-all duration-300 gap-1.5",
+                            preset === "matcha"
+                              ? "bg-primary/5 border-primary/50 text-primary font-bold shadow-sm"
+                              : "bg-gray-50/50 dark:bg-zinc-900/50 border-gray-100 dark:border-zinc-800/60 text-gray-500 dark:text-gray-400 hover:bg-gray-100/50 dark:hover:bg-zinc-800/50"
+                          )}
+                        >
+                          <div className="w-5 h-5 rounded-full bg-[#587f3d] border-2 border-white dark:border-zinc-800 shadow-sm flex items-center justify-center">
+                            {preset === "matcha" && <Check className="w-3 h-3 text-white" />}
+                          </div>
+                          <span className="text-[10px]">Matcha</span>
+                        </button>
+
+                        <button
+                          onClick={() => changePreset("berry")}
+                          className={cn(
+                            "flex flex-col items-center p-2.5 rounded-2xl border transition-all duration-300 gap-1.5",
+                            preset === "berry"
+                              ? "bg-primary/5 border-primary/50 text-primary font-bold shadow-sm"
+                              : "bg-gray-50/50 dark:bg-zinc-900/50 border-gray-100 dark:border-zinc-800/60 text-gray-500 dark:text-gray-400 hover:bg-gray-100/50 dark:hover:bg-zinc-800/50"
+                          )}
+                        >
+                          <div className="w-5 h-5 rounded-full bg-[#96354e] border-2 border-white dark:border-zinc-800 shadow-sm flex items-center justify-center">
+                            {preset === "berry" && <Check className="w-3 h-3 text-white" />}
+                          </div>
+                          <span className="text-[10px]">Berry</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Effects Toggle */}
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3 px-1">Hiệu ứng Brewtra</p>
+                      <div className="flex items-center justify-between p-3.5 bg-gray-50/50 dark:bg-zinc-900/50 border border-gray-100 dark:border-zinc-800/60 rounded-2xl">
+                        <div className="flex items-center gap-2.5">
+                          <Sparkles className="w-4 h-4 text-primary animate-pulse" />
+                          <div className="flex flex-col">
+                            <span className="text-xs font-bold text-gray-700 dark:text-gray-300">Khói cốc bay bổng</span>
+                            <span className="text-[9px] text-gray-400 dark:text-gray-500">Bay nhẹ nhàng tại Logo</span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            const newSteam = !steamEffect;
+                            setSteamEffect(newSteam);
+                            localStorage.setItem("steamEffect", String(newSteam));
+                          }}
+                          className={cn(
+                            "w-10 h-6 rounded-full p-1 transition-all duration-300 relative",
+                            steamEffect ? "bg-primary" : "bg-gray-300 dark:bg-zinc-700"
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              "w-4 h-4 bg-white rounded-full transition-all duration-300 shadow-sm absolute top-1",
+                              steamEffect ? "left-5" : "left-1"
+                            )}
+                          />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Navigation List for Mobile ONLY */}
+                    <div className="block md:hidden border-t border-gray-100 dark:border-zinc-800/80 pt-6">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4 px-1">Khám phá Brewtra</p>
+                      <div className="space-y-2">
+                        {navItems.map((item) => {
+                          const isActive = activeId === item.id;
+
+                          return (
+                            <Link
+                              key={item.id}
+                              href={item.href}
+                              onClick={() => setIsDrawerOpen(false)}
+                              className={cn(
+                                "flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-300 group",
+                                isActive 
+                                  ? "bg-primary text-white shadow-lg shadow-primary/20 font-bold" 
+                                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-900/50 hover:text-coffee-dark dark:hover:text-foreground"
+                              )}
+                            >
+                              <item.icon className={cn("w-5 h-5 transition-transform duration-300 group-hover:scale-110", isActive ? "text-white" : "text-gray-400 group-hover:text-primary")} />
+                              <span className="text-sm font-semibold tracking-wide">{item.label}</span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom footer/account area */}
+                <div className="pt-6 border-t border-gray-100 dark:border-zinc-800/80">
+                  {isMounted && isAuthenticated && user ? (
+                    <div className="flex flex-col gap-4">
+                      <div className="flex items-center gap-3 px-2">
+                        <div className="w-9 h-9 bg-primary text-white rounded-full flex items-center justify-center text-xs font-black shadow-md shadow-primary/20">
+                          {user.fullName?.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm font-bold text-gray-800 dark:text-zinc-200 truncate">{user.fullName}</span>
+                          <span className="text-[10px] text-gray-400 dark:text-zinc-500 truncate">{user.email}</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setIsDrawerOpen(false);
+                          dispatch(clearCredentials());
+                          clearUser();
+                          clearCart();
+                          axios.post('/api/auth/logout').then(() => {
+                            router.push('/');
+                          });
+                        }}
+                        className="w-full py-3 bg-red-50 dark:bg-red-950/20 text-red-500 dark:text-red-400 rounded-xl font-bold hover:bg-red-100 dark:hover:bg-red-950/40 transition-colors text-xs uppercase tracking-wider flex items-center justify-center gap-2"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        Đăng xuất
+                      </button>
+                    </div>
+                  ) : (
+                    <Link
+                      href="/login"
+                      onClick={() => setIsDrawerOpen(false)}
+                      className="w-full py-3 bg-coffee-dark dark:bg-zinc-800 text-white rounded-xl font-bold hover:bg-primary dark:hover:bg-primary transition-colors text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-md"
+                    >
+                      <User className="w-4 h-4" />
+                      Đăng nhập ngay
+                    </Link>
+                  )}
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </nav>
   );
 }

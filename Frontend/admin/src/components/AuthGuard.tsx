@@ -12,7 +12,7 @@ export const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children })
   }, []);
 
   useEffect(() => {
-    if (!isHydrated) return;
+    if (!isHydrated || !isCheckingAuth) return;
 
     const checkAuth = async () => {
       // 1. Check for auth data in URL (passed from client login)
@@ -63,7 +63,7 @@ export const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children })
     };
 
     checkAuth();
-  }, [isHydrated, isAuthenticated, setAuth, fetchUser, silentRefresh, user]);
+  }, [isHydrated, isCheckingAuth, isAuthenticated, setAuth, fetchUser, silentRefresh, user]);
 
   // Show loading while hydrating or redirecting
   if (!isHydrated || isCheckingAuth || user?.role?.toUpperCase() !== 'ADMIN') {

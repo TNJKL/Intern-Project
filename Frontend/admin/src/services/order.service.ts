@@ -63,6 +63,7 @@ export interface GetOrdersParams {
   page?: number;
   size?: number;
   keyword?: string; // Assuming we might want to search by order code
+  sort?: string;
 }
 
 export const orderService = {

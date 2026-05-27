@@ -6,7 +6,7 @@
 
 export const API_CONFIG = {
   // Ưu tiên biến môi trường, nếu không có mới dùng fallback
-  BASE_URL: process.env.NEXT_PUBLIC_GLOBAL_BACKEND_IP || 'https://morbidity-stucco-grower.ngrok-free.dev',
+  BASE_URL: process.env.NEXT_PUBLIC_GLOBAL_BACKEND_IP || 'http://localhost:8080',
 
   // Các endpoint dùng chung
   ENDPOINTS: {

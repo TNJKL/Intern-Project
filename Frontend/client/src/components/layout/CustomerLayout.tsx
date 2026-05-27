@@ -1,7 +1,6 @@
 "use client";
 
 import { Navbar } from "@/components/layout/Navbar";
-import { FloatingNav } from "@/components/layout/FloatingNav";
 import { ChatWidget } from "@/components/layout/ChatWidget";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
@@ -9,9 +8,8 @@ import { useAuthStore } from "@/store/zustand/useAuthStore";
 import { useCartStore } from "@/store/zustand/useCartStore";
 import { useAppDispatch } from "@/store/redux/hooks";
 import { setCredentials, clearCredentials } from "@/store/redux/authSlice";
-import { store } from "@/store/redux/store";
-import axios from "axios";
 import toast from "react-hot-toast";
+import { SocketProvider } from "@/components/providers/SocketProvider";
 
 import { User } from "@/types/user";
 
@@ -22,7 +20,7 @@ interface CustomerLayoutProps {
 
 export function CustomerLayout({ children, initialUser }: CustomerLayoutProps) {
   const pathname = usePathname();
-  const { setUser, clearUser, _hasHydrated } = useAuthStore();
+  const { setUser, clearUser } = useAuthStore();
   const clearCart = useCartStore((s) => s.clearCart);
   const dispatch = useAppDispatch();
 
@@ -36,41 +34,9 @@ export function CustomerLayout({ children, initialUser }: CustomerLayoutProps) {
     }
   }, [initialUser, dispatch, setUser]);
 
-  useEffect(() => {
-    if (!_hasHydrated || isAuthPage) return;
-
-    const silentRefresh = async () => {
-      try {
-        if (!useAuthStore.getState().user) return; // Guest vãng lai không cần gọi refresh
-        if (initialUser || store.getState().auth.user) return;
-        if (store.getState().auth.accessToken) return;
-
-        const { data } = await axios.post(
-          '/api/v1/auth/refresh',
-          {},
-          {
-            withCredentials: true,
-            headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': '69420' },
-          }
-        );
-
-        const accessToken = data?.data?.accessToken ?? data?.accessToken;
-        const user = data?.data?.user ?? data?.user;
-
-        if (accessToken) {
-          dispatch(setCredentials({ user, accessToken }));
-          if (user) setUser(user);
-        }
-      } catch {
-        dispatch(clearCredentials());
-        clearUser();
-        clearCart();
-        // Không gọi logout API ở đây để tránh loop
-      }
-    };
-
-    silentRefresh();
-  }, [_hasHydrated, isAuthPage, initialUser, dispatch, setUser, clearUser]);
+  // NOTE: Silent Refresh đã được xử lý tự động bởi Middleware (proxy.ts).
+  // KHÔNG gọi refresh ở đây để tránh RTR (Refresh Token Rotation) conflict.
+  // Middleware sẽ tự động xoay vòng refreshToken ngầm trước khi request đến tầng ứng dụng.
 
   // Xử lý sync auth data và logout tập trung
   useEffect(() => {
@@ -101,58 +67,77 @@ export function CustomerLayout({ children, initialUser }: CustomerLayoutProps) {
     }
   }, [dispatch, setUser, clearUser]);
 
+  // Khởi tạo và đồng bộ giao diện (Theme & Preset) từ localStorage để tránh nhấp nháy
+  useEffect(() => {
+    const savedPreset = localStorage.getItem("preset") || "espresso";
+
+    // Đồng bộ Theme (luôn luôn là light mode như cũ, xóa bỏ chế độ tối)
+    localStorage.removeItem("theme");
+    document.documentElement.classList.remove("dark");
+
+    // Đồng bộ Preset màu sắc
+    document.documentElement.classList.remove("preset-matcha", "preset-berry");
+    if (savedPreset === "matcha") {
+      document.documentElement.classList.add("preset-matcha");
+    } else if (savedPreset === "berry") {
+      document.documentElement.classList.add("preset-berry");
+    }
+  }, []);
 
   if (isAuthPage) {
-    return <div className="h-screen overflow-hidden bg-[#fdfaf5]">{children}</div>;
+    return <div className="h-screen overflow-hidden bg-background">{children}</div>;
   }
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-x-hidden">
-      <Navbar initialUser={initialUser} />
-      <main className="flex-grow pb-32">
-        {children}
-      </main>
+    <SocketProvider>
+      <div className="min-h-screen flex flex-col relative overflow-x-hidden bg-background text-foreground transition-colors duration-500">
+        <header className="fixed top-0 left-0 right-0 z-40 bg-background/90 backdrop-blur-md border-b border-gray-100/10 shadow-sm transition-colors duration-500">
+          <Navbar initialUser={initialUser} />
+        </header>
+        <main className="flex-grow pt-[72px] pb-32">
+          {children}
+        </main>
 
-      {/* Footer */}
-      <footer className="relative bg-coffee-dark text-white pt-16 pb-32 px-6 overflow-hidden">
-        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/20 blur-[100px] rounded-full translate-x-1/3 -translate-y-1/3"></div>
+        {/* Footer */}
+        <footer className="relative bg-coffee-dark text-white pt-16 pb-32 px-6 overflow-hidden">
+          <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/20 blur-[100px] rounded-full translate-x-1/3 -translate-y-1/3"></div>
 
-        <div className="max-w-7xl mx-auto relative z-10 flex flex-col md:flex-row justify-between items-start gap-12">
-          <div className="max-w-xs">
-            <h3 className="text-3xl font-black tracking-widest text-primary/80 uppercase mb-4">
-              Brewtra
-            </h3>
-            <p className="text-white/60 text-sm leading-relaxed mb-6">
-              Đánh thức mọi giác quan của bạn với những hạt cà phê tuyển chọn và sự tinh tế trong từng giọt pha chế.
-            </p>
-            <p className="text-white/40 text-xs font-black uppercase tracking-widest">
-              © 2026 Brewtra Coffee.
-            </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-8 sm:gap-12">
-            <div className="flex flex-col gap-4">
-              <h4 className="font-black uppercase tracking-wider text-sm text-primary/80">Liên hệ</h4>
-              <div className="flex flex-col gap-2">
-                <span className="text-white/60 text-sm">Hotline: <strong className="text-white">1900 1234</strong></span>
-                <span className="text-white/60 text-sm">Email: <strong className="text-white">hello@brewtra.vn</strong></span>
-                <span className="text-white/60 text-sm">Giờ mở cửa: <strong className="text-white">07:00 - 22:00</strong></span>
-              </div>
-            </div>
-            <div className="flex flex-col gap-4 max-w-[250px]">
-              <h4 className="font-black uppercase tracking-wider text-sm text-primary/80">Địa chỉ quán</h4>
-              <p className="text-white/60 text-sm leading-relaxed">
-                <strong className="text-white">Brewtra Flagship Store</strong><br />
-                123 Đường Cà Phê, <br />
-                TP. Hồ Chí Minh
+          <div className="max-w-7xl mx-auto relative z-10 flex flex-col md:flex-row justify-between items-start gap-12">
+            <div className="max-w-xs">
+              <h3 className="text-3xl font-black tracking-widest text-primary/80 uppercase mb-4">
+                Brewtra
+              </h3>
+              <p className="text-white/60 text-sm leading-relaxed mb-6">
+                Đánh thức mọi giác quan của bạn với những hạt cà phê tuyển chọn và sự tinh tế trong từng giọt pha chế.
+              </p>
+              <p className="text-white/40 text-xs font-black uppercase tracking-widest">
+                © 2026 Brewtra Coffee.
               </p>
             </div>
-          </div>
-        </div>
-      </footer>
 
-      <ChatWidget />
-      <FloatingNav />
-    </div>
+            <div className="flex flex-col sm:flex-row gap-8 sm:gap-12">
+              <div className="flex flex-col gap-4">
+                <h4 className="font-black uppercase tracking-wider text-sm text-primary/80">Liên hệ</h4>
+                <div className="flex flex-col gap-2">
+                  <span className="text-white/60 text-sm">Hotline: <strong className="text-white">1900 1234</strong></span>
+                  <span className="text-white/60 text-sm">Email: <strong className="text-white">hello@brewtra.vn</strong></span>
+                  <span className="text-white/60 text-sm">Giờ mở cửa: <strong className="text-white">07:00 - 22:00</strong></span>
+                </div>
+              </div>
+              <div className="flex flex-col gap-4 max-w-[250px]">
+                <h4 className="font-black uppercase tracking-wider text-sm text-primary/80">Địa chỉ quán</h4>
+                <p className="text-white/60 text-sm leading-relaxed">
+                  <strong className="text-white">Brewtra Flagship Store</strong><br />
+                  123 Đường Cà Phê, <br />
+                  TP. Hồ Chí Minh
+                </p>
+              </div>
+            </div>
+          </div>
+        </footer>
+
+        <ChatWidget />
+      </div>
+    </SocketProvider>
   );
 }

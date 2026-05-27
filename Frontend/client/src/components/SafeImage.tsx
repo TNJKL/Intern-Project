@@ -41,12 +41,18 @@ export function SafeImage({ src, alt, fallback, unoptimized, ...props }: SafeIma
     );
   }
 
+  // Cung cấp sizes mặc định khi dùng thuộc tính fill để tối ưu hóa hiệu năng (LCP) và tắt cảnh báo Next.js
+  const resolvedSizes = props.fill && !props.sizes
+    ? "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+    : props.sizes;
+
   return (
     <Image
       src={finalSrc}
       alt={alt}
       onError={() => setError(true)}
       unoptimized={isUnoptimized}
+      sizes={resolvedSizes}
       {...props}
     />
   );

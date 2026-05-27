@@ -19,7 +19,8 @@ const OrderList: React.FC = () => {
   const { data: orderResponse, isLoading } = useOrders({ 
     page: 0,
     size: 200,
-    keyword: keyword || undefined
+    keyword: keyword || undefined,
+    sort: 'createdAt,desc'
   });
 
   const updateStatusMutation = useUpdateOrderStatus();
@@ -127,17 +128,13 @@ const OrderList: React.FC = () => {
         <Space size="middle">
           <Tooltip title="Xem chi tiết đơn hàng">
             <Button 
-              type="primary" 
-              icon={<EyeOutlined />} 
-              size="small"
-              className="bg-coffee-medium hover:bg-coffee-dark border-none rounded-lg px-3 font-semibold text-xs h-7 flex items-center gap-1 transition-all duration-200"
+              type="text" 
+              icon={<EyeOutlined className="text-blue-500 text-lg" />} 
               onClick={() => {
                 setSelectedOrderId(record.id);
                 setIsDrawerOpen(true);
               }}
-            >
-              Chi tiết
-            </Button>
+            />
           </Tooltip>
         </Space>
       ),

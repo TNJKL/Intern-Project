@@ -63,6 +63,17 @@ export async function POST(request: Request) {
       });
     }
 
+    const refreshToken = data?.data?.refreshToken || data?.refreshToken;
+    if (refreshToken) {
+      cookieStore.set('refreshToken', refreshToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 7 // 7 ngày
+      });
+    }
+
     return NextResponse.json(data);
   } catch (error: any) {
     console.error('[Proxy Auth] Login error:', error);

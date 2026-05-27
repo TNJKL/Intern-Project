@@ -35,8 +35,16 @@ apiClient.interceptors.response.use(
     const isAuthError = isExpired || error.response?.status === 401 || error.response?.status === 403;
     const user = useAuthStore.getState().user;
 
-    if (!isAuthError || originalRequest._retry || !user) {
-      if (isAuthError && !user && typeof window !== 'undefined') {
+    // Kiểm tra xem trình duyệt có lưu cookie token nào không
+    const hasToken = typeof window !== 'undefined' && 
+      (document.cookie.includes('accessToken=') || document.cookie.includes('adminAccessToken='));
+
+    // Chỉ bỏ qua refresh và xóa cookie nếu:
+    // 1. Không phải lỗi auth (401/403)
+    // 2. Hoặc request này đã là request retry (tránh loop vô tận)
+    // 3. Hoặc người dùng là Guest thực sự (không có user trong store VÀ cũng không có token cookie nào)
+    if (!isAuthError || originalRequest._retry || (!user && !hasToken)) {
+      if (isAuthError && !user && !hasToken && typeof window !== 'undefined') {
         document.cookie = "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
         document.cookie = "adminAccessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
         document.cookie = "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
@@ -72,8 +80,12 @@ apiClient.interceptors.response.use(
       // Xóa toàn bộ trạng thái auth khỏi RAM
       store.dispatch(clearCredentials());
       
-      // Chỉ chuyển hướng về login nếu đang truy cập một trang được bảo vệ
+      // Xóa cookies khi refresh thất bại
       if (typeof window !== 'undefined') {
+        document.cookie = "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+        document.cookie = "adminAccessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+        document.cookie = "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+
         const pathname = window.location.pathname;
         const protectedPaths = ['/profile', '/admin', '/orders'];
         const isProtected = protectedPaths.some(path => pathname.startsWith(path));
