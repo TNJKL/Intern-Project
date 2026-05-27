@@ -4,6 +4,9 @@
 
 \c notification_db;
 
+-- Fix encoding để đảm bảo tiếng Việt không bị lỗi ký tự
+SET client_encoding TO 'UTF8';
+
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ============================================================
@@ -68,21 +71,106 @@ DELETE FROM processed_events WHERE processed_at < NOW() - INTERVAL '7 days';
 
 -- ============================================================
 -- DEFAULT TEMPLATES
+-- Xóa templates cũ bị lỗi encoding và insert lại đúng.
+-- Code khớp với Kafka event type để dễ trace.
+-- Suffix _EMAIL = email channel, không có suffix = IN_APP (primary).
 -- ============================================================
+
+-- Xóa templates cũ (bị lỗi ký tự tiếng Việt hoặc sai code)
+DELETE FROM notification_templates;
+
 INSERT INTO notification_templates (code, name, channel, title, body) VALUES
-    ('ORDER_CONFIRMATION', 'Xác nhận đơn hàng', 'EMAIL',
+
+    -- -------------------------------------------------------
+    -- ORDER_CREATED: Kafka gửi khi đơn hàng vừa được tạo
+    -- -------------------------------------------------------
+    ('ORDER_CREATED',
+     'Đặt hàng thành công (In-App)',
+     'IN_APP',
+     'Đơn hàng #{{order_code}} đã được tạo',
+     'Cảm ơn bạn đã đặt hàng! Đơn hàng #{{order_code}} đang được xử lý.'),
+
+    ('ORDER_CREATED_EMAIL',
+     'Xác nhận đặt hàng (Email)',
+     'EMAIL',
      'Xác nhận đơn hàng #{{order_code}}',
      'Cảm ơn bạn đã đặt hàng! Đơn hàng #{{order_code}} đã được xác nhận.'),
-    ('ORDER_STATUS_UPDATE', 'Cập nhật trạng thái đơn hàng', 'IN_APP',
-     'Đơn hàng #{{order_code}} - {{status}}',
-     'Đơn hàng của bạn đã được cập nhật sang trạng thái: {{status}}'),
-    ('PAYMENT_SUCCESS', 'Thanh toán thành công', 'EMAIL',
-     'Thanh toán thành công',
-     'Thanh toán cho đơn hàng #{{order_code}} đã được xác nhận.'),
-    ('ORDER_TIMEOUT', 'Đơn hàng quá hạn thanh toán', 'EMAIL',
+
+    -- -------------------------------------------------------
+    -- ORDER_STATUS_CHANGED: Kafka gửi khi trạng thái thay đổi
+    -- Chỉ có IN_APP, không gửi email cho từng status change
+    -- -------------------------------------------------------
+    ('ORDER_STATUS_CHANGED',
+     'Cập nhật trạng thái đơn hàng (In-App)',
+     'IN_APP',
+     'Đơn hàng #{{order_code}} - {{current_status}}',
+     'Đơn hàng #{{order_code}} chuyển sang: {{current_status}}. {{note}}'),
+
+    -- -------------------------------------------------------
+    -- ORDER_COMPLETED: Kafka gửi khi đơn hoàn thành
+    -- Thay thế PAYMENT_SUCCESS (đã đổi tên ở Spring Boot)
+    -- -------------------------------------------------------
+    ('ORDER_COMPLETED',
+     'Đơn hàng hoàn thành (In-App)',
+     'IN_APP',
+     'Đơn hàng hoàn thành',
+     'Đơn hàng #{{order_code}} của bạn đã hoàn thành. Cảm ơn!'),
+
+    ('ORDER_COMPLETED_EMAIL',
+     'Đơn hàng hoàn thành (Email)',
+     'EMAIL',
+     'Đơn hàng #{{order_code}} hoàn thành',
+     'Đơn hàng #{{order_code}} đã hoàn thành. Cảm ơn bạn đã tin tưởng!'),
+
+    -- -------------------------------------------------------
+    -- ORDER_CANCELLED: Kafka gửi khi đơn bị hủy (thủ công)
+    -- -------------------------------------------------------
+    ('ORDER_CANCELLED',
+     'Đơn hàng bị hủy (In-App)',
+     'IN_APP',
+     'Đơn hàng #{{order_code}} đã bị hủy',
+     'Đơn hàng #{{order_code}} đã bị hủy. Lý do: {{reason}}'),
+
+    ('ORDER_CANCELLED_EMAIL',
+     'Đơn hàng bị hủy (Email)',
+     'EMAIL',
+     'Đơn hàng #{{order_code}} đã bị hủy',
+     'Đơn hàng #{{order_code}} đã bị hủy. Lý do: {{reason}}'),
+
+    -- -------------------------------------------------------
+    -- ORDER_TIMEOUT: Kafka gửi khi đơn quá hạn thanh toán
+    -- -------------------------------------------------------
+    ('ORDER_TIMEOUT',
+     'Đơn hàng quá hạn thanh toán (In-App)',
+     'IN_APP',
+     'Đơn hàng #{{order_code}} đã bị hủy tự động',
+     'Đơn hàng #{{order_code}} đã bị hủy do quá hạn thanh toán.'),
+
+    ('ORDER_TIMEOUT_EMAIL',
+     'Đơn hàng quá hạn thanh toán (Email)',
+     'EMAIL',
      'Đơn hàng #{{order_code}} đã bị hủy tự động',
      'Đơn hàng #{{order_code}} đã bị hủy do quá hạn thanh toán. Lý do: {{reason}}.'),
-    ('TIER_UPGRADED', 'Lên hạng thành viên', 'EMAIL',
+
+    -- -------------------------------------------------------
+    -- TIER_UPGRADED: Gửi khi user lên hạng thành viên
+    -- -------------------------------------------------------
+    ('TIER_UPGRADED',
+     'Lên hạng thành viên (In-App)',
+     'IN_APP',
+     'Chúc mừng bạn lên hạng {{tier}}!',
+     'Bạn đã đạt hạng {{tier}} với tổng chi tiêu {{total_spent}}đ.'),
+
+    ('TIER_UPGRADED_EMAIL',
+     'Lên hạng thành viên (Email)',
+     'EMAIL',
      'Chúc mừng bạn lên hạng {{tier}}!',
      'Chúc mừng bạn đã đạt hạng {{tier}} với tổng chi tiêu {{total_spent}}đ.')
-ON CONFLICT (code) DO NOTHING;
+
+ON CONFLICT (code) DO UPDATE
+    SET name       = EXCLUDED.name,
+        channel    = EXCLUDED.channel,
+        title      = EXCLUDED.title,
+        body       = EXCLUDED.body,
+        updated_at = NOW();
+
