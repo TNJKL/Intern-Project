@@ -9,6 +9,7 @@ import com.beverage.order.domain.exception.ResourceNotFoundException;
 import com.beverage.order.domain.model.CustomerTier;
 import com.beverage.order.infrastructure.persistence.entity.VoucherEntity;
 import com.beverage.order.infrastructure.persistence.repository.VoucherJpaRepository;
+import com.beverage.order.infrastructure.persistence.repository.VoucherUsageJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -26,14 +27,20 @@ public class VoucherService {
 
     private final VoucherJpaRepository voucherRepository;
     private final CustomerTierService customerTierService;
+    private final VoucherUsageJpaRepository voucherUsageRepository;
 
     @Transactional(readOnly = true)
     public VoucherValidationResponse validateVoucher(String code, BigDecimal orderAmount) {
-        return validateVoucher(code, orderAmount, null);
+        return validateVoucher(code, orderAmount, null, null);
     }
 
     @Transactional(readOnly = true)
     public VoucherValidationResponse validateVoucher(String code, BigDecimal orderAmount, UUID userId) {
+        return validateVoucher(code, orderAmount, userId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public VoucherValidationResponse validateVoucher(String code, BigDecimal orderAmount, UUID userId, String userEmail) {
         if (code == null || code.isBlank()) {
             return VoucherValidationResponse.builder()
                     .valid(false)
@@ -85,6 +92,17 @@ public class VoucherService {
                     .build();
         }
 
+        if (voucher.getMaxUsagePerUser() != null) {
+            long usedCount = voucherUsageRepository.countByVoucherIdAndUser(voucher.getId(), userId, userEmail);
+            if (usedCount >= voucher.getMaxUsagePerUser()) {
+                return VoucherValidationResponse.builder()
+                        .valid(false)
+                        .code(code)
+                        .message("Bạn đã sử dụng tối đa lượt cho phép của voucher này")
+                        .build();
+            }
+        }
+
         if (orderAmount != null && orderAmount.compareTo(voucher.getMinOrderAmount()) < 0) {
             return VoucherValidationResponse.builder()
                     .valid(false)
@@ -118,12 +136,17 @@ public class VoucherService {
 
     @Transactional(readOnly = true)
     public VoucherValidationResponse validateAndApplyVoucher(String code, BigDecimal subtotal) {
-        return validateAndApplyVoucher(code, subtotal, null);
+        return validateAndApplyVoucher(code, subtotal, null, null);
     }
 
     @Transactional(readOnly = true)
     public VoucherValidationResponse validateAndApplyVoucher(String code, BigDecimal subtotal, UUID userId) {
-        VoucherValidationResponse validation = validateVoucher(code, subtotal, userId);
+        return validateAndApplyVoucher(code, subtotal, userId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public VoucherValidationResponse validateAndApplyVoucher(String code, BigDecimal subtotal, UUID userId, String userEmail) {
+        VoucherValidationResponse validation = validateVoucher(code, subtotal, userId, userEmail);
 
         if (!validation.isValid()) {
             throw new BusinessException(validation.getMessage());
@@ -158,6 +181,7 @@ public class VoucherService {
                 .minOrderAmount(request.getMinOrderAmount() != null ? request.getMinOrderAmount() : BigDecimal.ZERO)
                 .maxDiscountAmount(request.getMaxDiscountAmount())
                 .maxUsageCount(request.getMaxUsageCount())
+                .maxUsagePerUser(request.getMaxUsagePerUser())
                 .currentUsageCount(0)
                 .validFrom(request.getValidFrom() != null ? request.getValidFrom() : Instant.now())
                 .validUntil(request.getValidUntil())
@@ -181,6 +205,7 @@ public class VoucherService {
         if (request.getMinOrderAmount() != null) voucher.setMinOrderAmount(request.getMinOrderAmount());
         if (request.getMaxDiscountAmount() != null) voucher.setMaxDiscountAmount(request.getMaxDiscountAmount());
         if (request.getMaxUsageCount() != null) voucher.setMaxUsageCount(request.getMaxUsageCount());
+        if (request.getMaxUsagePerUser() != null) voucher.setMaxUsagePerUser(request.getMaxUsagePerUser());
         if (request.getValidFrom() != null) voucher.setValidFrom(request.getValidFrom());
         if (request.getValidUntil() != null) voucher.setValidUntil(request.getValidUntil());
         if (request.getIsActive() != null) voucher.setIsActive(request.getIsActive());
@@ -248,6 +273,7 @@ public class VoucherService {
                 .minOrderAmount(voucher.getMinOrderAmount())
                 .maxDiscountAmount(voucher.getMaxDiscountAmount())
                 .maxUsageCount(voucher.getMaxUsageCount())
+                .maxUsagePerUser(voucher.getMaxUsagePerUser())
                 .currentUsageCount(voucher.getCurrentUsageCount())
                 .validFrom(voucher.getValidFrom())
                 .validUntil(voucher.getValidUntil())

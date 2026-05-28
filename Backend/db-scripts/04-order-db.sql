@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS vouchers (
     min_order_amount    DECIMAL(12,0) NOT NULL DEFAULT 0,
     max_usage_count     INTEGER,
     current_usage_count INTEGER NOT NULL DEFAULT 0,
+    max_usage_per_user  INTEGER DEFAULT NULL,
+    applicable_tier     VARCHAR(20) NOT NULL DEFAULT 'ALL' CHECK (applicable_tier IN ('ALL', 'MEMBER', 'VIP')),
     valid_from          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     valid_until         TIMESTAMP WITH TIME ZONE,
     is_active           BOOLEAN NOT NULL DEFAULT TRUE,
@@ -98,6 +100,26 @@ CREATE INDEX idx_order_items_order ON order_items(order_id);
 
 CREATE INDEX idx_order_history_order ON order_status_history(order_id);
 CREATE INDEX idx_order_history_created ON order_status_history(created_at DESC);
+
+-- ============================================================
+-- VOUCHER USAGES (tracking per-user voucher usages)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS voucher_usages (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    voucher_id  UUID NOT NULL REFERENCES vouchers(id),
+    user_id     UUID,
+    user_email  VARCHAR(255),
+    order_id    UUID NOT NULL REFERENCES orders(id),
+    used_at     TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT chk_user_or_email
+        CHECK (user_id IS NOT NULL OR user_email IS NOT NULL)
+);
+
+CREATE INDEX idx_voucher_usages_user
+ON voucher_usages(voucher_id, user_id) WHERE user_id IS NOT NULL;
+
+CREATE INDEX idx_voucher_usages_email
+ON voucher_usages(voucher_id, user_email) WHERE user_email IS NOT NULL;
 
 
 -- ============================================================

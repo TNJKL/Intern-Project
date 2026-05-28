@@ -20,6 +20,7 @@ public class VoucherResponse {
     private BigDecimal minOrderAmount;
     private BigDecimal maxDiscountAmount;
     private Integer maxUsageCount;
+    private Integer maxUsagePerUser;
     private Integer currentUsageCount;
     private Instant validFrom;
     private Instant validUntil;
