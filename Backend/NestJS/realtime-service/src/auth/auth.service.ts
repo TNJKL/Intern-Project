@@ -87,8 +87,8 @@ export class AuthService implements OnModuleInit {
       if (this.redis.status !== 'ready') {
         return false;
       }
-      const result = await this.redis.get(`blacklist:${jti}`);
-      return result === '1';
+      const exists = await this.redis.exists(`blacklist:token:${jti}`);
+      return exists === 1;
     } catch (error) {
       this.logger.error('Error checking token blacklist:', error);
       return false;
