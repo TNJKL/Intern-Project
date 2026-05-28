@@ -239,6 +239,13 @@ public class OrderUseCase {
         }
 
         order.setStatus(request.getStatus());
+        if (request.getStatus() == OrderStatus.CANCELLED) {
+            order.setCancelledAt(Instant.now());
+            order.setCancellationReason(request.getNote());
+            if (order.getVoucherId() != null) {
+                voucherService.releaseVoucher(order.getVoucherId(), order.getId());
+            }
+        }
         orderJpaRepository.save(order);
         appendStatusHistory(orderId, request.getStatus(), request.getNote());
 
@@ -259,7 +266,14 @@ public class OrderUseCase {
         }
 
         order.setStatus(OrderStatus.CANCELLED);
+        order.setCancelledAt(Instant.now());
+        order.setCancellationReason("Khách hủy đơn");
         orderJpaRepository.save(order);
+
+        if (order.getVoucherId() != null) {
+            voucherService.releaseVoucher(order.getVoucherId(), order.getId());
+        }
+
         appendStatusHistory(orderId, OrderStatus.CANCELLED, "Khách hủy đơn");
 
         applicationEventPublisher.publishEvent(new OrderApplicationEvent.OrderCancelled(this, order, "Khách hủy đơn"));

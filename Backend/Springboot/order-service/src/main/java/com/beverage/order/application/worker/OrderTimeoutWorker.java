@@ -8,6 +8,7 @@ import com.beverage.order.infrastructure.event.OrderEventPublisher;
 import com.beverage.order.infrastructure.persistence.entity.OrderEntity;
 import com.beverage.order.infrastructure.persistence.repository.OrderJpaRepository;
 import com.beverage.order.infrastructure.persistence.repository.OrderStatusHistoryJpaRepository;
+import com.beverage.order.application.service.VoucherService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -31,6 +32,7 @@ public class OrderTimeoutWorker {
     private final OrderEventPublisher eventPublisher;
     private final OrderDetailCacheService orderDetailCacheService;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final VoucherService voucherService;
     
     //@Scheduled(cron = "0 */1000000 * * * *") 
     // @Scheduled(fixedDelayString = "70000") 1 phút 10s trong trường hợp test 
@@ -73,8 +75,13 @@ public class OrderTimeoutWorker {
         log.info("Cancelling expired order id={} orderCode={}", order.getId(), order.getOrderCode());
 
         order.setStatus(OrderStatus.CANCELLED);
+        order.setCancelledAt(Instant.now());
         order.setCancellationReason(TIMEOUT_CANCELLATION_REASON);
         orderRepository.save(order);
+
+        if (order.getVoucherId() != null) {
+            voucherService.releaseVoucher(order.getVoucherId(), order.getId());
+        }
 
         statusHistoryRepository.save(
                 com.beverage.order.infrastructure.persistence.entity.OrderStatusHistoryEntity.builder()

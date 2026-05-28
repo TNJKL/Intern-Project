@@ -263,6 +263,14 @@ public class VoucherService {
         log.info("Soft-deleted voucher: {} ({})", voucher.getCode(), id);
     }
 
+    @Transactional
+    public void releaseVoucher(UUID voucherId, UUID orderId) {
+        if (voucherId == null) return;
+        log.info("Releasing voucher id={} for order id={}", voucherId, orderId);
+        voucherUsageRepository.deleteByOrderId(orderId);
+        voucherRepository.tryDecrementUsage(voucherId);
+    }
+
     private VoucherResponse toResponse(VoucherEntity voucher) {
         return VoucherResponse.builder()
                 .id(voucher.getId())

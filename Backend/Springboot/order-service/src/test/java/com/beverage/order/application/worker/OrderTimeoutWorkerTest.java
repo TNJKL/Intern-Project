@@ -7,6 +7,7 @@ import com.beverage.order.infrastructure.event.OrderEventPublisher;
 import com.beverage.order.infrastructure.persistence.entity.OrderEntity;
 import com.beverage.order.infrastructure.persistence.repository.OrderJpaRepository;
 import com.beverage.order.infrastructure.persistence.repository.OrderStatusHistoryJpaRepository;
+import com.beverage.order.application.service.VoucherService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -47,6 +48,9 @@ class OrderTimeoutWorkerTest {
 
     @Mock
     private ApplicationEventPublisher applicationEventPublisher;
+
+    @Mock
+    private VoucherService voucherService;
 
     @InjectMocks
     private OrderTimeoutWorker orderTimeoutWorker;
@@ -158,6 +162,20 @@ class OrderTimeoutWorkerTest {
             verify(orderRepository).save(order1);
             verify(orderRepository).save(order2);
             assertEquals(OrderStatus.CANCELLED, order2.getStatus());
+        }
+
+        @Test
+        @DisplayName("Should release voucher when cancelling expired order with voucher")
+        void shouldReleaseVoucherWhenCancellingWithVoucher() {
+            UUID voucherId = UUID.randomUUID();
+            expiredOrder.setVoucherId(voucherId);
+            List<OrderEntity> expiredOrders = List.of(expiredOrder);
+            when(orderRepository.findExpiredPendingOrders(any(Instant.class))).thenReturn(expiredOrders);
+            when(orderRepository.save(any(OrderEntity.class))).thenReturn(expiredOrder);
+
+            orderTimeoutWorker.scanAndCancelExpiredOrders();
+
+            verify(voucherService).releaseVoucher(voucherId, expiredOrder.getId());
         }
     }
 

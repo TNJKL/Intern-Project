@@ -34,6 +34,17 @@ public interface VoucherJpaRepository extends JpaRepository<VoucherEntity, UUID>
         """, nativeQuery = true)
     int tryIncrementUsage(@Param("code") String code);
 
+    @Modifying
+    @Query(value = """
+        UPDATE vouchers
+        SET current_usage_count = current_usage_count - 1,
+            updated_at = NOW()
+        WHERE id = :id
+          AND is_active = TRUE
+          AND current_usage_count > 0
+        """, nativeQuery = true)
+    int tryDecrementUsage(@Param("id") java.util.UUID id);
+
     Page<VoucherEntity> findAll(Pageable pageable);
 
     boolean existsByCode(String code);

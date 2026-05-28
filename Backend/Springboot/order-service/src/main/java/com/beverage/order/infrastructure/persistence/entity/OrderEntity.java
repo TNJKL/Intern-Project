@@ -75,6 +75,9 @@ public class OrderEntity {
     @Column(name = "cancellation_reason")
     private String cancellationReason;
 
+    @Column(name = "cancelled_at")
+    private Instant cancelledAt;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<OrderItemEntity> items = new ArrayList<>();

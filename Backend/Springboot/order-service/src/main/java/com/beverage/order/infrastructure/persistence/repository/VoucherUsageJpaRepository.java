@@ -23,4 +23,6 @@ public interface VoucherUsageJpaRepository extends JpaRepository<VoucherUsageEnt
     long countByVoucherIdAndUser(@Param("voucherId") UUID voucherId,
                                  @Param("userId") UUID userId,
                                  @Param("userEmail") String userEmail);
+
+    void deleteByOrderId(UUID orderId);
 }

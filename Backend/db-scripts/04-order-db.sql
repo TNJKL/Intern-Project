@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS orders (
     voucher_id          UUID,
     payment_deadline    TIMESTAMP WITH TIME ZONE NOT NULL,
     cancellation_reason VARCHAR(500),
+    cancelled_at        TIMESTAMP WITH TIME ZONE DEFAULT NULL,
     delivery_address    TEXT,
     payment_method      VARCHAR(30),
     note                TEXT,
