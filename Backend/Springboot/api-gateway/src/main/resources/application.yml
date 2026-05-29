@@ -77,7 +77,7 @@ spring:
         - id: inventory-service
           uri: ${INVENTORY_SERVICE_URI:http://inventory-service:8084}
           predicates:
-            - Path=/api/v1/inventory,/api/v1/inventory/**
+            - Path=/api/v1/inventory,/api/v1/inventory/**,/api/v1/admin/ingredients,/api/v1/admin/ingredients/**,/api/v1/admin/recipes,/api/v1/admin/recipes/**,/api/v1/admin/inventory,/api/v1/admin/inventory/**
 
 eureka:
   client:
