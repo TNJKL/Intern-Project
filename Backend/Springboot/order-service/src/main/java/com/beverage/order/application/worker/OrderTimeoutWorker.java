@@ -8,6 +8,7 @@ import com.beverage.order.infrastructure.event.OrderEventPublisher;
 import com.beverage.order.infrastructure.persistence.entity.OrderEntity;
 import com.beverage.order.infrastructure.persistence.repository.OrderJpaRepository;
 import com.beverage.order.infrastructure.persistence.repository.OrderStatusHistoryJpaRepository;
+import com.beverage.order.application.service.VoucherService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -31,15 +32,19 @@ public class OrderTimeoutWorker {
     private final OrderEventPublisher eventPublisher;
     private final OrderDetailCacheService orderDetailCacheService;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final VoucherService voucherService;
     
-    @Scheduled(cron = "0 */5 * * * *") 
-    //@Scheduled(fixedDelayString = "70000")
+    //@Scheduled(cron = "0 */1000000 * * * *") 
+    // @Scheduled(fixedDelayString = "70000") 1 phút 10s trong trường hợp test 
+    @Scheduled(cron = "0 */30 * * * *") // 30 phút 
     @SchedulerLock(
             name = "orderTimeoutJob",
-            //lockAtMostFor = "60s",
-            //lockAtLeastFor = "30s"
-        lockAtMostFor = "4m",
-        lockAtLeastFor = "1m"
+            lockAtMostFor = "25m",
+            lockAtLeastFor = "5m"
+            // lockAtMostFor = "60s",
+            // lockAtLeastFor = "30s"
+        //lockAtMostFor = "400m",
+        //lockAtLeastFor = "10000m"
     )
     public void scanAndCancelExpiredOrders() {
         log.info("Starting order timeout scan...");
@@ -70,8 +75,13 @@ public class OrderTimeoutWorker {
         log.info("Cancelling expired order id={} orderCode={}", order.getId(), order.getOrderCode());
 
         order.setStatus(OrderStatus.CANCELLED);
+        order.setCancelledAt(Instant.now());
         order.setCancellationReason(TIMEOUT_CANCELLATION_REASON);
         orderRepository.save(order);
+
+        if (order.getVoucherId() != null) {
+            voucherService.releaseVoucher(order.getVoucherId(), order.getId());
+        }
 
         statusHistoryRepository.save(
                 com.beverage.order.infrastructure.persistence.entity.OrderStatusHistoryEntity.builder()

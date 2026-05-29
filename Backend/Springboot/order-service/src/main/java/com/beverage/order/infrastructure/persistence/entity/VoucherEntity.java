@@ -43,6 +43,9 @@ public class VoucherEntity {
     @Column(name = "max_usage_count")
     private Integer maxUsageCount;
 
+    @Column(name = "max_usage_per_user")
+    private Integer maxUsagePerUser;
+
     @Column(name = "current_usage_count", nullable = false)
     private Integer currentUsageCount;
 

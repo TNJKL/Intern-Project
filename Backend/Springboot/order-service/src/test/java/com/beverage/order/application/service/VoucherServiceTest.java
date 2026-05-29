@@ -4,6 +4,7 @@ import com.beverage.order.application.dto.response.VoucherValidationResponse;
 import com.beverage.order.domain.model.CustomerTier;
 import com.beverage.order.infrastructure.persistence.entity.VoucherEntity;
 import com.beverage.order.infrastructure.persistence.repository.VoucherJpaRepository;
+import com.beverage.order.infrastructure.persistence.repository.VoucherUsageJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -33,6 +34,9 @@ class VoucherServiceTest {
 
     @Mock
     private CustomerTierService customerTierService;
+
+    @Mock
+    private VoucherUsageJpaRepository voucherUsageRepository;
 
     @InjectMocks
     private VoucherService voucherService;
@@ -175,6 +179,52 @@ class VoucherServiceTest {
 
             assertFalse(result.isValid());
             assertTrue(result.getMessage().contains("chỉ dành cho khách hàng"));
+        }
+
+        @Test
+        @DisplayName("Should return valid when max usage per user is not reached")
+        void shouldReturnValidWhenMaxUsagePerUserNotReached() {
+            validVoucher.setMaxUsagePerUser(2);
+            UUID userId = UUID.randomUUID();
+            String email = "test@example.com";
+            when(voucherRepository.findByCode("TEST10")).thenReturn(Optional.of(validVoucher));
+            when(voucherUsageRepository.countByVoucherIdAndUser(validVoucher.getId(), userId, email)).thenReturn(1L);
+            when(customerTierService.getTier(userId)).thenReturn(CustomerTier.GUEST);
+
+            VoucherValidationResponse result = voucherService.validateVoucher("TEST10", new BigDecimal("200000"), userId, email);
+
+            assertTrue(result.isValid());
+            assertEquals("Voucher hợp lệ", result.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should return invalid when max usage per user is reached")
+        void shouldReturnInvalidWhenMaxUsagePerUserReached() {
+            validVoucher.setMaxUsagePerUser(1);
+            UUID userId = UUID.randomUUID();
+            String email = "test@example.com";
+            when(voucherRepository.findByCode("TEST10")).thenReturn(Optional.of(validVoucher));
+            when(voucherUsageRepository.countByVoucherIdAndUser(validVoucher.getId(), userId, email)).thenReturn(1L);
+
+            VoucherValidationResponse result = voucherService.validateVoucher("TEST10", new BigDecimal("200000"), userId, email);
+
+            assertFalse(result.isValid());
+            assertEquals("Bạn đã sử dụng tối đa lượt cho phép của voucher này", result.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should return valid when max usage per user is null")
+        void shouldReturnValidWhenMaxUsagePerUserIsNull() {
+            validVoucher.setMaxUsagePerUser(null);
+            UUID userId = UUID.randomUUID();
+            String email = "test@example.com";
+            when(voucherRepository.findByCode("TEST10")).thenReturn(Optional.of(validVoucher));
+            when(customerTierService.getTier(userId)).thenReturn(CustomerTier.GUEST);
+
+            VoucherValidationResponse result = voucherService.validateVoucher("TEST10", new BigDecimal("200000"), userId, email);
+
+            assertTrue(result.isValid());
+            assertEquals("Voucher hợp lệ", result.getMessage());
         }
     }
 

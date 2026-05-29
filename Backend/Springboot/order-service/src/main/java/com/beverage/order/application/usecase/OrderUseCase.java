@@ -15,6 +15,7 @@ import com.beverage.order.domain.exception.BusinessException;
 import com.beverage.order.domain.exception.ResourceNotFoundException;
 import com.beverage.order.domain.exception.BadRequestException;
 import com.beverage.order.domain.model.OrderStatus;
+import com.beverage.order.infrastructure.cache.GuestSessionCacheService;
 import com.beverage.order.infrastructure.cache.OrderDetailCacheService;
 import com.beverage.order.infrastructure.persistence.entity.OrderEntity;
 import com.beverage.order.infrastructure.persistence.entity.OrderItemEntity;
@@ -22,6 +23,8 @@ import com.beverage.order.infrastructure.persistence.entity.OrderStatusHistoryEn
 import com.beverage.order.infrastructure.persistence.repository.OrderJpaRepository;
 import com.beverage.order.infrastructure.persistence.repository.OrderStatusHistoryJpaRepository;
 import com.beverage.order.infrastructure.persistence.repository.VoucherJpaRepository;
+import com.beverage.order.infrastructure.persistence.repository.VoucherUsageJpaRepository;
+import com.beverage.order.infrastructure.persistence.entity.VoucherUsageEntity;
 import com.beverage.order.infrastructure.persistence.spec.OrderSpecifications;
 import com.beverage.order.infrastructure.security.OrderActorResolver;
 import com.beverage.shared.jwt.JwtUserPrincipal;
@@ -58,8 +61,10 @@ public class OrderUseCase {
     private final OrderDtoMapper orderDtoMapper;
     private final OrderActorResolver orderActorResolver;
     private final OrderDetailCacheService orderDetailCacheService;
+    private final GuestSessionCacheService guestSessionCacheService;
     private final EntityManager entityManager;
     private final VoucherService voucherService;
+    private final VoucherUsageJpaRepository voucherUsageRepository;
     private final ApplicationEventPublisher applicationEventPublisher;
 
     @Transactional
@@ -105,7 +110,7 @@ public class OrderUseCase {
 
         if (request.getVoucherCode() != null && !request.getVoucherCode().isBlank()) {
             var voucherValidation = voucherService.validateAndApplyVoucher(
-                    request.getVoucherCode(), subtotal, userId);
+                    request.getVoucherCode(), subtotal, userId, userEmail);
             discountAmount = voucherValidation.getDiscountAmount();
             try {
                 var voucher = voucherService.getVoucherByCode(request.getVoucherCode().trim().toUpperCase());
@@ -149,6 +154,13 @@ public class OrderUseCase {
             if (updated == 0) {
                 throw new BusinessException("Voucher đã hết lượt sử dụng");
             }
+            VoucherUsageEntity usage = VoucherUsageEntity.builder()
+                    .voucherId(voucherId)
+                    .userId(userId)
+                    .userEmail(userEmail)
+                    .orderId(saved.getId())
+                    .build();
+            voucherUsageRepository.save(usage);
         }
 
         appendStatusHistory(saved.getId(), OrderStatus.PENDING, "Đơn hàng được tạo");
@@ -157,6 +169,14 @@ public class OrderUseCase {
 
         OrderDetailResponse detail = loadDetailForGuest(saved.getId());
         orderDetailCacheService.put(saved.getId(), detail);
+
+        // Nếu là guest (userId == null) → sinh guestSessionId để FE kết nối WebSocket
+        if (userId == null) {
+            String guestSessionId = guestSessionCacheService.create(saved.getOrderCode());
+            detail.setGuestSessionId(guestSessionId);
+            log.debug("Guest session created for order {}: {}", saved.getOrderCode(), guestSessionId);
+        }
+
         return detail;
     }
 
@@ -219,6 +239,13 @@ public class OrderUseCase {
         }
 
         order.setStatus(request.getStatus());
+        if (request.getStatus() == OrderStatus.CANCELLED) {
+            order.setCancelledAt(Instant.now());
+            order.setCancellationReason(request.getNote());
+            if (order.getVoucherId() != null) {
+                voucherService.releaseVoucher(order.getVoucherId(), order.getId());
+            }
+        }
         orderJpaRepository.save(order);
         appendStatusHistory(orderId, request.getStatus(), request.getNote());
 
@@ -239,7 +266,14 @@ public class OrderUseCase {
         }
 
         order.setStatus(OrderStatus.CANCELLED);
+        order.setCancelledAt(Instant.now());
+        order.setCancellationReason("Khách hủy đơn");
         orderJpaRepository.save(order);
+
+        if (order.getVoucherId() != null) {
+            voucherService.releaseVoucher(order.getVoucherId(), order.getId());
+        }
+
         appendStatusHistory(orderId, OrderStatus.CANCELLED, "Khách hủy đơn");
 
         applicationEventPublisher.publishEvent(new OrderApplicationEvent.OrderCancelled(this, order, "Khách hủy đơn"));

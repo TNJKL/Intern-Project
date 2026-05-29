@@ -40,7 +40,8 @@ public class LearnerController {
     public String startEarliest() {
         log.info("=== BẬT consumer EARLIEST ===");
         // Container id format: listener.learn-group-03-earliest
-        registry.getListenerContainer("learn-group-03-earliest").start();
+        // registry.getListenerContainer("learn-group-03-earliest").start();
+        registry.getListenerContainer("earliestListener").start();
         return "✅ Consumer EARLIEST đã bật. Đang đọc lại message cũ...";
     }
 
@@ -51,7 +52,7 @@ public class LearnerController {
     @PostMapping("/offset/start-latest")
     public String startLatest() {
         log.info("=== BẬT consumer LATEST ===");
-        registry.getListenerContainer("learn-group-03-latest").start();
+        registry.getListenerContainer("latestListener").start();
         return "✅ Consumer LATEST đã bật. Chỉ đọc message mới...";
     }
 
@@ -62,8 +63,8 @@ public class LearnerController {
     @PostMapping("/offset/stop")
     public String stopAll() {
         log.info("=== TẮT tất cả consumer (Lesson 3) ===");
-        registry.getListenerContainer("learn-group-03-earliest").stop();
-        registry.getListenerContainer("learn-group-03-latest").stop();
+        registry.getListenerContainer("earliestListener").stop();
+        registry.getListenerContainer("latestListener").stop();
         return "✅ Đã tắt consumer. Thử restart để xem lại behavior.";
     }
 
