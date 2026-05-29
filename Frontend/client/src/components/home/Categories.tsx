@@ -38,8 +38,6 @@ export function Categories({ categories }: CategoriesProps) {
                           alt={cat.name}
                           fill
                           className="object-contain"
-                          crossOrigin="anonymous"
-                          referrerPolicy="no-referrer"
                         />
                       </div>
                     ) : (

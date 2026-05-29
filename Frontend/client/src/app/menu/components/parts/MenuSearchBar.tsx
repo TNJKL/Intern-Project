@@ -85,8 +85,6 @@ export const MenuSearchBar = ({
                         fill
                         sizes="40px"
                         className="object-cover"
-                        crossOrigin="anonymous"
-                        referrerPolicy="no-referrer"
                         fallback={
                           <div className="flex items-center justify-center w-full h-full bg-gray-50 text-primary/30">
                             <Coffee className="w-5 h-5" />

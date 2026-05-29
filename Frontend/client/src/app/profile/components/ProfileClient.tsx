@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { User, Mail, Phone, Calendar, Shield, MapPin, Camera, Sparkles, Settings, Lock } from "lucide-react";
+import { User, Mail, Phone, Calendar, MapPin, Camera, Sparkles, Lock, Edit3 } from "lucide-react";
 import Image from "next/image";
 import EditProfileModal from "./EditProfileModal";
 import ChangePasswordModal from "./ChangePasswordModal";
@@ -17,102 +17,129 @@ export default function ProfileClient({ user }: ProfileClientProps) {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#fdfaf5] pt-32 pb-20 px-6 font-sans">
-      <div className="max-w-4xl mx-auto">
-        
-        {/* Profile Header Card */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-[32px] p-8 md:p-12 shadow-sm border border-gray-100 mb-8 flex flex-col md:flex-row items-center gap-8 md:gap-12"
-        >
-          <div className="relative group">
-            <div className="w-32 h-32 md:w-40 md:h-40 rounded-[40px] bg-[#fdf3eb] p-1 shadow-inner overflow-hidden">
-              <div className="w-full h-full rounded-[36px] bg-white flex items-center justify-center overflow-hidden relative">
-                {user.avatarUrl ? (
-                  <Image src={user.avatarUrl} alt="Avatar" fill className="object-cover" />
-                ) : (
-                  <User size={64} className="text-gray-200" />
-                )}
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
-                  <Camera className="text-white w-8 h-8" />
+    <div className="min-h-screen bg-[#fdfaf5] pt-24 sm:pt-28 md:pt-32 pb-16 px-4 sm:px-6 font-sans">
+      <div className="max-w-5xl mx-auto">
+
+        {/* Tiêu đề trang ẩn gọn gàng */}
+        <div className="mb-6 flex items-center gap-2 text-amber-900/40 text-[11px] font-black uppercase tracking-widest">
+          <span>Tài khoản</span>
+          <span>/</span>
+          <span className="text-amber-900">Hồ sơ cá nhân</span>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+
+          {/* CỘT TRÁI: THẺ TÓM TẮT & HÀNH ĐỘNG */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-[32px] p-8 shadow-sm border border-amber-100/40 flex flex-col items-center text-center sticky top-28"
+          >
+            {/* Khung Avatar Brand */}
+            <div className="relative group mb-5">
+              <div className="w-32 h-32 md:w-36 md:h-36 rounded-[40px] bg-[#fdf3eb] p-1.5 shadow-inner overflow-hidden transition-transform duration-300 group-hover:scale-105">
+                <div className="w-full h-full rounded-[34px] bg-white flex items-center justify-center overflow-hidden relative">
+                  {user.avatarUrl ? (
+                    <Image src={user.avatarUrl} alt="Avatar" fill className="object-cover" />
+                  ) : (
+                    <User size={56} className="text-amber-900/10" />
+                  )}
+                  {/* Lớp phủ khi Hover thay ảnh */}
+                  <div className="absolute inset-0 bg-amber-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer backdrop-blur-[2px]">
+                    <Camera className="text-white w-6 h-6 animate-pulse" />
+                  </div>
                 </div>
               </div>
+              <div className="absolute -bottom-1 -right-1 bg-amber-800 text-white p-2.5 rounded-2xl border-4 border-white shadow-md">
+                <Sparkles size={14} />
+              </div>
             </div>
-            <div className="absolute -bottom-2 -right-2 bg-primary text-white p-2.5 rounded-2xl border-4 border-white shadow-lg">
-              <Sparkles size={16} />
-            </div>
-          </div>
 
-          <div className="flex-1 text-center md:text-left">
-            <div className="flex flex-col md:flex-row items-center gap-4 mb-4">
-              <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">{user.fullName}</h1>
-              <span className="px-4 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest">
-                {user.role}
+            {/* Thông tin cơ bản */}
+            <h1 className="text-2xl font-black text-gray-900 tracking-tight mb-2">{user.fullName}</h1>
+            <div className="flex flex-col items-center gap-3 mb-8 w-full">
+              <span className="px-3.5 py-1 rounded-full bg-amber-50 border border-amber-100 text-amber-800 text-[9px] font-black uppercase tracking-widest">
+                {user.role || "Thành viên"}
               </span>
-            </div>
-            <div className="flex flex-wrap justify-center md:justify-start gap-4">
-              <div className="flex items-center gap-2 text-gray-500 text-sm font-medium">
-                <Mail size={16} className="text-primary/60" /> {user.email}
-              </div>
-              <div className="flex items-center gap-2 text-green-600 text-[10px] font-black uppercase tracking-widest">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> Trực tuyến
+              <div className="flex items-center gap-1.5 text-green-600 text-[10px] font-bold uppercase tracking-wider bg-green-50 px-3 py-1 rounded-full">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                Trực tuyến
               </div>
             </div>
-          </div>
 
-          <div className="flex flex-col gap-3 min-w-[180px]">
-            <button 
-              onClick={() => setIsEditModalOpen(true)}
-              className="w-full py-3 px-6 rounded-2xl bg-white border border-gray-200 text-gray-700 font-bold text-sm hover:bg-gray-50 transition-all active:scale-95"
-            >
-              Chỉnh sửa hồ sơ
-            </button>
-            <button 
-              onClick={() => setIsPasswordModalOpen(true)}
-              className="w-full py-3 px-6 rounded-2xl bg-[#4d362b] text-white font-bold text-sm shadow-lg shadow-[#4d362b]/20 hover:bg-[#3c2a21] transition-all active:scale-95 flex items-center justify-center gap-2"
-            >
-              <Lock size={16} /> Đổi mật khẩu
-            </button>
-          </div>
-        </motion.div>
+            <div className="w-full border-t border-gray-100 my-2" />
 
-        {/* Info Card - Centered and Full Width */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white rounded-[32px] p-8 md:p-12 shadow-sm border border-gray-100"
-        >
-          <div className="flex items-center gap-3 mb-10">
-            <div className="w-1.5 h-6 bg-primary rounded-full" />
-            <h3 className="text-lg font-black text-gray-900 uppercase tracking-wider">Thông tin tài khoản</h3>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
-            <InfoRow icon={<Phone />} label="Số điện thoại" value={user.phone || "Chưa cập nhật"} />
-            <InfoRow icon={<Mail />} label="Email liên hệ" value={user.email} />
-            <InfoRow icon={<MapPin />} label="Địa chỉ mặc định" value="Việt Nam" />
-            <InfoRow icon={<Calendar />} label="Ngày đăng ký" value={user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : "---"} />
-          </div>
-        </motion.div>
+            {/* Nhóm nút bấm hành động */}
+            <div className="flex flex-col gap-3 w-full mt-4">
+              <button
+                onClick={() => setIsEditModalOpen(true)}
+                className="w-full py-3.5 px-6 rounded-2xl bg-white border border-gray-200 text-gray-700 font-bold text-sm hover:bg-gray-50 hover:border-gray-300 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+              >
+                <Edit3 size={16} className="text-gray-400" />
+                Chỉnh sửa hồ sơ
+              </button>
+              <button
+                onClick={() => setIsPasswordModalOpen(true)}
+                className="w-full py-3.5 px-6 rounded-2xl bg-[#4d362b] text-white font-bold text-sm shadow-md shadow-[#4d362b]/10 hover:bg-[#3c2a21] transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+              >
+                <Lock size={16} className="opacity-80" />
+                Đổi mật khẩu
+              </button>
+            </div>
+          </motion.div>
+
+          {/* CỘT PHẢI: CHI TIẾT THÔNG TIN TÀI KHOẢN */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="lg:col-span-2 bg-white rounded-[32px] p-8 md:p-10 shadow-sm border border-amber-100/40"
+          >
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-1.5 h-5 bg-amber-800 rounded-full" />
+              <h3 className="text-base font-black text-gray-900 uppercase tracking-wider">Thông tin chi tiết</h3>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
+              <InfoRow icon={<User />} label="Họ và tên" value={user.fullName} />
+              <InfoRow icon={<Phone />} label="Số điện thoại" value={user.phone || "Chưa cập nhật"} />
+              <InfoRow icon={<Mail />} label="Địa chỉ email" value={user.email} />
+              <InfoRow icon={<MapPin />} label="Địa chỉ mặc định" value="Việt Nam" />
+
+              <div className="sm:col-span-2 border-t border-gray-50 my-2" />
+
+              <InfoRow
+                icon={<Calendar />}
+                label="Ngày tham gia hệ thống"
+                value={user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric'
+                }) : "---"}
+              />
+            </div>
+          </motion.div>
+
+        </div>
       </div>
 
+      {/* Hộp thoại chức năng */}
       <EditProfileModal open={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} user={user} />
       <ChangePasswordModal open={isPasswordModalOpen} onClose={() => setIsPasswordModalOpen(false)} />
     </div>
   );
 }
 
+// Sub-component hiển thị từng hàng thông tin được thiết kế mượt mà hơn
 function InfoRow({ icon, label, value }: { icon: React.ReactNode, label: string, value: string }) {
   return (
-    <div className="flex items-center gap-5 group">
-      <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors duration-300">
-        {React.cloneElement(icon as any, { size: 20 })}
+    <div className="flex items-center gap-4 p-3 rounded-2xl hover:bg-amber-50/30 transition-colors duration-200 group">
+      <div className="w-11 h-11 rounded-xl bg-amber-50/60 flex items-center justify-center text-amber-800 group-hover:bg-amber-800 group-hover:text-white transition-all duration-300 shrink-0">
+        {React.cloneElement(icon as any, { size: 18 })}
       </div>
-      <div>
+      <div className="min-w-0 flex-1">
         <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-0.5">{label}</p>
-        <p className="text-base font-bold text-gray-800">{value}</p>
+        <p className="text-base font-bold text-gray-800 truncate">{value}</p>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -10,8 +10,9 @@ import {
   MessageOutlined,
   GlobalOutlined,
   GiftOutlined,
+  MenuOutlined,
 } from '@ant-design/icons';
-import { Layout, Menu, Button, theme, Avatar, Dropdown, Space } from 'antd';
+import { Layout, Menu, Button, theme, Avatar, Dropdown, Space, Drawer } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/zustand/useAuthStore';
 
@@ -19,12 +20,23 @@ const { Header, Sider, Content } = Layout;
 
 export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [collapsed, setCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { logout, user } = useAuthStore();
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const menuItems = [
     {
@@ -86,24 +98,49 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <Layout className="h-screen overflow-hidden">
-      <Sider trigger={null} collapsible collapsed={collapsed} theme="light" className="shadow-md overflow-y-auto">
-        <div className="h-16 flex items-center justify-center font-bold text-lg text-coffee-dark uppercase tracking-wider overflow-hidden px-2 whitespace-nowrap" style={{ fontFamily: "'Quicksand', sans-serif" }}>
-          {collapsed ? 'B' : 'Brewtra Admin'}
-        </div>
-        <Menu
-          theme="light"
-          mode="inline"
-          defaultSelectedKeys={[location.pathname]}
-          items={menuItems}
-          onClick={({ key }) => handleMenuClick(key)}
-        />
-      </Sider>
+      {!isMobile && (
+        <Sider trigger={null} collapsible collapsed={collapsed} theme="light" className="shadow-md overflow-y-auto">
+          <div className="h-16 flex items-center justify-center font-bold text-lg text-coffee-dark uppercase tracking-wider overflow-hidden px-2 whitespace-nowrap" style={{ fontFamily: "'Quicksand', sans-serif" }}>
+            {collapsed ? 'B' : 'Brewtra Admin'}
+          </div>
+          <Menu
+            theme="light"
+            mode="inline"
+            defaultSelectedKeys={[location.pathname]}
+            items={menuItems}
+            onClick={({ key }) => handleMenuClick(key)}
+          />
+        </Sider>
+      )}
+
+      {isMobile && (
+        <Drawer
+          title={<div className="font-bold text-lg text-coffee-dark uppercase tracking-wider">Brewtra Admin</div>}
+          placement="left"
+          onClose={() => setDrawerOpen(false)}
+          open={drawerOpen}
+          styles={{ body: { padding: 0 } }}
+          width={250}
+        >
+          <Menu
+            theme="light"
+            mode="inline"
+            defaultSelectedKeys={[location.pathname]}
+            items={menuItems}
+            onClick={({ key }) => {
+              handleMenuClick(key);
+              setDrawerOpen(false);
+            }}
+          />
+        </Drawer>
+      )}
+
       <Layout className="h-screen">
         <Header style={{ padding: 0, background: colorBgContainer }} className="flex justify-between items-center px-4 shadow-sm z-10 shrink-0">
           <Button
             type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
+            icon={isMobile ? <MenuOutlined /> : (collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />)}
+            onClick={() => isMobile ? setDrawerOpen(!drawerOpen) : setCollapsed(!collapsed)}
             style={{ fontSize: '16px', width: 64, height: 64 }}
           />
           <div className="flex items-center gap-4 pr-6">
@@ -132,15 +169,15 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
             >
               <Space className="cursor-pointer">
                 <Avatar src={user?.avatarUrl} icon={!user?.avatarUrl && <UserOutlined />} />
-                <span className="font-medium">{user?.fullName || user?.email || 'Admin'}</span>
+                <span className="font-medium hidden sm:inline">{user?.fullName || user?.email || 'Admin'}</span>
               </Space>
             </Dropdown>
           </div>
         </Header>
         <Content
           style={{
-            margin: '24px 16px',
-            padding: 24,
+            margin: isMobile ? '12px 8px' : '24px 16px',
+            padding: isMobile ? 12 : 24,
             minHeight: 280,
             background: colorBgContainer,
             borderRadius: borderRadiusLG,

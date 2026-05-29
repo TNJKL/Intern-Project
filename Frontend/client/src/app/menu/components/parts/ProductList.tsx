@@ -15,18 +15,17 @@ interface ProductListProps {
   isLoadingMore: boolean;
 }
 
-export const ProductList = ({ 
-  products, 
-  categories, 
-  isLoading, 
-  hasMore, 
-  loadMore, 
-  isLoadingMore 
+export const ProductList = ({
+  products,
+  categories,
+  isLoading,
+  hasMore,
+  loadMore,
+  isLoadingMore
 }: ProductListProps) => {
   const [hasScrolled, setHasScrolled] = useState(false);
   const loaderRef = useRef<HTMLDivElement>(null);
 
-  // Lắng nghe sự kiện cuộn lần đầu để kích hoạt Infinite Scroll (chống tự động tải hết khi mới vào trang)
   useEffect(() => {
     const handleScroll = () => {
       if (window.scrollY > 20) {
@@ -35,9 +34,8 @@ export const ProductList = ({
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []); // Chỉ chạy 1 lần duy nhất khi mount - không bị reset khi products thay đổi!
+  }, []);
 
-  // Thiết lập IntersectionObserver để cuộn chạm đáy -> Tự động tải thêm sản phẩm (chuẩn Facebook)
   useEffect(() => {
     if (!hasMore || isLoadingMore || isLoading || !hasScrolled) return;
 
@@ -49,7 +47,7 @@ export const ProductList = ({
         }
       },
       {
-        rootMargin: "350px", // Phản hồi cực nhanh khi người dùng cuộn cách đáy 350px
+        rootMargin: "350px",
       }
     );
 
@@ -66,23 +64,25 @@ export const ProductList = ({
   }, [hasMore, isLoadingMore, isLoading, loadMore, hasScrolled]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 mt-8">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-5">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 my-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-5 lg:gap-6">
         {products.map((product, index) => (
-          <ProductCard 
-            key={product.id} 
-            product={product} 
-            index={index} 
-            categories={categories} 
-          />
+          <div key={product.id} className="h-full flex flex-col">
+            <ProductCard
+              product={product}
+              index={index}
+              categories={categories}
+            />
+          </div>
         ))}
       </div>
 
-      {/* Hiển thị vòng xoay loading khi cuộn và truy vấn DB */}
+      {/* Loading State Bottom */}
       {hasMore && (
-        <div ref={loaderRef} className="py-12 flex flex-col items-center justify-center gap-3">
-          <Loader2 className="w-8 h-8 text-primary animate-spin" />
-          <span className="text-[10px] font-black uppercase tracking-widest text-primary/60 animate-pulse">
+        <div ref={loaderRef} className="py-12 flex flex-col items-center justify-center gap-3 mt-8">
+          <Loader2 className="w-7 h-7 sm:w-8 sm:h-8 text-amber-800 animate-spin" />
+          {/* TỐI ƯU CHỮ: Tăng từ text-[11px] lên text-xs trên điện thoại, text-sm trên ipad/máy tính */}
+          <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-amber-900/70 animate-pulse text-center px-4">
             Đang tải thêm sản phẩm từ máy chủ...
           </span>
         </div>
@@ -90,12 +90,12 @@ export const ProductList = ({
 
       {/* Empty State */}
       {!isLoading && products.length === 0 && (
-        <div className="py-20 text-center">
-          <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Search className="w-10 h-10 text-gray-300" />
+        <div className="py-20 text-center max-w-md mx-auto px-4">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Search className="w-6 h-6 sm:w-8 sm:h-8 text-amber-800/40" />
           </div>
-          <h3 className="text-lg font-bold text-gray-800 mb-2">Không tìm thấy sản phẩm</h3>
-          <p className="text-gray-500">Vui lòng thử lại với danh mục hoặc từ khóa khác</p>
+          <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-1">Không tìm thấy sản phẩm</h3>
+          <p className="text-xs sm:text-sm text-gray-500">Vui lòng thử lại với danh mục hoặc từ khóa khác</p>
         </div>
       )}
     </div>

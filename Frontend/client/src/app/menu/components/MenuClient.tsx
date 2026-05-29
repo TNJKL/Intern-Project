@@ -39,16 +39,21 @@ export default function MenuClient({ initialProducts, initialCategories }: MenuC
   } = useMenu({ initialProducts, initialCategories });
 
   return (
-    <div className="min-h-screen bg-[#fdfaf5] pb-24">
-      
-      {/* Header & Search & Categories */}
-      <div className="bg-[#fdfaf5]/80 backdrop-blur-md sticky top-0 z-40 px-4 pt-6 pb-4 transition-all duration-300">
-        <div className="max-w-7xl mx-auto space-y-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <MenuHeader />
+    <div className="min-h-screen bg-[#fdf3eb]/30 pb-24 transition-colors duration-300">
 
-            <div className="flex items-center gap-3 w-full md:w-auto relative">
-              <MenuSearchBar 
+      {/* 1. Phần Tiêu đề chính (Nền tĩnh - Sẽ cuộn mất khi kéo xuống giúp giải phóng không gian) */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-2">
+        <MenuHeader />
+      </div>
+
+      {/* 2. Phần Thanh Công cụ & Danh mục Bộ lọc (Sticky - Ghim chặt trên cùng khi cuộn trang) */}
+      <div className="sticky top-0 z-40 bg-[#fdf3eb]/80 backdrop-blur-md border-b border-[#91461e]/5 transition-all duration-300 shadow-[0_4px_30px_-20px_rgba(145,70,30,0.05)]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 space-y-3 sm:space-y-4">
+
+          {/* Ô Tìm Kiếm và Bộ Sắp Xếp hàng ngang */}
+          <div className="flex items-center gap-3 w-full relative">
+            <div className="flex-1 min-w-0">
+              <MenuSearchBar
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
                 isSearching={isSearching}
@@ -58,8 +63,10 @@ export default function MenuClient({ initialProducts, initialCategories }: MenuC
                 onFocus={handleSearchFocus}
                 onBlur={handleSearchBlur}
               />
+            </div>
 
-              <SortDropdown 
+            <div className="shrink-0">
+              <SortDropdown
                 sortType={sortType}
                 handleSortChange={handleSortChange}
                 isSortOpen={isSortOpen}
@@ -68,23 +75,30 @@ export default function MenuClient({ initialProducts, initialCategories }: MenuC
             </div>
           </div>
 
-          <CategoryFilter 
-            categories={categories}
-            selectedMenuCategory={selectedMenuCategory}
-            handleCategoryChange={handleCategoryChange}
-          />
+          {/* Thanh trượt chọn danh mục món ăn */}
+          <div className="pt-1">
+            <CategoryFilter
+              categories={categories}
+              selectedMenuCategory={selectedMenuCategory}
+              handleCategoryChange={handleCategoryChange}
+            />
+          </div>
+
         </div>
       </div>
 
-      {/* Render ProductList trực tiếp với State quản lý Infinite Scroll */}
-      <ProductList 
-        products={sortedProducts} 
-        categories={categories} 
-        isLoading={isLoading} 
-        hasMore={hasMore}
-        loadMore={loadMore}
-        isLoadingMore={isLoadingMore}
-      />
+      {/* 3. Khu vực hiển thị danh sách sản phẩm (Infinite Scroll) */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8">
+        <ProductList
+          products={sortedProducts}
+          categories={categories}
+          isLoading={isLoading}
+          hasMore={hasMore}
+          loadMore={loadMore}
+          isLoadingMore={isLoadingMore}
+        />
+      </div>
+
     </div>
   );
 }

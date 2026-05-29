@@ -1,6 +1,7 @@
 "use client";
 
 import { Navbar } from "@/components/layout/Navbar";
+import { FloatingNav } from "@/components/layout/FloatingNav";
 import { ChatWidget } from "@/components/layout/ChatWidget";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
@@ -94,7 +95,11 @@ export function CustomerLayout({ children, initialUser }: CustomerLayoutProps) {
         <header className="fixed top-0 left-0 right-0 z-40 bg-background/90 backdrop-blur-md border-b border-gray-100/10 shadow-sm transition-colors duration-500">
           <Navbar initialUser={initialUser} />
         </header>
-        <main className="flex-grow pt-[72px] pb-32">
+        {/* FloatingNav: pill trên đầu (md+) hoặc tab bar dưới cùng (< md) */}
+        <FloatingNav />
+
+        {/* pb-[88px]: khoảng trống cho bottom tab bar trên mobile */}
+        <main className="flex-grow pt-[72px] pb-[88px] lg:pb-32">
           {children}
         </main>
 

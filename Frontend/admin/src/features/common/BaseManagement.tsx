@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { Card, Table, Space, Button, Modal, Descriptions, Tabs, Badge } from 'antd';
 import { EditOutlined, DeleteOutlined, UndoOutlined, EyeOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { useManagement } from './hooks/useManagement';
@@ -33,6 +33,16 @@ export const BaseManagement = <T extends { id: string }>({
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [viewingRecord, setViewingRecord] = useState<T | null>(null);
   const [activeTab, setActiveTab] = useState<'active' | 'deleted'>('active');
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleTabChange = (key: string) => {
     setActiveTab(key as 'active' | 'deleted');
@@ -193,9 +203,9 @@ export const BaseManagement = <T extends { id: string }>({
               {
                 key: 'active',
                 label: (
-                  <span className="flex items-center gap-2 font-bold uppercase text-xs tracking-wider">
-                    <CheckCircleOutlined className="text-emerald-500 text-sm" />
-                    Đang hoạt động
+                  <span className="flex items-center gap-1.5 sm:gap-2 font-bold uppercase text-[10px] sm:text-xs tracking-wider">
+                    <CheckCircleOutlined className="text-emerald-500 text-xs sm:text-sm" />
+                    <span className="hidden sm:inline">Đang </span>hoạt động
                     <Badge 
                       count={activeCount} 
                       showZero 
@@ -208,9 +218,9 @@ export const BaseManagement = <T extends { id: string }>({
               {
                 key: 'deleted',
                 label: (
-                  <span className="flex items-center gap-2 font-bold uppercase text-xs tracking-wider">
-                    <DeleteOutlined className="text-rose-500 text-sm" />
-                    Không hoạt động / Đã xóa
+                  <span className="flex items-center gap-1.5 sm:gap-2 font-bold uppercase text-[10px] sm:text-xs tracking-wider">
+                    <DeleteOutlined className="text-rose-500 text-xs sm:text-sm" />
+                    <span className="hidden sm:inline">Không hoạt động / </span>Đã xóa
                     <Badge 
                       count={deletedCount} 
                       showZero 
@@ -246,7 +256,7 @@ export const BaseManagement = <T extends { id: string }>({
         }}
       />
 
-      <Card variant="borderless" className="rounded-[32px] shadow-sm border border-gray-100 p-2 overflow-hidden" styles={{ body: { padding: '24px' } }}>
+      <Card variant="borderless" className="rounded-[20px] sm:rounded-[32px] shadow-sm border border-gray-100 p-1 sm:p-2 overflow-hidden" styles={{ body: { padding: isMobile ? '12px' : '24px' } }}>
         <Table
           columns={[...columns, actionColumn]}
           dataSource={displayRecords}

@@ -6,18 +6,18 @@ import { useAppSelector, useAppDispatch } from "@/store/redux/hooks";
 import { updateAccessToken } from "@/store/redux/authSlice";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import { apiClient } from "../../lib/api"; // 🎯 IMPORT THÊM API_CLIENT CỦA BẠN VÀO ĐÂY
 
 interface SocketContextType {
   socket: Socket | null;
   isConnected: boolean;
-  /** Gọi hàm này sau khi guest đặt hàng thành công để join room mới */
   joinGuestRoom: (guestSessionId: string) => void;
 }
 
 const SocketContext = createContext<SocketContextType>({
   socket: null,
   isConnected: false,
-  joinGuestRoom: () => {},
+  joinGuestRoom: () => { },
 });
 
 export const useSocket = () => useContext(SocketContext);
@@ -29,159 +29,172 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const dispatch = useAppDispatch();
   const router = useRouter();
 
-  // Sync httpOnly access token into Redux on mount (so socket can read it)
+  // Khai báo một cờ kiểm tra xem đã hoàn thành việc check token ban đầu chưa
+  const [isAuthChecked, setIsAuthChecked] = useState(false);
+
+  // 1. Đồng bộ httpOnly access token nội bộ vào Redux Store khi khởi chạy bằng apiClient an toàn
   useEffect(() => {
     if (!accessToken) {
-      fetch("/api/auth/token")
-        .then((r) => r.json())
-        .then((data) => {
-          if (data?.accessToken) {
-            dispatch(updateAccessToken({ accessToken: data.accessToken }));
+      // 🎯 THAY THẾ FETCH BẰNG API_CLIENT ĐỂ TỰ ĐỘNG GỬI COOKIE VÀ HƯỞNG INTERCEPTOR INTERNALS
+      // Gọi qua endpoint proxy nội bộ đã được cấu hình loại trừ
+      apiClient.post("/../auth/token", {}, { baseURL: "/" })
+        .then((res) => {
+          const token = res.data?.accessToken;
+          if (token) {
+            dispatch(updateAccessToken({ accessToken: token }));
           }
         })
-        .catch(() => {});
+        .catch(() => {
+          console.log("[Socket.IO] Không tìm thấy phiên Token cũ hợp lệ, tiếp tục với chế độ public/guest.");
+        })
+        .finally(() => {
+          setIsAuthChecked(true); // Đánh dấu đã quét xong token
+        });
+    } else {
+      setIsAuthChecked(true);
     }
   }, [accessToken, dispatch]);
 
-  // ─── Bootstrap socket connection ───
+  // 2. Quản lý vòng đời kết nối dựa trên trạng thái xác thực ĐÚNG THỜI ĐIỂM
   useEffect(() => {
-    const backendIp =
-      process.env.NEXT_PUBLIC_GLOBAL_BACKEND_IP || "http://localhost:8080";
+    // Chỉ chạy khi đã kiểm tra xong trạng thái token trong ứng dụng
+    if (!isAuthChecked) return;
+
+    const backendIp = process.env.NEXT_PUBLIC_GLOBAL_BACKEND_IP || "http://localhost:80";
+    const guestSessionId = localStorage.getItem("guestSessionId");
+
+    // CHIẾN LƯỢC: Nếu không có cả accessToken (User) và guestSessionId (Guest) thì không kết nối để tránh lỗi lãng phí
+    if (!accessToken && !guestSessionId) {
+      console.log("[Socket.IO] Không tìm thấy danh tính User hoặc Guest cũ, tạm dừng kết nối.");
+      return;
+    }
+
+    console.log("[Socket.IO] Khởi tạo đường truyền với cấu hình an toàn...");
 
     const socket = io(`${backendIp}/notifications`, {
       path: "/ws",
-      transports: ["websocket", "polling"], // websocket ưu tiên, polling dự phòng
+      transports: ["websocket", "polling"],
       autoConnect: false,
+      // Nạp thẳng token vào handshake nếu có, phòng tránh lỗi 'No token provided'
       auth: accessToken ? { token: accessToken } : {},
     });
 
     socketRef.current = socket;
 
-    // ─── connect ───
+    // ─── Sự kiện: connect ───
     socket.on("connect", () => {
-      console.log("[Socket.IO] Connected:", socket.id);
+      console.log("[Socket.IO] Connected thành công với ID:", socket.id);
       setIsConnected(true);
 
       if (accessToken) {
-        // Luồng user đã đăng nhập: join không cần payload
+        console.log("[Socket.IO] Gửi yêu cầu join phòng Thành viên");
         socket.emit("join", {});
       } else {
-        // Luồng guest: join với guestSessionId nếu đang theo dõi đơn
-        const guestSessionId = localStorage.getItem("brewtra_guest_session_id");
-        if (guestSessionId) {
-          socket.emit("join-guest", { guestSessionId });
+        const activeGuestId = localStorage.getItem("guestSessionId");
+        if (activeGuestId) {
+          console.log("[Socket.IO] Gửi yêu cầu tái kết nối phòng Guest:", activeGuestId);
+          socket.emit("join-guest", { guestSessionId: activeGuestId });
         }
       }
     });
 
-    // ─── joined (user đã đăng nhập) ───
+    // ─── Sự kiện: joined (User thành công) ───
     socket.on("joined", (data: { room: string; success: boolean } | null) => {
-      console.log("[Socket.IO] Joined user room:", data?.room);
+      console.log("[Socket.IO] Xác nhận vào phòng User:", data?.room);
     });
 
-    // ─── joined-guest (khách vãng lai) ───
-    socket.on(
-      "joined-guest",
-      (data: { room: string; orderCode: string; success: boolean } | null) => {
-        console.log("[Socket.IO] Joined guest room:", data?.room);
-      }
-    );
+    // ─── Sự kiện: joined-guest (Guest thành công) ───
+    socket.on("joined-guest", (data: { room: string; orderCode: string; success: boolean } | null) => {
+      console.log("[Socket.IO] Xác nhận vào phòng Guest:", data?.room);
+    });
 
-    // ─── notification ───
+    // ─── Sự kiện: notification ───
     socket.on("notification", (payload: any) => {
-      console.log("[Socket.IO] Notification received:", payload);
+      console.log("[Socket.IO] Nhận thông báo:", payload);
 
-      // payload.data chứa { title, body, data: { orderCode, currentStatus, ... } }
       const notifData = payload?.data ?? payload;
-      const title = notifData?.title || "Thông báo mới";
-      const body = notifData?.body || "Bạn có một cập nhật đơn hàng.";
+      const title = notifData?.title || "Thông báo từ cửa hàng";
+      const body = notifData?.body || "Đơn hàng của bạn vừa có cập nhật mới.";
 
       toast.success(
         <div className="flex flex-col gap-0.5">
-          <span className="font-bold text-sm">{title}</span>
+          <span className="font-bold text-sm text-gray-900">{title}</span>
           <span className="text-xs text-gray-600">{body}</span>
         </div>,
         { duration: 6000, position: "top-right" }
       );
 
-      // Làm mới Server Component (OrdersPage sẽ re-fetch từ getServerApi)
+      // Đồng bộ hóa tức thì cho các Server Components (Dành cho luồng User)
       router.refresh();
-    });
 
-    // ─── exception (lỗi xác thực) ───
-    socket.on("exception", (error: any) => {
-      console.error("[Socket.IO] Exception:", error?.message ?? error);
-    });
-
-    // ─── error (guest session hết hạn) ───
-    socket.on("error", (error: any) => {
-      if (error?.message === "Invalid or expired guest session") {
-        console.warn("[Socket.IO] Guest session expired — clearing localStorage");
-        localStorage.removeItem("brewtra_guest_session_id");
-        localStorage.removeItem("brewtra_guest_order_code");
-      } else {
-        console.error("[Socket.IO] Error:", error?.message ?? error);
+      // Đồng bộ hóa giao diện Client (Dành cho luồng Guest tra cứu)
+      if (typeof window !== "undefined") {
+        const innerData = notifData?.data || notifData;
+        window.dispatchEvent(
+          new CustomEvent("order-status-updated", {
+            detail: {
+              orderCode: innerData?.orderCode || payload?.orderCode || notifData?.orderCode,
+              status: innerData?.currentStatus || innerData?.status || payload?.status || notifData?.status
+            },
+          })
+        );
       }
     });
 
-    // ─── disconnect ───
+    // ─── Sự kiện: exception (Lỗi phân quyền hệ thống) ───
+    socket.on("exception", (error: any) => {
+      if (error) {
+        console.error("[Socket.IO] WS Exception xuất hiện:", error?.message || error);
+      }
+    });
+
+    // ─── Sự kiện: error ───
+    socket.on("error", (error: any) => {
+      if (error?.message === "Invalid or expired guest session") {
+        console.warn("[Socket.IO] Phiên guest hết hạn.");
+        localStorage.removeItem("guestSessionId");
+        localStorage.removeItem("guestOrderCode");
+      } else {
+        console.error("[Socket.IO] Lỗi hệ thống:", error);
+      }
+    });
+
+    // ─── Sự kiện: disconnect ───
     socket.on("disconnect", (reason) => {
       console.log("[Socket.IO] Disconnected:", reason);
       setIsConnected(false);
     });
 
+    // Thực hiện lệnh kết nối thực tế
     socket.connect();
 
     return () => {
-      socket.emit("leave", {});
-      socket.disconnect();
-      socketRef.current = null;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ─── Khi accessToken thay đổi (login/logout) ───
-  useEffect(() => {
-    const socket = socketRef.current;
-    if (!socket) return;
-
-    // Cập nhật auth và reconnect để backend nhận token mới
-    socket.auth = accessToken ? { token: accessToken } : {};
-
-    if (socket.connected) {
-      if (accessToken) {
-        socket.emit("join", {});
-      } else {
-        // Logout: rời phòng
-        socket.emit("leave", {});
+      if (socketRef.current) {
+        socketRef.current.emit("leave", {});
+        socketRef.current.disconnect();
+        socketRef.current = null;
       }
-    } else if (accessToken) {
-      // Token xuất hiện sau khi mount (vd. sau đăng nhập) → reconnect
-      socket.connect();
-    }
-  }, [accessToken]);
+    };
+  }, [accessToken, isAuthChecked]);
 
   /**
-   * Gọi hàm này ngay sau khi guest đặt hàng thành công để join room mới.
-   * Cũng được lưu vào localStorage để tự động join lại khi reload trang.
+   * Gọi hàm này khi Guest đặt hàng hoặc tra cứu thành công đơn hàng vãng lai
    */
   const joinGuestRoom = (guestSessionId: string) => {
-    const socket = socketRef.current;
-    if (!socket) return;
+    localStorage.setItem("guestSessionId", guestSessionId);
 
-    localStorage.setItem("brewtra_guest_session_id", guestSessionId);
-
-    if (socket.connected) {
-      socket.emit("join-guest", { guestSessionId });
+    if (socketRef.current && socketRef.current.connected) {
+      console.log("[Socket.IO] Đang kết nối, emit join-guest ngay lập tức:", guestSessionId);
+      socketRef.current.emit("join-guest", { guestSessionId });
     } else {
-      socket.connect(); // sự kiện connect sẽ tự emit join-guest
+      console.log("[Socket.IO] Chưa có kết nối hoặc socket cũ đóng, chuẩn bị tái thiết lập...");
+      setIsAuthChecked(false);
+      setTimeout(() => setIsAuthChecked(true), 50);
     }
   };
 
   return (
-    <SocketContext.Provider
-      value={{ socket: socketRef.current, isConnected, joinGuestRoom }}
-    >
+    <SocketContext.Provider value={{ socket: socketRef.current, isConnected, joinGuestRoom }}>
       {children}
     </SocketContext.Provider>
   );

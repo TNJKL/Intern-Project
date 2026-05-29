@@ -15,6 +15,13 @@ export const metadata: Metadata = {
   description: "Trải nghiệm cà phê tuyệt hảo từ những hạt cà phê tuyển chọn nhất.",
 };
 
+// Hỗ trợ safe area (iPhone notch / home indicator) cho bottom nav
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 import { getServerApi } from "@/lib/server-api";
 
 export default async function RootLayout({

@@ -39,6 +39,7 @@ const ProductList: React.FC = () => {
       title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">TÊN SẢN PHẨM</span>,
       dataIndex: 'name',
       key: 'name',
+      width: 200,
       render: (text: string, record: Product) => (
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
@@ -57,6 +58,7 @@ const ProductList: React.FC = () => {
       title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">DANH MỤC</span>,
       dataIndex: 'categoryId',
       key: 'categoryId',
+      width: 130,
       render: (catId: string) => {
         const category = (categories as any[]).find((c: any) => c.id === catId);
         return <Tag className="border-none rounded-lg font-bold text-gray-600 bg-gray-100">{category?.name || 'Chưa phân loại'}</Tag>;
@@ -65,6 +67,7 @@ const ProductList: React.FC = () => {
     {
       title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">GIÁ BÁN</span>,
       key: 'price',
+      width: 130,
       render: (_: any, record: Product) => {
         const variants = record.variants || [];
         if (variants.length === 0) return <span className="text-gray-300 text-xs italic">Chưa có giá</span>;
@@ -80,6 +83,7 @@ const ProductList: React.FC = () => {
       title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">TRẠNG THÁI</span>,
       dataIndex: 'isAvailable',
       key: 'isAvailable',
+      width: 120,
       render: (isAvailable: boolean, record: Product) => {
         const isDeleted = (record as any).isDeleted || (record as any).deleted || (record as any).deletedAt;
         if (isDeleted) {

@@ -19,21 +19,11 @@ const UserProfile: React.FC = () => {
   if (!user) return null;
 
   return (
-    <div style={{ padding: '40px', background: '#f8f9fa', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
-      <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+    <div className="p-4 sm:p-10 min-h-screen bg-[#f8f9fa]" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <div className="max-w-[1000px] mx-auto">
         
         {/* Profile Header */}
-        <div style={{ 
-          background: '#fff', 
-          padding: '40px', 
-          borderRadius: '24px', 
-          boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
-          border: '1px solid #f1f1f1',
-          marginBottom: '24px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '32px'
-        }}>
+        <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8 bg-white p-6 sm:p-10 rounded-[24px] shadow-sm border border-[#f1f1f1] mb-6">
           <Avatar
             size={120}
             src={user.avatarUrl}
@@ -42,21 +32,24 @@ const UserProfile: React.FC = () => {
               backgroundColor: '#fdf3eb', 
               color: '#d37533',
               border: '4px solid #fff',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.05)'
+              boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+              flexShrink: 0
             }}
           />
-          <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-              <Title level={2} style={{ margin: 0, fontWeight: 800, letterSpacing: '-0.02em' }}>{user.fullName}</Title>
-              <Tag color="orange" style={{ borderRadius: '6px', fontWeight: 700, textTransform: 'uppercase', fontSize: '10px' }}>
+          <div className="flex flex-col items-center md:items-start text-center md:text-left flex-1 min-w-0 w-full">
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5 mb-2 w-full">
+              <Title level={2} style={{ margin: 0, fontWeight: 800, letterSpacing: '-0.02em', wordBreak: 'break-word' }}>
+                {user.fullName}
+              </Title>
+              <Tag color="orange" style={{ borderRadius: '6px', fontWeight: 700, textTransform: 'uppercase', fontSize: '10px', margin: 0 }}>
                 {user.role}
               </Tag>
             </div>
-            <Text type="secondary" style={{ fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Text type="secondary" style={{ fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }} className="break-all justify-center md:justify-start w-full">
               <MailOutlined /> {user.email}
             </Text>
           </div>
-          <Flex gap={12}>
+          <div className="flex gap-3 w-full sm:w-auto justify-center mt-4 md:mt-0">
             <button
               onClick={() => setIsModalOpen(true)}
               style={{
@@ -68,8 +61,10 @@ const UserProfile: React.FC = () => {
                 fontWeight: '700',
                 fontSize: '13px',
                 cursor: 'pointer',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                flex: 1
               }}
+              className="sm:flex-none hover:bg-gray-50 active:scale-95"
             >
               Chỉnh sửa
             </button>
@@ -84,23 +79,25 @@ const UserProfile: React.FC = () => {
                 fontWeight: '700',
                 fontSize: '13px',
                 cursor: 'pointer',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                flex: 1
               }}
+              className="sm:flex-none hover:opacity-90 active:scale-95"
             >
               Mật khẩu
             </button>
-          </Flex>
+          </div>
         </div>
 
         {/* Info Grid */}
-        <Row gutter={24}>
-          <Col span={16}>
+        <Row gutter={[24, 24]}>
+          <Col xs={24} md={16}>
             <Card 
               variant="borderless" 
               style={{ borderRadius: '24px', border: '1px solid #f1f1f1', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}
             >
               <Title level={5} style={{ marginBottom: '24px', fontWeight: 800 }}>Thông tin chi tiết</Title>
-              <Descriptions column={1} styles={{ label: { color: '#94a3b8', fontWeight: 600, width: '150px' }, content: { color: '#1e293b', fontWeight: 600 } }}>
+              <Descriptions column={1} styles={{ label: { color: '#94a3b8', fontWeight: 600, width: '120px' }, content: { color: '#1e293b', fontWeight: 600 } }}>
                 <Descriptions.Item label="SỐ ĐIỆN THOẠI">{user.phone || 'Chưa cập nhật'}</Descriptions.Item>
                 <Descriptions.Item label="ĐỊA CHỈ">Việt Nam</Descriptions.Item>
                 <Descriptions.Item label="NGÀY GIA NHẬP">{user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : '---'}</Descriptions.Item>
@@ -112,7 +109,7 @@ const UserProfile: React.FC = () => {
               </Descriptions>
             </Card>
           </Col>
-          <Col span={8}>
+          <Col xs={24} md={8}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <Card 
                 variant="borderless" 

@@ -36,14 +36,26 @@ export function Navbar({ initialUser }: NavbarProps) {
 
   useEffect(() => {
     setIsMounted(true);
+    
+    const syncSteam = () => {
+      const savedSteam = localStorage.getItem("steamEffect") === "true";
+      setSteamEffect(savedSteam);
+    };
+
     if (typeof window !== "undefined") {
       localStorage.removeItem("theme");
       document.documentElement.classList.remove("dark");
       const savedPreset = (localStorage.getItem("preset") as "espresso" | "matcha" | "berry") || "espresso";
-      const savedSteam = localStorage.getItem("steamEffect") === "true";
       setPreset(savedPreset);
-      setSteamEffect(savedSteam);
+      syncSteam();
+      window.addEventListener("steamEffectChanged", syncSteam);
     }
+
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("steamEffectChanged", syncSteam);
+      }
+    };
   }, []);
 
   const changePreset = (newPreset: "espresso" | "matcha" | "berry") => {
@@ -84,34 +96,12 @@ export function Navbar({ initialUser }: NavbarProps) {
   }, [pathname, navItems, isMounted]);
 
   return (
-    <nav className="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto w-full gap-4 relative">
-      {/* Logo */}
-      <Link href="/" className="flex items-center gap-2 group shrink-0">
-        <div className="relative">
-          <div className="bg-primary text-white p-2 rounded-xl group-hover:bg-coffee-dark transition-colors duration-300 shadow-lg shadow-primary/20">
-            <Coffee className="w-5 h-5 md:w-6 md:h-6" />
-          </div>
-          {isMounted && steamEffect && (
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex gap-1 pointer-events-none z-20">
-              <span className="w-[1.5px] h-3 bg-primary/60 rounded-full steam-line steam-line-1"></span>
-              <span className="w-[1.5px] h-4.5 bg-primary/70 rounded-full steam-line steam-line-2"></span>
-              <span className="w-[1.5px] h-3 bg-primary/60 rounded-full steam-line steam-line-3"></span>
-            </div>
-          )}
-        </div>
-        <div className="flex flex-col leading-none">
-          <span className="text-2xl md:text-3xl font-black tracking-widest uppercase">
-            <span className="text-coffee-dark dark:text-foreground">Brew</span>
-            <span className="text-primary">tra</span>
-          </span>
-          {isMounted && isAuthenticated && user?.role === 'ADMIN' && (
-            <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mt-0.5">Admin Panel</span>
-          )}
-        </div>
-      </Link>
+    <nav className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 max-w-7xl mx-auto w-full gap-4 relative">
+      {/* Spacer to keep middle nav centered and actions on the right */}
+      <div className="shrink-0 w-6" />
 
-      {/* Center Nav Items */}
-      <div className="hidden md:flex items-center gap-1">
+      {/* Center Nav Items — hiện trên desktop (lg+) */}
+      <div className="hidden lg:flex items-center gap-1">
         {navItems.filter(item => item.id !== 'account').map((item) => {
           const isActive = activeId === item.id;
           return (
@@ -134,23 +124,23 @@ export function Navbar({ initialUser }: NavbarProps) {
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+      <div className="flex items-center gap-1 sm:gap-3 shrink-0">
         {((isMounted && isAuthenticated && user) || initialUser) ? (
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-1.5 sm:gap-4">
             {(() => {
               const displayUser = isMounted ? user : initialUser;
               if (!displayUser) return null;
 
               return (
-                <div className="flex items-center gap-2 sm:gap-3">
+                <div className="flex items-center gap-1 sm:gap-3">
                   <Link
                     href="/profile"
-                    className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-primary/5 border border-primary/10 text-gray-800 rounded-full hover:bg-primary/10 transition-all group"
+                    className="flex items-center gap-0 sm:gap-2 p-1 sm:px-4 sm:py-2 bg-primary/5 border border-primary/10 text-gray-800 rounded-full hover:bg-primary/10 transition-all group"
                   >
-                    <div className="w-7 h-7 bg-primary text-white rounded-full flex items-center justify-center text-[10px] font-black shadow-sm group-hover:scale-110 transition-transform">
+                    <div className="w-7 h-7 bg-primary text-white rounded-full flex items-center justify-center text-[10px] font-black shadow-sm group-hover:scale-110 transition-transform shrink-0">
                       {((displayUser as any).fullName || (displayUser as any).name || (displayUser as any).userName || 'U').charAt(0).toUpperCase()}
                     </div>
-                    <span className="text-xs sm:text-sm font-bold truncate max-w-[80px] sm:max-w-[120px]">
+                    <span className="hidden sm:block text-xs sm:text-sm font-bold truncate max-w-[80px] sm:max-w-[120px]">
                       {(displayUser as any).fullName || (displayUser as any).name || (displayUser as any).userName || 'Tài khoản'}
                     </span>
                   </Link>
@@ -178,9 +168,9 @@ export function Navbar({ initialUser }: NavbarProps) {
                         }
                       });
                     }}
-                    className="flex items-center gap-1.5 p-2 text-gray-400 hover:text-red-500 transition-all group"
+                    className="flex items-center gap-1 sm:gap-1.5 p-1.5 sm:p-2 text-gray-400 hover:text-red-500 transition-all group"
                   >
-                    <LogOut className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
+                    <LogOut className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform shrink-0" />
                     <span className="text-[10px] font-black uppercase tracking-wider hidden sm:block">Thoát</span>
                   </button>
                 </div>
@@ -190,33 +180,33 @@ export function Navbar({ initialUser }: NavbarProps) {
         ) : isMounted ? (
           <Link
             href="/login"
-            className="flex items-center gap-2 px-6 py-2.5 bg-coffee-dark text-white text-sm font-bold rounded-full hover:bg-primary transition-all shadow-lg shadow-coffee-dark/10 active:scale-95"
+            className="flex items-center gap-1.5 px-4 sm:px-6 py-2 sm:py-2.5 bg-coffee-dark text-white text-xs sm:text-sm font-bold rounded-full hover:bg-primary transition-all shadow-lg shadow-coffee-dark/10 active:scale-95 shrink-0"
           >
             <User className="w-4 h-4" />
             <span>Đăng nhập</span>
           </Link>
         ) : (
-          <div className="w-32 h-10 bg-gray-50 animate-pulse rounded-full border border-gray-100"></div>
+          <div className="w-20 sm:w-32 h-8 sm:h-10 bg-gray-50 animate-pulse rounded-full border border-gray-100"></div>
         )}
 
         <div className="h-8 w-[1px] bg-gray-100 mx-1 hidden sm:block"></div>
 
-        <Link href="/cart" className="relative p-2.5 text-gray-600 hover:bg-gray-100 rounded-full transition-all group active:scale-90">
-          <ShoppingCart className="w-6 h-6 group-hover:text-primary transition-colors" />
+        <Link href="/cart" className="relative p-1.5 sm:p-2.5 text-gray-600 hover:bg-gray-100 rounded-full transition-all group active:scale-90">
+          <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6 group-hover:text-primary transition-colors" />
           {isMounted && cartItemsCount > 0 && (
-            <span className="absolute top-1.5 right-1.5 w-4.5 h-4.5 bg-primary text-white text-[9px] font-black flex items-center justify-center rounded-full border-2 border-white shadow-sm group-hover:scale-110 transition-transform p-1">
+            <span className="absolute top-0.5 right-0.5 sm:top-1.5 sm:right-1.5 w-4 h-4 sm:w-4.5 sm:h-4.5 bg-primary text-white text-[8px] sm:text-[9px] font-black flex items-center justify-center rounded-full border-2 border-white shadow-sm group-hover:scale-110 transition-transform p-1">
               {cartItemsCount}
             </span>
           )}
         </Link>
 
-        {/* Cài đặt / Tùy biến Giao diện (Settings Icon) */}
-        <button 
+        {/* Nút Settings */}
+        <button
           onClick={() => setIsDrawerOpen(true)}
-          className="p-2.5 text-gray-600 dark:text-gray-300 hover:bg-primary/10 rounded-full transition-all duration-300 active:scale-90 group relative"
+          className="p-1.5 sm:p-2.5 text-gray-600 hover:bg-primary/10 rounded-full transition-all duration-300 active:scale-90 group relative"
           title="Thiết lập & Tiện ích"
         >
-          <Settings className="w-5.5 h-5.5 group-hover:rotate-90 transition-transform duration-500 text-gray-600 dark:text-gray-300 relative z-10" />
+          <Settings className="w-5 h-5 sm:w-5.5 sm:h-5.5 group-hover:rotate-90 transition-transform duration-500 text-gray-600 relative z-10" />
         </button>
       </div>
 
@@ -225,56 +215,56 @@ export function Navbar({ initialUser }: NavbarProps) {
         <AnimatePresence>
           {isDrawerOpen && (
             <>
-              {/* Backdrop */}
+              {/* Backdrop mờ nền */}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setIsDrawerOpen(false)}
-                className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100]"
+                className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100]"
               />
 
-              {/* Sidebar Panel */}
+              {/* Sidebar Panel - ĐÃ ĐỔI SANG MÀU KEM SÁNG TRÙNG NỀN VÀ XÓA DARK MODE */}
               <motion.div
                 initial={{ x: "100%" }}
                 animate={{ x: 0 }}
                 exit={{ x: "100%" }}
                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="fixed top-0 right-0 h-full w-[320px] bg-background border-l border-gray-100 dark:border-zinc-800/80 shadow-2xl z-[101] p-6 flex flex-col justify-between transition-colors duration-500"
+                className="fixed top-0 right-0 h-full w-[320px] bg-[#fcf9f2] border-l border-[#855823]/10 shadow-2xl z-[101] p-6 flex flex-col justify-between"
               >
                 <div className="overflow-y-auto no-scrollbar flex-grow pb-4">
                   {/* Header */}
-                  <div className="flex items-center justify-between pb-6 border-b border-gray-100 dark:border-zinc-800/80 mb-6">
+                  <div className="flex items-center justify-between pb-6 border-b border-[#855823]/10 mb-6">
                     <div className="flex items-center gap-2">
                       <div className="bg-primary text-white p-2 rounded-xl">
                         <Settings className="w-5 h-5 animate-spin-slow" />
                       </div>
-                      <span className="text-xl font-black uppercase tracking-wider text-coffee-dark dark:text-foreground">Thiết lập</span>
+                      <span className="text-xl font-black uppercase tracking-wider text-coffee-dark">Thiết lập</span>
                     </div>
-                    <button 
+                    <button
                       onClick={() => setIsDrawerOpen(false)}
-                      className="w-8 h-8 rounded-full bg-gray-100 dark:bg-zinc-800 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
+                      className="w-8 h-8 rounded-full bg-primary/5 flex items-center justify-center hover:bg-primary/10 transition-colors"
                     >
-                      <X className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                      <X className="w-4 h-4 text-gray-500" />
                     </button>
                   </div>
 
                   {/* Settings list */}
                   <div className="space-y-6">
-                    {/* Preset Select */}
+                    {/* Tông màu chủ đạo */}
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3 px-1">Tông màu chủ đạo</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-amber-900/40 mb-3 px-1">Tông màu chủ đạo</p>
                       <div className="grid grid-cols-3 gap-2">
                         <button
                           onClick={() => changePreset("espresso")}
                           className={cn(
                             "flex flex-col items-center p-2.5 rounded-2xl border transition-all duration-300 gap-1.5",
                             preset === "espresso"
-                              ? "bg-primary/5 border-primary/50 text-primary font-bold shadow-sm"
-                              : "bg-gray-50/50 dark:bg-zinc-900/50 border-gray-100 dark:border-zinc-800/60 text-gray-500 dark:text-gray-400 hover:bg-gray-100/50 dark:hover:bg-zinc-800/50"
+                              ? "bg-primary/10 border-primary text-primary font-bold shadow-sm"
+                              : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
                           )}
                         >
-                          <div className="w-5 h-5 rounded-full bg-[#6f4e37] border-2 border-white dark:border-zinc-800 shadow-sm flex items-center justify-center">
+                          <div className="w-5 h-5 rounded-full bg-[#6f4e37] border-2 border-white shadow-sm flex items-center justify-center">
                             {preset === "espresso" && <Check className="w-3 h-3 text-white" />}
                           </div>
                           <span className="text-[10px]">Espresso</span>
@@ -285,11 +275,11 @@ export function Navbar({ initialUser }: NavbarProps) {
                           className={cn(
                             "flex flex-col items-center p-2.5 rounded-2xl border transition-all duration-300 gap-1.5",
                             preset === "matcha"
-                              ? "bg-primary/5 border-primary/50 text-primary font-bold shadow-sm"
-                              : "bg-gray-50/50 dark:bg-zinc-900/50 border-gray-100 dark:border-zinc-800/60 text-gray-500 dark:text-gray-400 hover:bg-gray-100/50 dark:hover:bg-zinc-800/50"
+                              ? "bg-primary/10 border-primary text-primary font-bold shadow-sm"
+                              : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
                           )}
                         >
-                          <div className="w-5 h-5 rounded-full bg-[#587f3d] border-2 border-white dark:border-zinc-800 shadow-sm flex items-center justify-center">
+                          <div className="w-5 h-5 rounded-full bg-[#587f3d] border-2 border-white shadow-sm flex items-center justify-center">
                             {preset === "matcha" && <Check className="w-3 h-3 text-white" />}
                           </div>
                           <span className="text-[10px]">Matcha</span>
@@ -300,11 +290,11 @@ export function Navbar({ initialUser }: NavbarProps) {
                           className={cn(
                             "flex flex-col items-center p-2.5 rounded-2xl border transition-all duration-300 gap-1.5",
                             preset === "berry"
-                              ? "bg-primary/5 border-primary/50 text-primary font-bold shadow-sm"
-                              : "bg-gray-50/50 dark:bg-zinc-900/50 border-gray-100 dark:border-zinc-800/60 text-gray-500 dark:text-gray-400 hover:bg-gray-100/50 dark:hover:bg-zinc-800/50"
+                              ? "bg-primary/10 border-primary text-primary font-bold shadow-sm"
+                              : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
                           )}
                         >
-                          <div className="w-5 h-5 rounded-full bg-[#96354e] border-2 border-white dark:border-zinc-800 shadow-sm flex items-center justify-center">
+                          <div className="w-5 h-5 rounded-full bg-[#96354e] border-2 border-white shadow-sm flex items-center justify-center">
                             {preset === "berry" && <Check className="w-3 h-3 text-white" />}
                           </div>
                           <span className="text-[10px]">Berry</span>
@@ -312,15 +302,16 @@ export function Navbar({ initialUser }: NavbarProps) {
                       </div>
                     </div>
 
-                    {/* Effects Toggle */}
+                    {/* Hiệu ứng Brewtra */}
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3 px-1">Hiệu ứng Brewtra</p>
-                      <div className="flex items-center justify-between p-3.5 bg-gray-50/50 dark:bg-zinc-900/50 border border-gray-100 dark:border-zinc-800/60 rounded-2xl">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-amber-900/40 mb-3 px-1">Hiệu ứng Brewtra</p>
+                      {/* Đổi box sang màu trắng nền bo viền nhẹ nhàng */}
+                      <div className="flex items-center justify-between p-3.5 bg-white border border-[#855823]/10 rounded-2xl">
                         <div className="flex items-center gap-2.5">
                           <Sparkles className="w-4 h-4 text-primary animate-pulse" />
                           <div className="flex flex-col">
-                            <span className="text-xs font-bold text-gray-700 dark:text-gray-300">Khói cốc bay bổng</span>
-                            <span className="text-[9px] text-gray-400 dark:text-gray-500">Bay nhẹ nhàng tại Logo</span>
+                            <span className="text-xs font-bold text-gray-700">Khói cốc bay bổng</span>
+                            <span className="text-[9px] text-gray-400">Bay nhẹ nhàng tại Logo</span>
                           </div>
                         </div>
                         <button
@@ -328,10 +319,11 @@ export function Navbar({ initialUser }: NavbarProps) {
                             const newSteam = !steamEffect;
                             setSteamEffect(newSteam);
                             localStorage.setItem("steamEffect", String(newSteam));
+                            window.dispatchEvent(new Event("steamEffectChanged"));
                           }}
                           className={cn(
                             "w-10 h-6 rounded-full p-1 transition-all duration-300 relative",
-                            steamEffect ? "bg-primary" : "bg-gray-300 dark:bg-zinc-700"
+                            steamEffect ? "bg-primary" : "bg-gray-200"
                           )}
                         >
                           <div
@@ -344,37 +336,12 @@ export function Navbar({ initialUser }: NavbarProps) {
                       </div>
                     </div>
 
-                    {/* Navigation List for Mobile ONLY */}
-                    <div className="block md:hidden border-t border-gray-100 dark:border-zinc-800/80 pt-6">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4 px-1">Khám phá Brewtra</p>
-                      <div className="space-y-2">
-                        {navItems.map((item) => {
-                          const isActive = activeId === item.id;
-
-                          return (
-                            <Link
-                              key={item.id}
-                              href={item.href}
-                              onClick={() => setIsDrawerOpen(false)}
-                              className={cn(
-                                "flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-300 group",
-                                isActive 
-                                  ? "bg-primary text-white shadow-lg shadow-primary/20 font-bold" 
-                                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-900/50 hover:text-coffee-dark dark:hover:text-foreground"
-                              )}
-                            >
-                              <item.icon className={cn("w-5 h-5 transition-transform duration-300 group-hover:scale-110", isActive ? "text-white" : "text-gray-400 group-hover:text-primary")} />
-                              <span className="text-sm font-semibold tracking-wide">{item.label}</span>
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    </div>
+                    {/* ĐÃ LOẠI BỎ TOÀN BỘ PHẦN KHÁM PHÁ BREWTRA LẶP LẠI TẠI ĐÂY */}
                   </div>
                 </div>
 
                 {/* Bottom footer/account area */}
-                <div className="pt-6 border-t border-gray-100 dark:border-zinc-800/80">
+                <div className="pt-6 border-t border-[#855823]/10">
                   {isMounted && isAuthenticated && user ? (
                     <div className="flex flex-col gap-4">
                       <div className="flex items-center gap-3 px-2">
@@ -382,8 +349,8 @@ export function Navbar({ initialUser }: NavbarProps) {
                           {user.fullName?.charAt(0).toUpperCase()}
                         </div>
                         <div className="flex flex-col min-w-0">
-                          <span className="text-sm font-bold text-gray-800 dark:text-zinc-200 truncate">{user.fullName}</span>
-                          <span className="text-[10px] text-gray-400 dark:text-zinc-500 truncate">{user.email}</span>
+                          <span className="text-sm font-bold text-gray-800 truncate">{user.fullName}</span>
+                          <span className="text-[10px] text-gray-400 truncate">{user.email}</span>
                         </div>
                       </div>
                       <button
@@ -396,7 +363,7 @@ export function Navbar({ initialUser }: NavbarProps) {
                             router.push('/');
                           });
                         }}
-                        className="w-full py-3 bg-red-50 dark:bg-red-950/20 text-red-500 dark:text-red-400 rounded-xl font-bold hover:bg-red-100 dark:hover:bg-red-950/40 transition-colors text-xs uppercase tracking-wider flex items-center justify-center gap-2"
+                        className="w-full py-3 bg-red-50 text-red-500 rounded-xl font-bold hover:bg-red-100 transition-colors text-xs uppercase tracking-wider flex items-center justify-center gap-2"
                       >
                         <LogOut className="w-4 h-4" />
                         Đăng xuất
@@ -406,7 +373,7 @@ export function Navbar({ initialUser }: NavbarProps) {
                     <Link
                       href="/login"
                       onClick={() => setIsDrawerOpen(false)}
-                      className="w-full py-3 bg-coffee-dark dark:bg-zinc-800 text-white rounded-xl font-bold hover:bg-primary dark:hover:bg-primary transition-colors text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-md"
+                      className="w-full py-3 bg-coffee-dark text-white rounded-xl font-bold hover:bg-primary transition-colors text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-md"
                     >
                       <User className="w-4 h-4" />
                       Đăng nhập ngay

@@ -33,8 +33,6 @@ export const ProductCard = ({ product, index, categories }: ProductCardProps) =>
           priority={index < 10}
           className="object-cover transition-transform duration-700 group-hover:scale-110"
           sizes="(max-width: 768px) 50vw, 20vw"
-          crossOrigin="anonymous"
-          referrerPolicy="no-referrer"
           fallback={
             <div className="flex flex-col items-center justify-center h-full text-primary/20">
               <Coffee className="w-10 h-10 mb-1" />

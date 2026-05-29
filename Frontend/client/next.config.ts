@@ -29,7 +29,7 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_GLOBAL_BACKEND_IP: rootEnv.NEXT_PUBLIC_GLOBAL_BACKEND_IP || 'http://localhost:8080',
   },
   images: {
-    unoptimized: false,
+    unoptimized: true,
     dangerouslyAllowLocalIP: true,
     remotePatterns: [
       {

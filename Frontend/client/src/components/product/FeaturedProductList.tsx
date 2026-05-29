@@ -49,8 +49,6 @@ export function FeaturedProductList({ products = [], categories = [] }: Featured
                         sizes="(max-width: 768px) 50vw, 25vw"
                         className="object-contain p-2 md:p-4 group-hover:scale-110 transition-transform duration-700"
                         priority={index < 4}
-                        crossOrigin="anonymous"
-                        referrerPolicy="no-referrer"
                         fallback={
                           <div className="flex flex-col items-center justify-center text-primary/20">
                             <Coffee className="w-12 h-12 mb-1" />

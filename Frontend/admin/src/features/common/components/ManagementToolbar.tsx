@@ -1,5 +1,5 @@
 import React from 'react';
-import { Input, Select, Switch } from 'antd';
+import { Input, Select } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 
 interface ManagementToolbarProps {
@@ -29,7 +29,7 @@ interface ManagementToolbarProps {
 }
 
 export const ManagementToolbar: React.FC<ManagementToolbarProps> = ({
-  searchText, setSearchText, includeDeleted, setIncludeDeleted,
+  searchText, setSearchText,
   searchPlaceholder, extraFilters, filterStates
 }) => (
   <div className="flex flex-col gap-6 mb-8">
@@ -48,8 +48,7 @@ export const ManagementToolbar: React.FC<ManagementToolbarProps> = ({
         <Select
           placeholder="Chọn danh mục"
           allowClear
-          style={{ width: 180 }}
-          className="custom-select-admin"
+          className="custom-select-admin w-full sm:w-[180px]"
           placement="bottomLeft"
           listHeight={250}
           getPopupContainer={(trigger) => trigger.parentNode as HTMLElement}
@@ -65,8 +64,7 @@ export const ManagementToolbar: React.FC<ManagementToolbarProps> = ({
         <Select
           placeholder="Trạng thái bán"
           allowClear
-          style={{ width: 150 }}
-          className="custom-select-admin"
+          className="custom-select-admin w-full sm:w-[150px]"
           placement="bottomLeft"
           onChange={value => filterStates.setAvailability(value)}
           options={[
@@ -81,8 +79,7 @@ export const ManagementToolbar: React.FC<ManagementToolbarProps> = ({
         <Select
           placeholder="Nổi bật"
           allowClear
-          style={{ width: 140 }}
-          className="custom-select-admin"
+          className="custom-select-admin w-full sm:w-[140px]"
           placement="bottomLeft"
           onChange={value => filterStates.setFeatured(value)}
           options={[
@@ -95,8 +92,7 @@ export const ManagementToolbar: React.FC<ManagementToolbarProps> = ({
 
       <Select
         placeholder="Sắp xếp theo"
-        style={{ width: 180 }}
-        className="custom-select-admin"
+        className="custom-select-admin w-full sm:w-[180px]"
         placement="bottomLeft"
         value={(filterStates.sortBy || 'displayOrder') + (filterStates.sortDirection === 'desc' ? '_desc' : '_asc')}
         onChange={(val: string) => {
