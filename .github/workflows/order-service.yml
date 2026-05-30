@@ -120,13 +120,35 @@ jobs:
 
       - name: Smoke Test - Health Check
         run: |
-          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8083/api/health || echo "failed")
-          echo "Response code: $STATUS_CODE"
-          if [ "$STATUS_CODE" -ne 200 ]; then
-            echo "Smoke test failed with status code $STATUS_CODE"
+          echo "Starting smoke test health check..."
+          TIMEOUT=60
+          INTERVAL=3
+          ELAPSED=0
+          PASSED=false
+          
+          while [ $ELAPSED -lt $TIMEOUT ]; do
+            # Get HTTP status code. If curl fails, it outputs 000.
+            STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8083/api/health || echo "000")
+            echo "Status code: $STATUS_CODE"
+            
+            if [ "$STATUS_CODE" = "200" ]; then
+              PASSED=true
+              break
+            fi
+            
+            echo "App is not ready yet, retrying in ${INTERVAL}s... (${ELAPSED}s/${TIMEOUT}s)"
+            sleep $INTERVAL
+            ELAPSED=$((ELAPSED + INTERVAL))
+          done
+          
+          if [ "$PASSED" = "true" ]; then
+            echo "Smoke test passed successfully!"
+          else
+            echo "Smoke test failed after $TIMEOUT seconds!"
+            echo "=== POD LOGS ==="
+            kubectl logs deployment/order-service-learner --tail=100
             exit 1
           fi
-          echo "Smoke test passed!"
 
       - name: Comment on PR
         if: success() && github.event_name == 'pull_request'
