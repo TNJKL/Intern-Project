@@ -128,7 +128,7 @@ jobs:
           
           while [ $ELAPSED -lt $TIMEOUT ]; do
             # Get HTTP status code. If curl fails, it outputs 000.
-            STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8083/api/health || echo "000")
+            STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8083/api/health || true)
             echo "Status code: $STATUS_CODE"
             
             if [ "$STATUS_CODE" = "200" ]; then
