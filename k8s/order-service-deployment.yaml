@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service-learner
+  labels:
+    app: order-service-learner
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-service-learner
+  template:
+    metadata:
+      labels:
+        app: order-service-learner
+    spec:
+      hostAliases:
+      - ip: "172.17.0.1" # Maps host.docker.internal to Docker bridge IP on Linux (GitHub Actions VM host)
+        hostnames:
+        - "host.docker.internal"
+      containers:
+      - name: order-service
+        image: order-service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8083
+        env:
+        - name: POSTGRES_HOST
+          value: "host.docker.internal"
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          value: "order_db"
+        - name: POSTGRES_USER
+          value: "postgres"
+        - name: POSTGRES_PASSWORD
+          value: "postgresql"
+        - name: REDIS_HOST
+          value: "host.docker.internal"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          value: "host.docker.internal:9092"
+        - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+          value: "http://host.docker.internal:8761/eureka/"
+        - name: PRODUCT_SERVICE_URL
+          value: "http://host.docker.internal:8082"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service-learner-service
+spec:
+  selector:
+    app: order-service-learner
+  ports:
+    - protocol: TCP
+      port: 8083
+      targetPort: 8083
+  type: ClusterIP

@@ -1,7 +1,7 @@
 FROM maven:3.9.6-eclipse-temurin-17 AS builder
 WORKDIR /workspace
 COPY . .
-RUN mvn -pl order-service -am clean package -DskipTests
+RUN mvn -pl shared-jwt install -DskipTests && cd order-service && mvn clean package -DskipTests
 
 FROM eclipse-temurin:17-jre
 WORKDIR /app
