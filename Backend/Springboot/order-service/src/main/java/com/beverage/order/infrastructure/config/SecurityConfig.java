@@ -34,6 +34,7 @@ public class SecurityConfig {
                                 "/order/v3/api-docs",
                                 "/order/v3/api-docs/**",
                                 "/actuator/**",
+                                "/api/health",
                                 "/api/v1/vouchers/validate/**",
                                 "/api/v1/orders/track"
                         ).permitAll()

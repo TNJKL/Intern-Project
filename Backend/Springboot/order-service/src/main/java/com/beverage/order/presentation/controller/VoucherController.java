@@ -40,12 +40,14 @@ public class VoucherController {
     )
     public ResponseEntity<ApiResponse<VoucherValidationResponse>> validate(
             @PathVariable String code,
-            @RequestParam(required = false) BigDecimal orderAmount
+            @RequestParam(required = false) BigDecimal orderAmount,
+            @RequestParam(required = false) String email
     ) {
         Optional<JwtUserPrincipal> actorOpt = orderActorResolver.getOptionalPrincipal();
         UUID userId = actorOpt.map(JwtUserPrincipal::getUserId).orElse(null);
+        String userEmail = actorOpt.map(JwtUserPrincipal::getEmail).orElse(email);
 
-        VoucherValidationResponse result = voucherService.validateVoucher(code, orderAmount, userId);
+        VoucherValidationResponse result = voucherService.validateVoucher(code, orderAmount, userId, userEmail);
         return ResponseEntity.ok(ApiResponse.success(result, "Kiểm tra voucher thành công"));
     }
 

@@ -134,10 +134,11 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
     this.logger.error(
       `Message processing failed after ${this.MAX_MESSAGE_RETRIES} attempts. ` +
       `Topic: ${topic}, Partition: ${partition}, Offset: ${message.offset}. ` +
-      `Event will NOT be retried. Manual intervention may be required.`
+      `Consumer will crash to prevent offset commit and avoid message loss.`
     );
 
     await this.logFailedMessage(payload, lastError);
+    throw lastError || new Error('Critical failure: Consumer stopped due to processing error');
   }
 
   private async logFailedMessage(payload: EachMessagePayload, error: Error | null): Promise<void> {
@@ -248,4 +249,5 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
       attempts: this.reconnectAttempts,
     };
   }
+
 }

@@ -17,6 +17,10 @@ on:
       - 'Backend/Springboot/order-service/**'
       - 'Backend/Springboot/shared-jwt/**'
 
+permissions:
+  pull-requests: write
+  contents: read
+
 jobs:
   test-and-build:
     runs-on: ubuntu-latest
@@ -26,7 +30,7 @@ jobs:
         env:
           POSTGRES_DB: order_db
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_PASSWORD: postgresql
         ports:
           - 5432:5432
         options: >-
@@ -66,7 +70,7 @@ jobs:
         env:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/order_db
           SPRING_DATASOURCE_USERNAME: postgres
-          SPRING_DATASOURCE_PASSWORD: postgres
+          SPRING_DATASOURCE_PASSWORD: postgresql
           SPRING_DATA_REDIS_HOST: localhost
           SPRING_KAFKA_BOOTSTRAP_SERVERS: localhost:9092
 
@@ -86,4 +90,53 @@ jobs:
         with:
           name: order-service-jar
           path: Backend/Springboot/order-service/target/*.jar
+
+      - name: Create Kind Cluster
+        uses: helm/kind-action@v1.9.0
+        with:
+          cluster_name: beverage-kind-cluster
+
+      - name: Build Docker Image
+        run: |
+          docker build -t order-service:latest -f Backend/Springboot/order-service/Dockerfile Backend/Springboot
+
+      - name: Load Image into Kind
+        run: |
+          kind load docker-image order-service:latest --name beverage-kind-cluster
+
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl apply -f k8s/order-service-deployment.yaml
+          kubectl set env deployment/order-service-learner EUREKA_CLIENT_ENABLED=false SPRING_KAFKA_LISTENER_AUTO_STARTUP=false
+
+      - name: Wait for Deployment to be Ready
+        run: |
+          kubectl rollout status deployment/order-service-learner --timeout=120s
+
+      - name: Port-Forward to local runner
+        run: |
+          kubectl port-forward svc/order-service-learner-service 8083:8083 &
+          sleep 5
+
+      - name: Smoke Test - Health Check
+        run: |
+          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8083/api/health || echo "failed")
+          echo "Response code: $STATUS_CODE"
+          if [ "$STATUS_CODE" -ne 200 ]; then
+            echo "Smoke test failed with status code $STATUS_CODE"
+            exit 1
+          fi
+          echo "Smoke test passed!"
+
+      - name: Comment on PR
+        if: success() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: " **CI SUCCESS**: Mọi thứ chạy ngon lành trên cụm K8s (Kind)! \n- Ứng dụng đã khởi động thành công.\n- API Health Check phản hồi 200 OK."
+            })
 

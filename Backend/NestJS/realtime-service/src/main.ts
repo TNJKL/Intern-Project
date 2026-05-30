@@ -9,6 +9,9 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
 
+  // Kích hoạt shutdown hooks để NestJS xử lý các signal tắt ứng dụng (SIGTERM, SIGINT)
+  app.enableShutdownHooks();
+
   app.enableCors({
     origin: '*',
     credentials: true,

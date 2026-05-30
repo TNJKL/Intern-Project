@@ -25,6 +25,9 @@ public class UpdateVoucherRequest {
 
     private Integer maxUsageCount;
 
+    @Min(value = 1, message = "maxUsagePerUser must be at least 1")
+    private Integer maxUsagePerUser;
+
     private Instant validFrom;
 
     private Instant validUntil;
