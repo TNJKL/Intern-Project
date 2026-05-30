@@ -113,13 +113,13 @@ jobs:
         run: |
           kubectl rollout status deployment/order-service-learner --timeout=120s
 
-      - name: Port-Forward to local runner
+      - name: Port-Forward and Smoke Test
         run: |
+          echo "Starting port-forwarding..."
           kubectl port-forward svc/order-service-learner-service 8083:8083 &
+          FORWARD_PID=$!
           sleep 5
-
-      - name: Smoke Test - Health Check
-        run: |
+          
           echo "Starting smoke test health check..."
           TIMEOUT=60
           INTERVAL=3
@@ -140,6 +140,9 @@ jobs:
             sleep $INTERVAL
             ELAPSED=$((ELAPSED + INTERVAL))
           done
+          
+          # Kill background port-forward process
+          kill $FORWARD_PID || true
           
           if [ "$PASSED" = "true" ]; then
             echo "Smoke test passed successfully!"
