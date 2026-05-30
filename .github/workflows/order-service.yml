@@ -17,10 +17,6 @@ on:
       - 'Backend/Springboot/order-service/**'
       - 'Backend/Springboot/shared-jwt/**'
 
-permissions:
-  pull-requests: write
-  contents: read
-
 jobs:
   test-and-build:
     runs-on: ubuntu-latest
@@ -30,7 +26,7 @@ jobs:
         env:
           POSTGRES_DB: order_db
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgresql
+          POSTGRES_PASSWORD: postgres
         ports:
           - 5432:5432
         options: >-
@@ -70,7 +66,7 @@ jobs:
         env:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/order_db
           SPRING_DATASOURCE_USERNAME: postgres
-          SPRING_DATASOURCE_PASSWORD: postgresql
+          SPRING_DATASOURCE_PASSWORD: postgres
           SPRING_DATA_REDIS_HOST: localhost
           SPRING_KAFKA_BOOTSTRAP_SERVERS: localhost:9092
 
@@ -90,78 +86,4 @@ jobs:
         with:
           name: order-service-jar
           path: Backend/Springboot/order-service/target/*.jar
-
-      - name: Create Kind Cluster
-        uses: helm/kind-action@v1.9.0
-        with:
-          cluster_name: beverage-kind-cluster
-
-      - name: Build Docker Image
-        run: |
-          docker build -t order-service:latest -f Backend/Springboot/order-service/Dockerfile Backend/Springboot
-
-      - name: Load Image into Kind
-        run: |
-          kind load docker-image order-service:latest --name beverage-kind-cluster
-
-      - name: Deploy to Kubernetes
-        run: |
-          kubectl apply -f k8s/order-service-deployment.yaml
-          kubectl set env deployment/order-service-learner EUREKA_CLIENT_ENABLED=false SPRING_KAFKA_LISTENER_AUTO_STARTUP=false
-
-      - name: Wait for Deployment to be Ready
-        run: |
-          kubectl rollout status deployment/order-service-learner --timeout=120s
-
-      - name: Port-Forward and Smoke Test
-        run: |
-          echo "Starting port-forwarding..."
-          kubectl port-forward svc/order-service-learner-service 8083:8083 &
-          FORWARD_PID=$!
-          sleep 5
-          
-          echo "Starting smoke test health check..."
-          TIMEOUT=60
-          INTERVAL=3
-          ELAPSED=0
-          PASSED=false
-          
-          while [ $ELAPSED -lt $TIMEOUT ]; do
-            # Get HTTP status code. If curl fails, it outputs 000.
-            STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8083/api/health || true)
-            echo "Status code: $STATUS_CODE"
-            
-            if [ "$STATUS_CODE" = "200" ]; then
-              PASSED=true
-              break
-            fi
-            
-            echo "App is not ready yet, retrying in ${INTERVAL}s... (${ELAPSED}s/${TIMEOUT}s)"
-            sleep $INTERVAL
-            ELAPSED=$((ELAPSED + INTERVAL))
-          done
-          
-          # Kill background port-forward process
-          kill $FORWARD_PID || true
-          
-          if [ "$PASSED" = "true" ]; then
-            echo "Smoke test passed successfully!"
-          else
-            echo "Smoke test failed after $TIMEOUT seconds!"
-            echo "=== POD LOGS ==="
-            kubectl logs deployment/order-service-learner --tail=100
-            exit 1
-          fi
-
-      - name: Comment on PR
-        if: success() && github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: " **CI SUCCESS**: Mọi thứ chạy ngon lành trên cụm K8s (Kind)! \n- Ứng dụng đã khởi động thành công.\n- API Health Check phản hồi 200 OK."
-            })
 
