@@ -238,7 +238,7 @@ curl -X POST http://localhost:8085/api/learn/kafka/offset/start-earliest
 ### Cách test
 
 ```bash
-kafka-console-producer --bootstrap-server localhost:9092 --topic learn.kafka.multi-group --property parse.key=true
+kafka-console-producer --bootstrap-server localhost:9092 --topic learn.kafka.multi-group --property parse.key=true --property key.separator=:
 > order-123:{"orderId": "123", "product": "Cà phê sữa"}
 ```
 
@@ -353,7 +353,7 @@ Broker gửi lại message → Consumer nhận 2 LẦN!
 **Gửi cùng key 3 lần:**
 
 ```bash
-kafka-console-producer --bootstrap-server localhost:9092 --topic learn.kafka.idempotent --property parse.key=true
+kafka-console-producer --bootstrap-server localhost:9092 --topic learn.kafka.idempotent --property parse.key=true --property key.separator=:
 > order-999:ORDER-999
 > order-999:ORDER-999
 > order-999:ORDER-999

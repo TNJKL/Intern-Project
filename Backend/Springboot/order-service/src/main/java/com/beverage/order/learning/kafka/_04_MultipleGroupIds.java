@@ -19,11 +19,11 @@ public class _04_MultipleGroupIds {
     public void notificationService(ConsumerRecord<String, String> record) {
         log.info("=================================================");
         log.info("  [NOTIFICATION SERVICE]  ");
-        log.info("  >>> Đang gửi email/SMS cho khách hàng...");
+        log.info("  >>> Dang gui email/SMS cho khach hang...");
         log.info("  OrderId : {}", record.key());
         log.info("  Message : {}", record.value());
         log.info("  Offset  : {}", record.offset());
-        log.info("  >>> Email/SMS đã gửi!");
+        log.info("  >>> Email/SMS da gui!");
         log.info("=================================================");
     }
 
@@ -35,11 +35,11 @@ public class _04_MultipleGroupIds {
     public void inventoryService(ConsumerRecord<String, String> record) {
         log.info("=================================================");
         log.info("  [INVENTORY SERVICE]  ");
-        log.info("  >>> Đang trừ tồn kho...");
+        log.info("  >>> Dang tru ton kho...");
         log.info("  OrderId : {}", record.key());
         log.info("  Message : {}", record.value());
         log.info("  Offset  : {}", record.offset());
-        log.info("  >>> Tồn kho đã được cập nhật!");
+        log.info("  >>> Ton kho da duoc cap nhat!");
         log.info("=================================================");
     }
 }
