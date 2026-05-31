@@ -82,4 +82,11 @@ public class AdminIngredientController {
         IngredientResponse response = ingredientUseCase.restockIngredient(id, request);
         return ResponseEntity.ok(ApiResponse.success(response, "Nhập kho thêm nguyên liệu thành công"));
     }
+
+    @PostMapping("/{id}/restore")
+    @Operation(summary = "Khôi phục nguyên liệu đã xóa mềm")
+    public ResponseEntity<ApiResponse<IngredientResponse>> restore(@PathVariable UUID id) {
+        IngredientResponse response = ingredientUseCase.restoreIngredient(id);
+        return ResponseEntity.ok(ApiResponse.success(response, "Khôi phục nguyên liệu thành công"));
+    }
 }

@@ -124,6 +124,16 @@ public class IngredientUseCase {
         log.info("Đã xóa mềm nguyên liệu ID: {}", id);
     }
 
+    @Transactional
+    public IngredientResponse restoreIngredient(UUID id) {
+        IngredientEntity entity = ingredientJpaRepository.findById(id)
+                .orElseThrow(() -> new BusinessException("Không tìm thấy nguyên liệu có ID: " + id));
+        entity.setIsActive(true);
+        IngredientEntity saved = ingredientJpaRepository.save(entity);
+        log.info("Đã khôi phục hoạt động cho nguyên liệu ID: {}", id);
+        return toResponse(saved);
+    }
+
     @Transactional(rollbackFor = Exception.class)
     public IngredientResponse restockIngredient(UUID id, RestockRequest request) {
         IngredientEntity entity = ingredientJpaRepository.findById(id)

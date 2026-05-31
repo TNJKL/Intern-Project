@@ -18,9 +18,9 @@ public interface InventoryTransactionJpaRepository extends JpaRepository<Invento
     List<InventoryTransactionEntity> findByOrderId(UUID orderId);
 
     @Query("SELECT t FROM InventoryTransactionEntity t WHERE " +
-           "(:ingredientId IS NULL OR t.ingredientId = :ingredientId) AND " +
-           "(:orderId IS NULL OR t.orderId = :orderId) AND " +
-           "(:transactionType IS NULL OR t.transactionType = :transactionType)")
+           "(CAST(:ingredientId AS uuid) IS NULL OR t.ingredientId = :ingredientId) AND " +
+           "(CAST(:orderId AS uuid) IS NULL OR t.orderId = :orderId) AND " +
+           "(CAST(:transactionType AS string) IS NULL OR t.transactionType = :transactionType)")
     Page<InventoryTransactionEntity> findTransactionsWithFilters(
             @Param("ingredientId") UUID ingredientId,
             @Param("orderId") UUID orderId,
