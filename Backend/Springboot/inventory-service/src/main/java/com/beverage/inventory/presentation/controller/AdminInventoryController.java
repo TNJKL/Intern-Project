@@ -34,12 +34,13 @@ public class AdminInventoryController {
     private final InventoryTransactionJpaRepository inventoryTransactionJpaRepository;
 
     @GetMapping("/stock")
-    @Operation(summary = "Xem tồn kho của tất cả nguyên liệu (Hỗ trợ lọc cảnh báo tồn kho thấp)")
+    @Operation(summary = "Xem tồn kho của tất cả nguyên liệu (Hỗ trợ lọc cảnh báo tồn kho thấp và phân trang)")
     public ResponseEntity<ApiResponse<List<IngredientResponse>>> getStock(
-            @RequestParam(name = "low_stock", defaultValue = "false") boolean lowStock
+            @RequestParam(name = "low_stock", defaultValue = "false") boolean lowStock,
+            @PageableDefault(size = 20, sort = "name") Pageable pageable
     ) {
-        List<IngredientEntity> entities = ingredientJpaRepository.findStock(lowStock);
-        List<IngredientResponse> responses = entities.stream()
+        Page<IngredientEntity> page = ingredientJpaRepository.findStock(lowStock, pageable);
+        List<IngredientResponse> responses = page.getContent().stream()
                 .map(entity -> IngredientResponse.builder()
                         .id(entity.getId())
                         .name(entity.getName())
@@ -54,7 +55,7 @@ public class AdminInventoryController {
                         .build())
                 .toList();
 
-        return ResponseEntity.ok(ApiResponse.success(responses, "Lấy danh sách tồn kho thành công"));
+        return ResponseEntity.ok(ApiResponse.paged(responses, "Lấy danh sách tồn kho thành công", page));
     }
 
     @GetMapping("/stock/{productId}/{variantId}")

@@ -102,8 +102,8 @@ public class RecipeUseCase {
         return toResponse(savedRecipe);
     }
 
-    public Page<RecipeResponse> listRecipes(Pageable pageable) {
-        Page<RecipeEntity> page = recipeJpaRepository.findAll(pageable);
+    public Page<RecipeResponse> listRecipes(Boolean isActive, Pageable pageable) {
+        Page<RecipeEntity> page = recipeJpaRepository.findRecipesWithFilters(isActive, pageable);
         return page.map(this::toResponse);
     }
 
@@ -121,6 +121,7 @@ public class RecipeUseCase {
         // Delete all old ingredients mapping
         List<RecipeIngredientEntity> oldIngredients = recipeIngredientJpaRepository.findByRecipeId(recipe.getId());
         recipeIngredientJpaRepository.deleteAll(oldIngredients);
+        recipeIngredientJpaRepository.flush();
 
         // Update main recipe attributes
         recipe.setProductName(request.getProductName());
@@ -157,5 +158,29 @@ public class RecipeUseCase {
         recipe.setIsActive(false);
         recipeJpaRepository.save(recipe);
         log.info("Đã xóa mềm công thức ID: {}", id);
+    }
+
+    @Transactional
+    public RecipeResponse restoreRecipe(UUID id) {
+        RecipeEntity recipe = recipeJpaRepository.findById(id)
+                .orElseThrow(() -> new BusinessException("Không tìm thấy công thức có ID: " + id));
+
+        // Validate uniqueness of product_id + variant_id for active recipes before restoring
+        java.util.Optional<RecipeEntity> activeRecipeOpt;
+        if (recipe.getVariantId() != null) {
+            activeRecipeOpt = recipeJpaRepository.findByProductIdAndVariantId(recipe.getProductId(), recipe.getVariantId());
+        } else {
+            activeRecipeOpt = recipeJpaRepository.findByProductIdAndVariantIdIsNull(recipe.getProductId());
+        }
+
+        activeRecipeOpt.filter(r -> !r.getId().equals(id) && r.getIsActive())
+                .ifPresent(r -> {
+                    throw new BusinessException("Không thể khôi phục. Đã tồn tại một công thức khác đang hoạt động cho sản phẩm/biến thể này.");
+                });
+
+        recipe.setIsActive(true);
+        RecipeEntity saved = recipeJpaRepository.save(recipe);
+        log.info("Đã khôi phục hoạt động cho công thức ID: {}", id);
+        return toResponse(saved);
     }
 }

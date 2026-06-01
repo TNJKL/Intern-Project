@@ -34,5 +34,5 @@ public interface IngredientJpaRepository extends JpaRepository<IngredientEntity,
 
     @Query("SELECT i FROM IngredientEntity i WHERE i.isActive = true AND " +
            "(:lowStock = false OR i.currentStock <= i.lowStockThreshold)")
-    List<IngredientEntity> findStock(@Param("lowStock") boolean lowStock);
+    Page<IngredientEntity> findStock(@Param("lowStock") boolean lowStock, Pageable pageable);
 }

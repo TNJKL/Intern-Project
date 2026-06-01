@@ -52,11 +52,11 @@ public class _05_RetryAndDLQ {
 
         // Parse đơn giản
         if (value.contains("\"type\":\"error\"")) {
-            log.warn(">>> Xử lý lỗi - sẽ retry...");
+            log.warn(">>> Xy ly loi - se retry...");
             throw new RuntimeException("Simulated processing failure!");
         }
 
-        log.info(">>> Xử lý OK - không retry");
+        log.info(">>> Xu ly  OK - khong retry");
         log.info("===========================");
     }
 }
