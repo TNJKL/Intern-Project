@@ -11,6 +11,8 @@ import com.beverage.inventory.infrastructure.persistence.entity.RecipeIngredient
 import com.beverage.inventory.infrastructure.persistence.repository.IngredientJpaRepository;
 import com.beverage.inventory.infrastructure.persistence.repository.RecipeIngredientJpaRepository;
 import com.beverage.inventory.infrastructure.persistence.repository.RecipeJpaRepository;
+import com.beverage.inventory.infrastructure.client.ProductServiceClient;
+import com.beverage.inventory.infrastructure.client.dto.ProductCatalogDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -29,6 +31,7 @@ public class RecipeUseCase {
     private final RecipeJpaRepository recipeJpaRepository;
     private final RecipeIngredientJpaRepository recipeIngredientJpaRepository;
     private final IngredientJpaRepository ingredientJpaRepository;
+    private final ProductServiceClient productServiceClient;
 
     private RecipeResponse toResponse(RecipeEntity recipe) {
         List<RecipeIngredientEntity> riEntities = recipeIngredientJpaRepository.findByRecipeId(recipe.getId());
@@ -66,6 +69,17 @@ public class RecipeUseCase {
 
     @Transactional
     public RecipeResponse createRecipe(CreateRecipeRequest request) {
+        // Validate product and variant in product-service
+        ProductCatalogDto.ProductData productData = productServiceClient.getProduct(request.getProductId());
+        String computedRecipeName = productData.getName();
+        if (request.getVariantId() != null) {
+            ProductCatalogDto.VariantData variant = productData.getVariants().stream()
+                    .filter(v -> v.getId().equals(request.getVariantId()))
+                    .findFirst()
+                    .orElseThrow(() -> new BusinessException("Biến thể không hợp lệ cho sản phẩm này."));
+            computedRecipeName = productData.getName() + " (" + variant.getSizeLabel() + ")";
+        }
+
         // Validate uniqueness of product_id + variant_id for active recipes
         recipeJpaRepository.findByProductIdAndVariantId(request.getProductId(), request.getVariantId())
                 .stream()
@@ -78,7 +92,7 @@ public class RecipeUseCase {
         RecipeEntity recipe = RecipeEntity.builder()
                 .productId(request.getProductId())
                 .variantId(request.getVariantId())
-                .productName(request.getProductName())
+                .productName(computedRecipeName)
                 .version(request.getVersion() != null ? request.getVersion() : 1)
                 .isActive(true)
                 .build();
@@ -118,13 +132,24 @@ public class RecipeUseCase {
         RecipeEntity recipe = recipeJpaRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("Không tìm thấy công thức có ID: " + id));
 
+        // Validate product and variant in product-service
+        ProductCatalogDto.ProductData productData = productServiceClient.getProduct(request.getProductId());
+        String computedRecipeName = productData.getName();
+        if (request.getVariantId() != null) {
+            ProductCatalogDto.VariantData variant = productData.getVariants().stream()
+                    .filter(v -> v.getId().equals(request.getVariantId()))
+                    .findFirst()
+                    .orElseThrow(() -> new BusinessException("Biến thể không hợp lệ cho sản phẩm này."));
+            computedRecipeName = productData.getName() + " (" + variant.getSizeLabel() + ")";
+        }
+
         // Delete all old ingredients mapping
         List<RecipeIngredientEntity> oldIngredients = recipeIngredientJpaRepository.findByRecipeId(recipe.getId());
         recipeIngredientJpaRepository.deleteAll(oldIngredients);
         recipeIngredientJpaRepository.flush();
 
         // Update main recipe attributes
-        recipe.setProductName(request.getProductName());
+        recipe.setProductName(computedRecipeName);
         recipe.setProductId(request.getProductId());
         recipe.setVariantId(request.getVariantId());
         if (request.getVersion() != null) {

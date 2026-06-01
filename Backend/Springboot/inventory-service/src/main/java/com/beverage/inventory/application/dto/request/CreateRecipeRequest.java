@@ -23,9 +23,6 @@ public class CreateRecipeRequest {
 
     private UUID variantId; // Nullable for general/default recipes
 
-    @NotBlank(message = "Tên sản phẩm không được để trống")
-    private String productName;
-
     private Short version;
 
     @NotEmpty(message = "Danh sách nguyên liệu trong công thức không được để trống")
