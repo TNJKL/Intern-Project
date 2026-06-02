@@ -57,6 +57,7 @@ public class IngredientUseCase {
                 });
 
         IngredientEntity entity = IngredientEntity.builder()
+                .id(UUID.randomUUID())
                 .name(request.getName())
                 .sku(request.getSku())
                 .unit(request.getUnit())

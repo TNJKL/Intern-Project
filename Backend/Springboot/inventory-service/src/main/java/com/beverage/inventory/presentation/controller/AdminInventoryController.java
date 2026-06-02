@@ -106,4 +106,11 @@ public class AdminInventoryController {
 
         return ResponseEntity.ok(ApiResponse.paged(responsePage.getContent(), "Lấy lịch sử giao dịch kho thành công", responsePage));
     }
+
+    @GetMapping("/toppings")
+    @Operation(summary = "Xem danh sách tồn kho của riêng các Toppings")
+    public ResponseEntity<ApiResponse<List<IngredientResponse>>> getToppingsStock() {
+        List<IngredientResponse> responses = inventoryUseCase.getToppingsStock();
+        return ResponseEntity.ok(ApiResponse.success(responses, "Lấy danh sách tồn kho toppings thành công"));
+    }
 }

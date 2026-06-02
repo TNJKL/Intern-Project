@@ -20,6 +20,7 @@ public class ProductCatalogDto {
         private String name;
         private Boolean isAvailable;
         private List<VariantData> variants;
+        private List<ToppingData> toppings;
     }
 
     @Data
@@ -27,6 +28,15 @@ public class ProductCatalogDto {
     public static class VariantData {
         private UUID id;
         private String sizeLabel;
+        private BigDecimal price;
+        private Boolean isAvailable;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class ToppingData {
+        private UUID id;
+        private String name;
         private BigDecimal price;
         private Boolean isAvailable;
     }

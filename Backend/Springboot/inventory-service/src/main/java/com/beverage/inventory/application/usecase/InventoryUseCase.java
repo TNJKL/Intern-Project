@@ -11,6 +11,9 @@ import com.beverage.inventory.infrastructure.persistence.repository.IngredientJp
 import com.beverage.inventory.infrastructure.persistence.repository.InventoryTransactionJpaRepository;
 import com.beverage.inventory.infrastructure.persistence.repository.RecipeIngredientJpaRepository;
 import com.beverage.inventory.infrastructure.persistence.repository.RecipeJpaRepository;
+import com.beverage.inventory.application.dto.response.IngredientResponse;
+import com.beverage.inventory.infrastructure.client.ProductServiceClient;
+import com.beverage.inventory.infrastructure.client.dto.ToppingCatalogDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,6 +35,30 @@ public class InventoryUseCase {
     private final RecipeJpaRepository recipeJpaRepository;
     private final RecipeIngredientJpaRepository recipeIngredientJpaRepository;
     private final InventoryTransactionJpaRepository inventoryTransactionJpaRepository;
+    private final ProductServiceClient productServiceClient;
+
+    private void syncToppingIngredient(UUID toppingId) {
+        if (!ingredientJpaRepository.existsById(toppingId)) {
+            try {
+                ToppingCatalogDto.ToppingData toppingData = productServiceClient.getTopping(toppingId);
+                IngredientEntity entity = IngredientEntity.builder()
+                        .id(toppingId)
+                        .name(toppingData.getName())
+                        .sku("TOPPING-" + toppingId.toString().substring(0, 8).toUpperCase())
+                        .unit("phần")
+                        .currentStock(BigDecimal.ZERO)
+                        .lowStockThreshold(BigDecimal.ZERO)
+                        .costPerUnit(BigDecimal.ZERO)
+                        .isActive(true)
+                        .build();
+                ingredientJpaRepository.save(entity);
+                log.info("Đã đồng bộ topping {} thành nguyên liệu thành phẩm mới.", toppingData.getName());
+            } catch (Exception e) {
+                log.error("Lỗi khi đồng bộ topping ID {}: {}", toppingId, e.getMessage());
+                throw new BusinessException("Không thể tìm thấy hoặc đồng bộ topping: " + toppingId);
+            }
+        }
+    }
 
     private Map<UUID, BigDecimal> calculateRequiredIngredients(List<InventoryItemRequest> items) {
         Map<UUID, BigDecimal> requiredIngredients = new HashMap<>();
@@ -57,19 +84,12 @@ public class InventoryUseCase {
             // Process toppings
             if (item.getToppingIds() != null) {
                 for (UUID toppingId : item.getToppingIds()) {
-                    RecipeEntity toppingRecipe = recipeJpaRepository
-                            .findByProductIdAndVariantIdIsNull(toppingId)
-                            .orElseThrow(() -> new BusinessException("Không tìm thấy công thức cho topping: " + toppingId));
-
-                    List<RecipeIngredientEntity> toppingIngredients = recipeIngredientJpaRepository.findByRecipeId(toppingRecipe.getId());
-                    for (RecipeIngredientEntity ri : toppingIngredients) {
-                        BigDecimal totalQty = ri.getQuantity().multiply(BigDecimal.valueOf(item.getQuantity()));
-                        requiredIngredients.merge(ri.getIngredientId(), totalQty, BigDecimal::add);
-                    }
+                    syncToppingIngredient(toppingId);
+                    BigDecimal totalQty = BigDecimal.valueOf(item.getQuantity());
+                    requiredIngredients.merge(toppingId, totalQty, BigDecimal::add);
                 }
             }
         }
-
         return requiredIngredients;
     }
 
@@ -211,5 +231,62 @@ public class InventoryUseCase {
         }
 
         return maxPortions == null ? 0 : maxPortions.intValue();
+    }
+
+    @Transactional
+    public List<IngredientResponse> getToppingsStock() {
+        var toppings = productServiceClient.getAllToppings();
+        for (var topping : toppings) {
+            UUID toppingId = topping.getId();
+            var existingOpt = ingredientJpaRepository.findById(toppingId);
+            if (existingOpt.isEmpty()) {
+                try {
+                    IngredientEntity entity = IngredientEntity.builder()
+                            .id(toppingId)
+                            .name(topping.getName())
+                            .sku("TOPPING-" + toppingId.toString().substring(0, 8).toUpperCase())
+                            .unit("phần")
+                            .currentStock(BigDecimal.ZERO)
+                            .lowStockThreshold(BigDecimal.ZERO)
+                            .costPerUnit(BigDecimal.ZERO)
+                            .isActive(true)
+                            .build();
+                    ingredientJpaRepository.save(entity);
+                    log.info("Đã tự động đồng bộ topping {} khi lấy tồn kho", topping.getName());
+                } catch (Exception e) {
+                    log.error("Lỗi đồng bộ topping {} khi lấy tồn kho: {}", topping.getId(), e.getMessage());
+                }
+            } else {
+                IngredientEntity entity = existingOpt.get();
+                if (!entity.getName().equals(topping.getName())) {
+                    entity.setName(topping.getName());
+                    ingredientJpaRepository.save(entity);
+                    log.info("Đã cập nhật tên mới cho topping {} -> {}", entity.getId(), topping.getName());
+                }
+            }
+        }
+
+        List<UUID> toppingIds = toppings.stream().map(t -> t.getId()).toList();
+        if (toppingIds.isEmpty()) {
+            return List.of();
+        }
+
+        List<IngredientEntity> entities = ingredientJpaRepository.findAllById(toppingIds);
+        return entities.stream().map(this::toResponse).toList();
+    }
+
+    private IngredientResponse toResponse(IngredientEntity entity) {
+        return IngredientResponse.builder()
+                .id(entity.getId())
+                .name(entity.getName())
+                .sku(entity.getSku())
+                .unit(entity.getUnit())
+                .currentStock(entity.getCurrentStock())
+                .lowStockThreshold(entity.getLowStockThreshold())
+                .costPerUnit(entity.getCostPerUnit())
+                .isActive(entity.getIsActive())
+                .createdAt(entity.getCreatedAt())
+                .updatedAt(entity.getUpdatedAt())
+                .build();
     }
 }
