@@ -252,6 +252,11 @@ public class OrderUseCase {
         applicationEventPublisher.publishEvent(new OrderApplicationEvent.OrderStatusChanged(
                 this, order, previousStatus, request.getStatus(), request.getNote()));
 
+        if (request.getStatus() == OrderStatus.CANCELLED) {
+            applicationEventPublisher.publishEvent(new OrderApplicationEvent.OrderCancelled(
+                    this, order, request.getNote() != null ? request.getNote() : "Admin hủy đơn"));
+        }
+
         orderDetailCacheService.evict(orderId);
         return loadDetail(orderId, orderActorResolver.requirePrincipal());
     }
@@ -280,6 +285,31 @@ public class OrderUseCase {
 
         orderDetailCacheService.evict(orderId);
         return loadDetail(orderId, actor);
+    }
+
+    @Transactional
+    public void cancelOrderFromInventory(UUID orderId, String reason) {
+        OrderEntity order = orderJpaRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Đơn hàng", "id", orderId));
+
+        if (order.getStatus() != OrderStatus.PENDING) {
+            log.warn("Cannot cancel order {} because its status is {}", orderId, order.getStatus());
+            return;
+        }
+
+        order.setStatus(OrderStatus.CANCELLED);
+        order.setCancelledAt(Instant.now());
+        order.setCancellationReason(reason);
+        orderJpaRepository.save(order);
+
+        if (order.getVoucherId() != null) {
+            voucherService.releaseVoucher(order.getVoucherId(), order.getId());
+        }
+
+        appendStatusHistory(orderId, OrderStatus.CANCELLED, reason);
+        applicationEventPublisher.publishEvent(new OrderApplicationEvent.OrderCancelled(this, order, reason));
+        orderDetailCacheService.evict(orderId);
+        log.info("Successfully cancelled order id={} from inventory event due to: {}", orderId, reason);
     }
 
     @Transactional(readOnly = true)

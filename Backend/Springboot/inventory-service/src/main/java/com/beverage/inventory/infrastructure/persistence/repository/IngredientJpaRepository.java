@@ -16,20 +16,22 @@ import java.util.UUID;
 @Repository
 public interface IngredientJpaRepository extends JpaRepository<IngredientEntity, UUID> {
 
-    @Modifying(clearAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE IngredientEntity i SET i.currentStock = i.currentStock - :quantity, i.updatedAt = CURRENT_TIMESTAMP WHERE i.id = :id AND i.currentStock >= :quantity")
     int deductStock(@Param("id") UUID id, @Param("quantity") BigDecimal quantity);
 
-    @Modifying(clearAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE IngredientEntity i SET i.currentStock = i.currentStock + :quantity, i.updatedAt = CURRENT_TIMESTAMP WHERE i.id = :id")
     int addStock(@Param("id") UUID id, @Param("quantity") BigDecimal quantity);
 
     @Query("SELECT i FROM IngredientEntity i WHERE " +
            "(CAST(:name AS string) IS NULL OR LOWER(i.name) LIKE LOWER(CONCAT('%', CAST(:name AS string), '%'))) AND " +
-           "(CAST(:isActive AS boolean) IS NULL OR i.isActive = :isActive)")
+           "(CAST(:isActive AS boolean) IS NULL OR i.isActive = :isActive) AND " +
+           "(:excludeToppings = false OR i.sku NOT LIKE 'TOPPING-%')")
     Page<IngredientEntity> findIngredientsWithFilters(
             @Param("name") String name,
             @Param("isActive") Boolean isActive,
+            @Param("excludeToppings") boolean excludeToppings,
             Pageable pageable);
 
     @Query("SELECT i FROM IngredientEntity i WHERE i.isActive = true AND " +

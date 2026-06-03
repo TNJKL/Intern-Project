@@ -43,9 +43,10 @@ public class AdminIngredientController {
     public ResponseEntity<ApiResponse<List<IngredientResponse>>> list(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) Boolean isActive,
+            @RequestParam(required = false, defaultValue = "false") Boolean excludeToppings,
             @PageableDefault(size = 20, sort = "name") Pageable pageable
     ) {
-        Page<IngredientResponse> page = ingredientUseCase.listIngredients(name, isActive, pageable);
+        Page<IngredientResponse> page = ingredientUseCase.listIngredients(name, isActive, excludeToppings, pageable);
         return ResponseEntity.ok(ApiResponse.paged(page.getContent(), "Lấy danh sách nguyên liệu thành công", page));
     }
 

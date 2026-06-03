@@ -92,10 +92,10 @@ public class InventoryUseCase {
         }
         return requiredIngredients;
     }
-
+      //
     @Transactional(rollbackFor = Exception.class)
     public void deductStock(UUID orderId, List<InventoryItemRequest> items) {
-        log.info("Bắt đầu trừ kho cho đơn hàng: {}", orderId);
+        log.info("Bat' dau` tru` kho cho don hang`: {}", orderId);
         Map<UUID, BigDecimal> required = calculateRequiredIngredients(items);
 
         for (Map.Entry<UUID, BigDecimal> entry : required.entrySet()) {
@@ -104,17 +104,17 @@ public class InventoryUseCase {
 
             // Fetch current stock to record in transactions
             IngredientEntity ingredient = ingredientJpaRepository.findById(ingredientId)
-                    .orElseThrow(() -> new BusinessException("Không tìm thấy nguyên liệu có ID: " + ingredientId));
+                    .orElseThrow(() -> new BusinessException("Ko tim` thay' nguyen lieu. co' ID: " + ingredientId));
 
             BigDecimal quantityBefore = ingredient.getCurrentStock();
 
             // Atomic update in DB
             int rowsAffected = ingredientJpaRepository.deductStock(ingredientId, quantityNeeded);
             if (rowsAffected == 0) {
-                log.warn("Không đủ nguyên liệu: {} (Yêu cầu: {}, Hiện có: {})", ingredient.getName(), quantityNeeded, quantityBefore);
-                throw new BusinessException("Không đủ nguyên liệu trong kho: " + ingredient.getName());
+                log.warn("Khong du? nguyen lieu: {} (Yeu cau: {}, Hien co: {})", ingredient.getName(), quantityNeeded, quantityBefore);
+                throw new BusinessException("Khong du? nguyen lieu trong kho: " + ingredient.getName());
             }
-
+            // 
             BigDecimal quantityAfter = quantityBefore.subtract(quantityNeeded);
 
             // Log Transaction
@@ -128,21 +128,29 @@ public class InventoryUseCase {
                     .note("Trừ kho tự động cho đơn hàng: " + orderId)
                     .build();
 
-            inventoryTransactionJpaRepository.save(tx);
-            log.info("Đã trừ kho nguyên liệu {}: {} -> {}", ingredient.getName(), quantityBefore, quantityAfter);
+            inventoryTransactionJpaRepository.saveAndFlush(tx);
+            log.info("Da tru` kho nguyen lieu {}: {} -> {}", ingredient.getName(), quantityBefore, quantityAfter);
         }
     }
-
     @Transactional(rollbackFor = Exception.class)
     public void restoreStock(UUID orderId) {
-        log.info("Bắt đầu hoàn kho cho đơn hàng: {}", orderId);
+        log.info("Bat' dau` hoan` kho cho don' hang`: {}", orderId);
+
+        boolean alreadyRestored = inventoryTransactionJpaRepository.findByOrderId(orderId)
+                .stream()
+                .anyMatch(tx -> tx.getTransactionType() == InventoryTransactionType.RESTORE);
+        if (alreadyRestored) {
+            log.warn("Don` hang` {} da~ duoc. hoan` kho truoc' do'. Bo? qua.", orderId);
+            return;
+        }
+
         List<InventoryTransactionEntity> deductTxs = inventoryTransactionJpaRepository.findByOrderId(orderId)
                 .stream()
                 .filter(tx -> tx.getTransactionType() == InventoryTransactionType.DEDUCT)
                 .toList();
 
         if (deductTxs.isEmpty()) {
-            log.warn("Không tìm thấy lịch sử trừ kho cho đơn hàng: {}", orderId);
+            log.warn("Ko tim` thay' lich su? tru` kho cho don hang`: {}", orderId);
             return;
         }
 
@@ -151,10 +159,10 @@ public class InventoryUseCase {
             BigDecimal quantityToRestore = deductTx.getQuantity();
 
             IngredientEntity ingredient = ingredientJpaRepository.findById(ingredientId)
-                    .orElseThrow(() -> new BusinessException("Không tìm thấy nguyên liệu có ID: " + ingredientId));
+                    .orElseThrow(() -> new BusinessException("Ko tim` thay' nguyen lieu co' ID: " + ingredientId));
 
             BigDecimal quantityBefore = ingredient.getCurrentStock();
-
+            
             // Atomic update in DB
             ingredientJpaRepository.addStock(ingredientId, quantityToRestore);
 
@@ -171,10 +179,10 @@ public class InventoryUseCase {
                     .note("Hoàn kho tự động cho đơn hàng bị hủy: " + orderId)
                     .build();
 
-            inventoryTransactionJpaRepository.save(restoreTx);
-            log.info("Đã hoàn kho nguyên liệu {}: {} -> {}", ingredient.getName(), quantityBefore, quantityAfter);
+            inventoryTransactionJpaRepository.saveAndFlush(restoreTx);
+            log.info("Da hoan` kho nguyen lieu {}: {} -> {}", ingredient.getName(), quantityBefore, quantityAfter);
         }
-    }
+    } 
 
     public boolean checkAvailability(List<InventoryItemRequest> items) {
         try {

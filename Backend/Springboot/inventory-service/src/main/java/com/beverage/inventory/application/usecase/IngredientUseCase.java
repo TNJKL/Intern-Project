@@ -72,8 +72,9 @@ public class IngredientUseCase {
         return toResponse(saved);
     }
 
-    public Page<IngredientResponse> listIngredients(String name, Boolean isActive, Pageable pageable) {
-        Page<IngredientEntity> page = ingredientJpaRepository.findIngredientsWithFilters(name, isActive, pageable);
+    public Page<IngredientResponse> listIngredients(String name, Boolean isActive, Boolean excludeToppings, Pageable pageable) {
+        boolean exclude = excludeToppings != null && excludeToppings;
+        Page<IngredientEntity> page = ingredientJpaRepository.findIngredientsWithFilters(name, isActive, exclude, pageable);
         return page.map(this::toResponse);
     }
 
@@ -158,7 +159,7 @@ public class IngredientUseCase {
                 .note(request.getNote() != null ? request.getNote() : "Nhập kho thêm thủ công")
                 .build();
 
-        inventoryTransactionJpaRepository.save(tx);
+        inventoryTransactionJpaRepository.saveAndFlush(tx);
         log.info("Nhập kho thành công cho nguyên liệu {}: {} -> {}", entity.getName(), quantityBefore, quantityAfter);
 
         // Refresh entity to return latest state

@@ -29,7 +29,7 @@ spring:
       acks: all
       retries: 3
     consumer:
-      group-id: inventory-group
+      group-id: inventory-service-group
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
@@ -49,6 +49,11 @@ app:
     read-timeout-ms: 5000
   cache:
     product-ttl-seconds: 300
+  kafka:
+    topics:
+      order-events: ${KAFKA_TOPIC_ORDER_EVENTS:order-events}
+      order-timeout-events: ${KAFKA_TOPIC_ORDER_TIMEOUT_EVENTS:order-timeout-events}
+      inventory-events: ${KAFKA_TOPIC_INVENTORY_EVENTS:inventory-events}
 
 server:
   port: 8084
