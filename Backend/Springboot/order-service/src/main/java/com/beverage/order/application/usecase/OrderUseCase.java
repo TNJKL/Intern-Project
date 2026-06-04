@@ -27,6 +27,8 @@ import com.beverage.order.infrastructure.persistence.repository.VoucherUsageJpaR
 import com.beverage.order.infrastructure.persistence.entity.VoucherUsageEntity;
 import com.beverage.order.infrastructure.persistence.spec.OrderSpecifications;
 import com.beverage.order.infrastructure.security.OrderActorResolver;
+import com.beverage.order.infrastructure.client.InventoryServiceClient;
+import com.beverage.order.infrastructure.client.dto.InventoryItemRequest;
 import com.beverage.shared.jwt.JwtUserPrincipal;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
@@ -66,6 +68,7 @@ public class OrderUseCase {
     private final VoucherService voucherService;
     private final VoucherUsageJpaRepository voucherUsageRepository;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final InventoryServiceClient inventoryServiceClient;
 
     @Transactional
     public OrderDetailResponse createOrder(CreateOrderRequest request) {
@@ -95,6 +98,17 @@ public class OrderUseCase {
                 throw new BadRequestException("Số điện thoại là bắt buộc khi đặt hàng không đăng nhập");
             }
         }
+
+        // Perform synchronous stock check
+        List<InventoryItemRequest> inventoryItems = request.getItems().stream()
+                .map(item -> InventoryItemRequest.builder()
+                        .productId(item.getProductId())
+                        .variantId(item.getVariantId())
+                        .quantity((int) item.getQuantity())
+                        .toppingIds(item.getToppingIds())
+                        .build())
+                .toList();
+        inventoryServiceClient.checkStockAvailability(inventoryItems);
 
         List<OrderItemEntity> lineItems = new ArrayList<>();
         for (var line : request.getItems()) {

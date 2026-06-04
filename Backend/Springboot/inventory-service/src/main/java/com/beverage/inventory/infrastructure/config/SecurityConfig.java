@@ -34,7 +34,8 @@ public class SecurityConfig {
                                 "/inventory/v3/api-docs",
                                 "/inventory/v3/api-docs/**",
                                 "/actuator/**",
-                                "/api/v1/inventory/test/public"
+                                "/api/v1/inventory/test/public",
+                                "/api/v1/inventory/check-availability"
                         ).permitAll()
                         .requestMatchers("/api/v1/inventory/test/private").authenticated()
                         .requestMatchers("/api/v1/inventory/test/admin").hasRole("ADMIN")

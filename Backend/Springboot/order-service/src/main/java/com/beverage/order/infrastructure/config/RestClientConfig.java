@@ -23,4 +23,19 @@ public class RestClientConfig {
                 .requestFactory(factory)
                 .build();
     }
+
+    @Bean
+    public RestClient inventoryRestClient(
+            @Value("${app.inventory-service.base-url}") String baseUrl,
+            @Value("${app.inventory-service.connect-timeout-ms:5000}") int connectTimeoutMs,
+            @Value("${app.inventory-service.read-timeout-ms:5000}") int readTimeoutMs
+    ) {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(connectTimeoutMs);
+        factory.setReadTimeout(readTimeoutMs);
+        return RestClient.builder()
+                .baseUrl(baseUrl)
+                .requestFactory(factory)
+                .build();
+    }
 }

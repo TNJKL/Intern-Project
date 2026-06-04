@@ -205,6 +205,25 @@ public class InventoryUseCase {
         }
     }
 
+    public void validateStockAvailability(List<InventoryItemRequest> items) {
+        Map<UUID, BigDecimal> required = calculateRequiredIngredients(items);
+        for (Map.Entry<UUID, BigDecimal> entry : required.entrySet()) {
+            UUID ingredientId = entry.getKey();
+            BigDecimal quantityNeeded = entry.getValue();
+
+            IngredientEntity ingredient = ingredientJpaRepository.findById(ingredientId)
+                    .orElseThrow(() -> new BusinessException("Ko tim` thay' nguyen lieu co' ID: " + ingredientId));
+
+            if (!ingredient.getIsActive()) {
+                throw new BusinessException("Nguyen lieu. ngung` hoat. dong.: " + ingredient.getName());
+            }
+
+            if (ingredient.getCurrentStock().compareTo(quantityNeeded) < 0) {
+                throw new BusinessException("Khong du? nguyen lieu trong kho: " + ingredient.getName());
+            }
+        }
+    }
+
     public int calculateMaxPortions(UUID productId, UUID variantId) {
         RecipeEntity recipe = recipeJpaRepository
                 .findByProductIdAndVariantId(productId, variantId)

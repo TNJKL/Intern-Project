@@ -43,6 +43,10 @@ app:
     base-url: ${PRODUCT_SERVICE_URL:http://localhost:8082}
     connect-timeout-ms: 5000
     read-timeout-ms: 5000
+  inventory-service:
+    base-url: ${INVENTORY_SERVICE_URL:http://localhost:8084}
+    connect-timeout-ms: 5000
+    read-timeout-ms: 5000
   order-cache:
     detail-ttl-seconds: 60
   order-payment:
