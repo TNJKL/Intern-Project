@@ -47,6 +47,10 @@ app:
     base-url: ${INVENTORY_SERVICE_URL:http://localhost:8084}
     connect-timeout-ms: 5000
     read-timeout-ms: 5000
+  # SEC-01: Khóa bí mật dùng khi gọi internal endpoint của inventory-service
+  # Phải khớp với INTERNAL_SERVICE_SECRET trong inventory-service
+  internal:
+    secret: ${INTERNAL_SERVICE_SECRET:internal-beverage-secret-2024}
   order-cache:
     detail-ttl-seconds: 60
   order-payment:

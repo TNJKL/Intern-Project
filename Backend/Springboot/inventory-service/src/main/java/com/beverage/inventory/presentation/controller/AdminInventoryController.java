@@ -20,7 +20,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/admin/inventory")
@@ -84,27 +87,31 @@ public class AdminInventoryController {
         Page<InventoryTransactionEntity> page = inventoryTransactionJpaRepository
                 .findTransactionsWithFilters(ingredientId, orderId, transactionType, pageable);
 
-        Page<InventoryTransactionResponse> responsePage = page.map(tx -> {
-            String ingredientName = "Không xác định";
-            IngredientEntity ingredient = ingredientJpaRepository.findById(tx.getIngredientId()).orElse(null);
-            if (ingredient != null) {
-                ingredientName = ingredient.getName();
-            }
-            return InventoryTransactionResponse.builder()
-                    .id(tx.getId())
-                    .ingredientId(tx.getIngredientId())
-                    .ingredientName(ingredientName)
-                    .orderId(tx.getOrderId())
-                    .transactionType(tx.getTransactionType())
-                    .quantity(tx.getQuantity())
-                    .quantityBefore(tx.getQuantityBefore())
-                    .quantityAfter(tx.getQuantityAfter())
-                    .note(tx.getNote())
-                    .createdAt(tx.getCreatedAt())
-                    .build();
-        });
+        // Batch load: collect all unique ingredient IDs in this page → 1 query
+        Set<UUID> ingredientIds = page.getContent().stream()
+                .map(InventoryTransactionEntity::getIngredientId)
+                .collect(Collectors.toSet());
 
-        return ResponseEntity.ok(ApiResponse.paged(responsePage.getContent(), "Lấy lịch sử giao dịch kho thành công", responsePage));
+        Map<UUID, String> ingredientNameMap = ingredientJpaRepository.findAllById(ingredientIds)
+                .stream()
+                .collect(Collectors.toMap(IngredientEntity::getId, IngredientEntity::getName));
+
+        List<InventoryTransactionResponse> responses = page.getContent().stream()
+                .map(tx -> InventoryTransactionResponse.builder()
+                        .id(tx.getId())
+                        .ingredientId(tx.getIngredientId())
+                        .ingredientName(ingredientNameMap.getOrDefault(tx.getIngredientId(), "Không xác định"))
+                        .orderId(tx.getOrderId())
+                        .transactionType(tx.getTransactionType())
+                        .quantity(tx.getQuantity())
+                        .quantityBefore(tx.getQuantityBefore())
+                        .quantityAfter(tx.getQuantityAfter())
+                        .note(tx.getNote())
+                        .createdAt(tx.getCreatedAt())
+                        .build())
+                .toList();
+
+        return ResponseEntity.ok(ApiResponse.paged(responses, "Lấy lịch sử giao dịch kho thành công", page));
     }
 
     @GetMapping("/toppings")

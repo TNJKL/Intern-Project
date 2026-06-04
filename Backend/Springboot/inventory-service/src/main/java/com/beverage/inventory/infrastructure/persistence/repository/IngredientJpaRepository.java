@@ -16,6 +16,10 @@ import java.util.UUID;
 @Repository
 public interface IngredientJpaRepository extends JpaRepository<IngredientEntity, UUID> {
 
+    boolean existsBySku(String sku);
+
+    java.util.Optional<IngredientEntity> findBySku(String sku);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE IngredientEntity i SET i.currentStock = i.currentStock - :quantity, i.updatedAt = CURRENT_TIMESTAMP WHERE i.id = :id AND i.currentStock >= :quantity")
     int deductStock(@Param("id") UUID id, @Param("quantity") BigDecimal quantity);

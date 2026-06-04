@@ -45,16 +45,9 @@ public class IngredientUseCase {
 
     @Transactional
     public IngredientResponse createIngredient(CreateIngredientRequest request) {
-        if (ingredientJpaRepository.existsById(UUID.randomUUID())) { // Just a sanity check or SKU check
-            // We should check SKU uniqueness
+        if (ingredientJpaRepository.existsBySku(request.getSku())) {
+            throw new BusinessException("Mã SKU nguyên liệu đã tồn tại: " + request.getSku());
         }
-        
-        ingredientJpaRepository.findAll().stream()
-                .filter(i -> i.getSku().equalsIgnoreCase(request.getSku()))
-                .findAny()
-                .ifPresent(i -> {
-                    throw new BusinessException("Mã SKU nguyên liệu đã tồn tại: " + request.getSku());
-                });
 
         IngredientEntity entity = IngredientEntity.builder()
                 .id(UUID.randomUUID())
@@ -90,10 +83,9 @@ public class IngredientUseCase {
                 .orElseThrow(() -> new BusinessException("Không tìm thấy nguyên liệu có ID: " + id));
 
         if (request.getSku() != null && !request.getSku().equalsIgnoreCase(entity.getSku())) {
-            ingredientJpaRepository.findAll().stream()
-                    .filter(i -> !i.getId().equals(id) && i.getSku().equalsIgnoreCase(request.getSku()))
-                    .findAny()
-                    .ifPresent(i -> {
+            ingredientJpaRepository.findBySku(request.getSku())
+                    .filter(existing -> !existing.getId().equals(id))
+                    .ifPresent(existing -> {
                         throw new BusinessException("Mã SKU nguyên liệu đã tồn tại trên một nguyên liệu khác: " + request.getSku());
                     });
             entity.setSku(request.getSku());

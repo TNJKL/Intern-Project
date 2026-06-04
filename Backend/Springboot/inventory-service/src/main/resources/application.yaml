@@ -34,7 +34,7 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
-        spring.json.trusted.packages: "*"
+        spring.json.trusted.packages: "com.beverage.inventory.infrastructure.event.dto,com.beverage.order.infrastructure.event.dto"
   jackson:
     serialization:
       write-dates-as-timestamps: false
@@ -54,6 +54,8 @@ app:
       order-events: ${KAFKA_TOPIC_ORDER_EVENTS:order-events}
       order-timeout-events: ${KAFKA_TOPIC_ORDER_TIMEOUT_EVENTS:order-timeout-events}
       inventory-events: ${KAFKA_TOPIC_INVENTORY_EVENTS:inventory-events}
+  internal:
+    secret: ${INTERNAL_SERVICE_SECRET:internal-beverage-secret-2024}
 
 server:
   port: 8084
@@ -82,3 +84,7 @@ springdoc:
     enabled: true
     tags-sorter: alpha
     operations-sorter: alpha
+
+# SEC-01: Khóa bí mật nội bộ để xác thực các request service-to-service
+# order-service phải gửi header X-Internal-Secret: <giá trị này> khi gọi /check-availability
+# QUAN TRỌNG: Override bằng env var INTERNAL_SERVICE_SECRET trong production!
