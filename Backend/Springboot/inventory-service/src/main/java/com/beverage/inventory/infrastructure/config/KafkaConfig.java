@@ -123,7 +123,8 @@ public class KafkaConfig {
 
     @Bean
     public CommonErrorHandler errorHandler(KafkaTemplate<String, Object> kafkaTemplate) {
-        DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(kafkaTemplate);
+        DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(kafkaTemplate,
+                (record, ex) -> new org.apache.kafka.common.TopicPartition(record.topic() + ".DLQ", -1));
         return new DefaultErrorHandler(recoverer, new FixedBackOff(1000L, 3L));
     }
 }

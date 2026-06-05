@@ -88,3 +88,9 @@ springdoc:
 # SEC-01: Khóa bí mật nội bộ để xác thực các request service-to-service
 # order-service phải gửi header X-Internal-Secret: <giá trị này> khi gọi /check-availability
 # QUAN TRỌNG: Override bằng env var INTERNAL_SERVICE_SECRET trong production!
+
+# logging:
+#   level:
+#     org.springframework.kafka: DEBUG
+
+# khi nào cần Debug thì xóa comment cái này

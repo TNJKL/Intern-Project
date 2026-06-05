@@ -23,6 +23,9 @@ import java.util.UUID;
 @Slf4j
 public class KafkaConsumerService {
 
+    private static final java.util.Map<java.util.UUID, java.lang.Integer> ATTEMPT_COUNTERS = 
+            new java.util.concurrent.ConcurrentHashMap<>();
+
     private final InventoryUseCase inventoryUseCase;
     private final ProcessedEventJpaRepository processedEventJpaRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
@@ -74,6 +77,24 @@ public class KafkaConsumerService {
     private void processEvent(OrderEventWrapper wrapper, String eventId) {
         if (wrapper instanceof OrderCreatedEvent createdEvent) {
             log.info("Processing ORDER_CREATED for orderId={}", createdEvent.getOrderId());
+             
+              // ==========================================
+    // MÃ TEST DLQ TẠM THỜI (Xóa sau khi test xong) // test cách DLQ hoạt động , về sau xong dự án thì xóa sau hihi , giờ chưa cần ^_^
+    if ("TRIGGER_DLQ".equals(createdEvent.getUserName())) {
+        throw new RuntimeException("Simulated Database Connection Failure for DLQ testing!");
+    }
+    if ("TRIGGER_RECOVERY".equals(createdEvent.getUserName())) {
+        java.util.UUID orderId = createdEvent.getOrderId();
+        int attempt = ATTEMPT_COUNTERS.merge(orderId, 1, java.lang.Integer::sum);
+        log.info("Test Recovery: orderId={}, attempt={}", orderId, attempt);
+        if (attempt < 3) {
+            throw new RuntimeException("Simulated Transient DB Failure (Attempt " + attempt + ")");
+        } else {
+            log.info("Simulated DB recovered! Attempt {} succeeded. Resetting counter.", attempt);
+            ATTEMPT_COUNTERS.remove(orderId);
+        }
+    }
+    // ==========================================
             
             // Map OrderItemEventDto to InventoryItemRequest
             List<InventoryItemRequest> items = createdEvent.getItems().stream()
