@@ -23,4 +23,24 @@ public class RestClientConfig {
                 .requestFactory(factory)
                 .build();
     }
+
+    @Bean
+    public RestClient inventoryRestClient(
+            @Value("${app.inventory-service.base-url}") String baseUrl,
+            @Value("${app.inventory-service.connect-timeout-ms:5000}") int connectTimeoutMs,
+            @Value("${app.inventory-service.read-timeout-ms:5000}") int readTimeoutMs,
+            // SEC-01: Secret dùng để xác thực internal request đến /check-availability
+            @Value("${app.internal.secret:internal-beverage-secret-2024}") String internalSecret
+    ) {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(connectTimeoutMs);
+        factory.setReadTimeout(readTimeoutMs);
+        return RestClient.builder()
+                .baseUrl(baseUrl)
+                .requestFactory(factory)
+                // Header này được gửi tự động trong mọi request đến inventory-service
+                .defaultHeader("X-Internal-Secret", internalSecret)
+                .build();
+    }
 }
+

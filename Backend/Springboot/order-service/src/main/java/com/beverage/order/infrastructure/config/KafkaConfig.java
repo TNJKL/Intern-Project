@@ -3,6 +3,7 @@ package com.beverage.order.infrastructure.config;
 import com.beverage.order.application.event.OrderEventWrapper;
 import com.beverage.order.application.event.OrderTimeoutEvent;
 import com.beverage.order.infrastructure.event.OrderTopics;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -64,10 +65,19 @@ public class KafkaConfig {
     }
 
     @Bean
+    public NewTopic inventoryEventsTopic() {
+        return TopicBuilder.name(OrderTopics.INVENTORY_EVENTS)
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
     public ObjectMapper kafkaObjectMapper() {
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
         mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         return mapper;
     }
 
@@ -134,5 +144,41 @@ public class KafkaConfig {
             log.error("Failed to deserialize message at offset {} partition {} topic {}: {}",
                     record.offset(), record.partition(), record.topic(), exception.getMessage());
         }, new FixedBackOff(1000L, 2L));
+    }
+
+    @Bean
+    public ConsumerFactory<String, com.beverage.order.application.event.OrderInventoryFailedEvent> inventoryFailedConsumerFactory() {
+        Map<String, Object> props = new HashMap<>();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "order-service-inventory-handler");
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+        props.put(ErrorHandlingDeserializer.KEY_DESERIALIZER_CLASS, StringDeserializer.class);
+        props.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class);
+        props.put(JsonDeserializer.TRUSTED_PACKAGES, "com.beverage.order.application.event");
+        props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, com.beverage.order.application.event.OrderInventoryFailedEvent.class.getName());
+        props.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, false);
+
+        JsonDeserializer<com.beverage.order.application.event.OrderInventoryFailedEvent> jsonDeserializer =
+                new JsonDeserializer<>(com.beverage.order.application.event.OrderInventoryFailedEvent.class, kafkaObjectMapper(), false);
+        ErrorHandlingDeserializer<com.beverage.order.application.event.OrderInventoryFailedEvent> errorHandlingDeserializer =
+                new ErrorHandlingDeserializer<>(jsonDeserializer);
+
+        return new DefaultKafkaConsumerFactory<>(
+                props,
+                new StringDeserializer(),
+                errorHandlingDeserializer
+        );
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, com.beverage.order.application.event.OrderInventoryFailedEvent> inventoryFailedListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, com.beverage.order.application.event.OrderInventoryFailedEvent> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(inventoryFailedConsumerFactory());
+        factory.setConcurrency(3);
+        factory.setCommonErrorHandler(errorHandler());
+        return factory;
     }
 }

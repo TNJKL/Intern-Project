@@ -4,31 +4,38 @@ server:
 spring:
   application:
     name: api-gateway
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+  internal:
+    secret: ${INTERNAL_SERVICE_SECRET:internal-beverage-secret-2024}    
   cloud:
     gateway:
       discovery:
         locator:
           enabled: true
           lower-case-service-id: true
+      # Default filters áp dụng cho tất cả routes
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
       routes:
-        # Auth: users CRUD
-        # SWITCH (docker-compose env):
-        # - auth local  -> AUTH_SERVICE_URI=http://host.docker.internal:8081
-        # - auth docker -> AUTH_SERVICE_URI=http://auth-service:8081
+        # ============================================================
+        # Auth Service
+        # ============================================================
         - id: auth-service
           uri: ${AUTH_SERVICE_URI:http://auth-service:8081}
           predicates:
             - Path=/api/v1/users/**
-        # Auth: login / refresh / logout / register
         - id: auth-service-auth
           uri: ${AUTH_SERVICE_URI:http://auth-service:8081}
           predicates:
             - Path=/api/v1/auth/**
 
-        # Product catalog
-        # SWITCH:
-        # - product local  -> PRODUCT_SERVICE_URI=http://host.docker.internal:8082
-        # - product docker -> PRODUCT_SERVICE_URI=http://product-service:8082
+        # ============================================================
+        # Product Service
+        # ============================================================
         - id: product-service-categories
           uri: ${PRODUCT_SERVICE_URI:http://product-service:8082}
           predicates:
@@ -41,16 +48,14 @@ spring:
           uri: ${PRODUCT_SERVICE_URI:http://product-service:8082}
           predicates:
             - Path=/api/v1/toppings,/api/v1/toppings/**
-        # Upload ảnh (shared-storage qua product-service)
         - id: product-service-storage
           uri: ${PRODUCT_SERVICE_URI:http://product-service:8082}
           predicates:
             - Path=/api/v1/storage,/api/v1/storage/**
 
-        # Order service
-        # SWITCH:
-        # - order local  -> ORDER_SERVICE_URI=http://host.docker.internal:8083
-        # - order docker -> ORDER_SERVICE_URI=http://order-service:8083
+        # ============================================================
+        # Order Service
+        # ============================================================
         - id: order-service-orders
           uri: ${ORDER_SERVICE_URI:http://order-service:8083}
           predicates:
@@ -59,8 +64,6 @@ spring:
           uri: ${ORDER_SERVICE_URI:http://order-service:8083}
           predicates:
             - Path=/api/v1/admin/orders,/api/v1/admin/orders/**
-
-        # Voucher service (order-service)
         - id: order-service-vouchers-public
           uri: ${ORDER_SERVICE_URI:http://order-service:8083}
           predicates:
@@ -70,14 +73,35 @@ spring:
           predicates:
             - Path=/api/v1/admin/vouchers,/api/v1/admin/vouchers/**
 
-        # Inventory service
-        # SWITCH:
-        # - inventory local  -> INVENTORY_SERVICE_URI=http://host.docker.internal:8084
-        # - inventory docker -> INVENTORY_SERVICE_URI=http://inventory-service:8084
-        - id: inventory-service
+        # ============================================================
+        # Inventory Service — Public & Admin routes (exposed qua gateway)
+        # ⚠️  /api/v1/inventory/check-availability KHÔNG có ở đây
+        #     vì endpoint đó chỉ dành cho internal service-to-service call
+        #     (order-service gọi trực tiếp, không qua gateway)
+        # ============================================================
+
+        # Admin endpoints — thêm rate limiting để chống abuse
+        - id: inventory-service-admin
           uri: ${INVENTORY_SERVICE_URI:http://inventory-service:8084}
           predicates:
-            - Path=/api/v1/inventory,/api/v1/inventory/**,/api/v1/admin/ingredients,/api/v1/admin/ingredients/**,/api/v1/admin/recipes,/api/v1/admin/recipes/**,/api/v1/admin/inventory,/api/v1/admin/inventory/**
+            - Path=/api/v1/admin/ingredients,/api/v1/admin/ingredients/**,/api/v1/admin/recipes,/api/v1/admin/recipes/**,/api/v1/admin/inventory,/api/v1/admin/inventory/**
+          filters:
+            # Rate limit: 20 req/s, burst tối đa 40 — chỉ admin dùng nên rộng tay hơn
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
+                redis-rate-limiter.requestedTokens: 1
+
+# ============================================================
+# SEC-01 — Internal endpoint protection
+# /check-availability KHÔNG được route qua gateway
+# order-service gọi trực tiếp: http://inventory-service:8084/api/v1/inventory/check-availability
+# với header "X-Internal-Secret: <secret>" để inventory-service xác thực
+# ============================================================
+
+
+ 
 
 eureka:
   client:

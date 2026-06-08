@@ -16,23 +16,47 @@ import java.util.UUID;
 @Repository
 public interface IngredientJpaRepository extends JpaRepository<IngredientEntity, UUID> {
 
-    @Modifying(clearAutomatically = true)
+    boolean existsBySku(String sku);
+
+    java.util.Optional<IngredientEntity> findBySku(String sku);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE IngredientEntity i SET i.currentStock = i.currentStock - :quantity, i.updatedAt = CURRENT_TIMESTAMP WHERE i.id = :id AND i.currentStock >= :quantity")
     int deductStock(@Param("id") UUID id, @Param("quantity") BigDecimal quantity);
 
-    @Modifying(clearAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE IngredientEntity i SET i.currentStock = i.currentStock + :quantity, i.updatedAt = CURRENT_TIMESTAMP WHERE i.id = :id")
     int addStock(@Param("id") UUID id, @Param("quantity") BigDecimal quantity);
 
     @Query("SELECT i FROM IngredientEntity i WHERE " +
            "(CAST(:name AS string) IS NULL OR LOWER(i.name) LIKE LOWER(CONCAT('%', CAST(:name AS string), '%'))) AND " +
-           "(CAST(:isActive AS boolean) IS NULL OR i.isActive = :isActive)")
+           "(CAST(:isActive AS boolean) IS NULL OR i.isActive = :isActive) AND " +
+           "(:excludeToppings = false OR i.sku NOT LIKE 'TOPPING-%')")
     Page<IngredientEntity> findIngredientsWithFilters(
             @Param("name") String name,
             @Param("isActive") Boolean isActive,
+            @Param("excludeToppings") boolean excludeToppings,
             Pageable pageable);
 
     @Query("SELECT i FROM IngredientEntity i WHERE i.isActive = true AND " +
            "(:lowStock = false OR i.currentStock <= i.lowStockThreshold)")
-    List<IngredientEntity> findStock(@Param("lowStock") boolean lowStock);
+    Page<IngredientEntity> findStock(@Param("lowStock") boolean lowStock, Pageable pageable);
+
+    // -----------------------------------------------------------------------
+    // Low Stock Alert queries
+    // -----------------------------------------------------------------------
+
+    /**
+     * Lấy danh sách tất cả nguyên liệu đang ở trạng thái cảnh báo (LOW/CRITICAL/OUT_OF_STOCK).
+     * Điều kiện: currentStock <= lowStockThreshold (bao gồm cả = 0 và các ngưỡng thấp hơn).
+     * Bao gồm cả nguyên liệu isActive=false (đã hết hàng) để admin biết mà nhập kho.
+     */
+    @Query("SELECT i FROM IngredientEntity i WHERE i.currentStock <= i.lowStockThreshold ORDER BY i.currentStock ASC")
+    List<IngredientEntity> findAllLowStockIngredients();
+
+    /**
+     * Đếm số nguyên liệu đang ở trạng thái cảnh báo — dùng cho badge số đỏ ở navbar admin.
+     */
+    @Query("SELECT COUNT(i) FROM IngredientEntity i WHERE i.currentStock <= i.lowStockThreshold")
+    long countLowStockIngredients();
 }

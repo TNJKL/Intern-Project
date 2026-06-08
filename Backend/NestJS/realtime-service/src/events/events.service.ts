@@ -9,6 +9,7 @@ import {
   OrderTimeoutEventPayload,
   TierUpdateEventPayload,
 } from './dto/order-events.dto';
+import { LowStockAlertPayload } from './dto/inventory-events.dto';
 
 @Injectable()
 export class EventsService {
@@ -46,6 +47,126 @@ export class EventsService {
         break;
       default:
         this.logger.warn(`Unknown event type: ${eventType}`);
+    }
+  }
+
+  /**
+   * Xử lý event từ inventory-events topic.
+   * Hiện tại chỉ handle LOW_STOCK_ALERT từ LowStockAlertService.
+   */
+  async processInventoryEvent(eventType: string, payload: any) {
+    switch (eventType) {
+      case 'LOW_STOCK_ALERT':
+        await this.handleLowStockAlert(payload as LowStockAlertPayload);
+        break;
+      default:
+        this.logger.warn(`Unknown inventory event type: ${eventType}`);
+    }
+  }
+
+  /**
+   * Xử lý LOW_STOCK_ALERT event từ inventory-service.
+   *
+   * Logic theo mức độ:
+   *  - LOW          → chỉ IN_APP notification cho admin (không email)
+   *  - CRITICAL     → IN_APP + Email admin một lần
+   *  - OUT_OF_STOCK → IN_APP + Email admin khẩn cấp
+   *
+   * Admin email được lấy từ ADMIN_ALERT_EMAIL env (hoặc ADMIN_EMAIL fallback).
+   * Không có userId — thông báo gửi theo email admin.
+   */
+  private async handleLowStockAlert(payload: LowStockAlertPayload) {
+    const adminEmail = process.env.ADMIN_ALERT_EMAIL || process.env.ADMIN_EMAIL || process.env.MAIL_USER;
+    if (!process.env.ADMIN_ALERT_EMAIL && !process.env.ADMIN_EMAIL && process.env.MAIL_USER) {
+      this.logger.warn(`ADMIN_ALERT_EMAIL not set, falling back to MAIL_USER: ${adminEmail}`);
+    }
+    const { alertLevel, ingredientName, currentStock, unit, lowStockThreshold, criticalAbsolute, criticalPct } = payload;
+
+    this.logger.log(`Handling LOW_STOCK_ALERT: ingredient=${ingredientName}, level=${alertLevel}, stock=${currentStock}${unit}`);
+
+    // Tạo nội dung IN_APP notification theo mức độ
+    let title: string;
+    let body: string;
+
+    if (alertLevel === 'OUT_OF_STOCK') {
+      title = `🔴 [Kho] ${ingredientName} đã HẾT HÀNG`;
+      body = `Nguyên liệu ${ingredientName} đã hết hoàn toàn (0 ${unit}). Sản phẩm liên quan đã tự động bị ẩn. Nhập kho ngay!`;
+    } else if (alertLevel === 'CRITICAL') {
+      title = `⚠️ [Kho] ${ingredientName} gần hết!`;
+      body = `Nguyên liệu ${ingredientName} còn ${currentStock} ${unit} — dưới ngưỡng nghiêm trọng (${criticalAbsolute} ${unit}). Vui lòng nhập kho ngay!`;
+    } else {
+      // LOW
+      title = `[Kho] ${ingredientName} sắp hết hàng`;
+      body = `Nguyên liệu ${ingredientName} còn ${currentStock} ${unit} — sắp đến ngưỡng cảnh báo (${lowStockThreshold} ${unit}).`;
+    }
+
+    // Luôn tạo IN_APP notification
+    await this.notificationService.createNotification({
+      userId: null,          // Không có userId — đây là alert nội bộ cho admin
+      userEmail: adminEmail, // Admin nhận qua email
+      channel: 'IN_APP',
+      title,
+      body,
+      referenceType: 'INGREDIENT',
+      referenceId: payload.ingredientId,
+      data: {
+        ingredientId: payload.ingredientId,
+        ingredientName,
+        currentStock,
+        unit,
+        lowStockThreshold,
+        criticalAbsolute,
+        criticalPct,
+        alertLevel,
+        occurredAt: payload.occurredAt,
+      },
+    });
+
+    this.logger.log(`IN_APP notification created for LOW_STOCK_ALERT [${alertLevel}]: ${ingredientName}`);
+
+    // Gửi email cho CRITICAL và OUT_OF_STOCK (không gửi cho LOW)
+    if ((alertLevel === 'CRITICAL' || alertLevel === 'OUT_OF_STOCK') && adminEmail) {
+      const emailNotification = await this.notificationService.createNotification({
+        userId: null,
+        userEmail: adminEmail,
+        channel: 'EMAIL',
+        title,
+        body,
+        referenceType: 'INGREDIENT',
+        referenceId: payload.ingredientId,
+        data: {
+          ingredientId: payload.ingredientId,
+          ingredientName,
+          currentStock,
+          unit,
+          lowStockThreshold,
+          criticalAbsolute,
+          criticalPct,
+          alertLevel,
+        },
+      });
+
+      try {
+        await this.emailService.sendLowStockAlert(adminEmail, {
+          ingredientName,
+          currentStock,
+          unit,
+          lowStockThreshold,
+          criticalAbsolute,
+          criticalPct,
+          alertLevel,
+        });
+        await this.notificationService.updateNotificationStatusById(emailNotification.id, 'SENT');
+        this.logger.log(`Email alert sent to admin (${adminEmail}) for ingredient: ${ingredientName} [${alertLevel}]`);
+      } catch (error) {
+        this.logger.error(`Failed to send low stock alert email for ${ingredientName}:`, error);
+        await this.notificationService.updateNotificationStatusById(emailNotification.id, 'FAILED');
+      }
+    } else if ((alertLevel === 'CRITICAL' || alertLevel === 'OUT_OF_STOCK') && !adminEmail) {
+      this.logger.warn(
+        `ADMIN_ALERT_EMAIL not configured — skipping email for LOW_STOCK_ALERT [${alertLevel}] ingredient: ${ingredientName}. ` +
+        `Set ADMIN_ALERT_EMAIL or ADMIN_EMAIL env variable to enable email alerts.`
+      );
     }
   }
 

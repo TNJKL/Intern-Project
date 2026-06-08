@@ -89,3 +89,26 @@ CREATE INDEX idx_recipe_ingredients_ingredient ON recipe_ingredients(ingredient_
 
 CREATE INDEX idx_inv_transactions_ingredient ON inventory_transactions(ingredient_id, created_at DESC);
 CREATE INDEX idx_inv_transactions_order ON inventory_transactions(order_id) WHERE order_id IS NOT NULL;
+
+-- ============================================================
+-- MIGRATION v2: Low Stock Alert (2026-06-05)
+-- Thêm 3 cột cho feature cảnh báo ngưỡng tồn kho tự động.
+-- Hibernate ddl-auto:update tự thêm khi dev/staging khởi động.
+-- Production: chạy script 10-low-stock-alert.sql trong thư mục migrations/
+-- ============================================================
+-- ALTER TABLE ingredients
+--     ADD COLUMN IF NOT EXISTS low_stock_alert_sent_at        TIMESTAMPTZ       NULL,
+--     ADD COLUMN IF NOT EXISTS critical_stock_threshold_pct   INTEGER NOT NULL  DEFAULT 5,
+--     ADD COLUMN IF NOT EXISTS last_alert_level               VARCHAR(20)       NULL;
+--
+-- COMMENT ON COLUMN ingredients.low_stock_alert_sent_at IS
+--     'NULL = chưa gửi hoặc đã restock. Có giá trị = đã gửi alert, không gửi lại đến khi nhập kho.';
+-- COMMENT ON COLUMN ingredients.critical_stock_threshold_pct IS
+--     '% so với low_stock_threshold. VD: 5 → CRITICAL khi currentStock <= lowThreshold × 5%.';
+-- COMMENT ON COLUMN ingredients.last_alert_level IS
+--     'Mức độ cảnh báo của lần gửi alert gần nhất (NULL/LOW/CRITICAL/OUT_OF_STOCK).';
+--
+-- CREATE INDEX IF NOT EXISTS idx_ingredients_alert
+--     ON ingredients(current_stock, low_stock_threshold)
+--     WHERE current_stock <= low_stock_threshold;
+

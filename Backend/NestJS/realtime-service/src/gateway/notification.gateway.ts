@@ -56,6 +56,9 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
       } else if (notification.data?.orderCode) {
         // Guest → emit vào room order:{orderCode}
         this.emitToOrder(notification.data.orderCode, notification);
+      } else if (notification.referenceType === 'INGREDIENT') {
+        // Admin alert (low stock) → emit tới tất cả admin lắng nghe event 'admin:alerts'
+        this.emitToAdminAlerts(notification);
       }
     });
     this.logger.log('NotificationGateway initialized with emitter handler');
@@ -245,5 +248,17 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
       data: notification,
       timestamp: new Date().toISOString(),
     });
+  }
+
+  /** Emit notification tới tất cả client đang nghe admin:alerts. */
+  emitToAdminAlerts(notification: any) {
+    this.server.emit('admin:alerts', {
+      id: notification.id,
+      title: notification.title,
+      body: notification.body,
+      data: notification.data,
+      timestamp: notification.createdAt || new Date().toISOString(),
+    });
+    this.logger.debug(`Emitted notification to admin:alerts: ${notification.title}`);
   }
 }

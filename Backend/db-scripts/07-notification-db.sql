@@ -165,7 +165,49 @@ INSERT INTO notification_templates (code, name, channel, title, body) VALUES
      'Lên hạng thành viên (Email)',
      'EMAIL',
      'Chúc mừng bạn lên hạng {{tier}}!',
-     'Chúc mừng bạn đã đạt hạng {{tier}} với tổng chi tiêu {{total_spent}}đ.')
+     'Chúc mừng bạn đã đạt hạng {{tier}} với tổng chi tiêu {{total_spent}}đ.'),
+
+    -- -------------------------------------------------------
+    -- LOW_STOCK_ALERT: Gửi cho admin khi nguyên liệu chạm ngưỡng LOW
+    -- Chỉ IN_APP — không gửi email
+    -- -------------------------------------------------------
+    ('LOW_STOCK_ALERT',
+     'Cảnh báo tồn kho thấp (In-App)',
+     'IN_APP',
+     '[Kho] {{ingredient_name}} sắp hết hàng',
+     'Nguyên liệu {{ingredient_name}} còn {{current_stock}} {{unit}} — sắp đến ngưỡng cảnh báo ({{low_stock_threshold}} {{unit}}).'),
+
+    -- -------------------------------------------------------
+    -- LOW_STOCK_ALERT_CRITICAL: Gửi khi nguyên liệu chạm ngưỡng CRITICAL
+    -- IN_APP + Email admin một lần duy nhất
+    -- -------------------------------------------------------
+    ('LOW_STOCK_ALERT_CRITICAL',
+     'Cảnh báo tồn kho nghiêm trọng (In-App)',
+     'IN_APP',
+     '⚠️ [Kho] {{ingredient_name}} gần hết!',
+     'Nguyên liệu {{ingredient_name}} còn {{current_stock}} {{unit}} — dưới ngưỡng nghiêm trọng ({{critical_absolute}} {{unit}}). Vui lòng nhập kho ngay!'),
+
+    ('LOW_STOCK_ALERT_CRITICAL_EMAIL',
+     'Cảnh báo tồn kho nghiêm trọng (Email)',
+     'EMAIL',
+     '⚠️ Cảnh báo kho: {{ingredient_name}} gần hết hàng',
+     'Nguyên liệu {{ingredient_name}} còn {{current_stock}} {{unit}} — dưới {{critical_pct}}% ngưỡng cảnh báo. Nhập kho ngay để tránh gián đoạn!'),
+
+    -- -------------------------------------------------------
+    -- LOW_STOCK_ALERT_OUT: Gửi khi nguyên liệu hết hoàn toàn (stock = 0)
+    -- IN_APP + Email admin khẩn cấp
+    -- -------------------------------------------------------
+    ('LOW_STOCK_ALERT_OUT',
+     'Hết hàng hoàn toàn (In-App)',
+     'IN_APP',
+     '🔴 [Kho] {{ingredient_name}} đã HẾT HÀNG',
+     'Nguyên liệu {{ingredient_name}} đã hết hoàn toàn (0 {{unit}}). Sản phẩm liên quan đã tự động bị ẩn. Nhập kho ngay!'),
+
+    ('LOW_STOCK_ALERT_OUT_EMAIL',
+     'Hết hàng hoàn toàn (Email)',
+     'EMAIL',
+     '🔴 KHẨN CẤP: {{ingredient_name}} đã hết hàng',
+     'Nguyên liệu {{ingredient_name}} đã hết hoàn toàn. Hệ thống đã tự động ẩn các sản phẩm liên quan. Vui lòng nhập kho ngay lập tức để tiếp tục phục vụ khách hàng!')
 
 ON CONFLICT (code) DO UPDATE
     SET name       = EXCLUDED.name,

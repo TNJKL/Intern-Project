@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: 'Inter', Arial, sans-serif; background: #fafafa; margin: 0; padding: 20px; color: #333333; }
+    .container { background: white; border-radius: 12px; padding: 35px; max-width: 600px; margin: 0 auto; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #eeeeee; }
+    .header { text-align: center; border-bottom: 2px solid #e0e0e0; padding-bottom: 20px; }
+    .header h1 { color: #1a1a1a; margin: 0; font-size: 24px; font-weight: 700; }
+    .header p { color: #666666; margin: 5px 0 0 0; font-size: 14px; }
+    
+    .alert-banner { 
+      color: white; 
+      font-size: 18px; 
+      font-weight: bold; 
+      text-align: center; 
+      padding: 18px; 
+      border-radius: 8px; 
+      margin: 25px 0; 
+    }
+    .banner-critical {
+      background: linear-gradient(135deg, #ff9900, #ff5500);
+    }
+    .banner-outofstock {
+      background: linear-gradient(135deg, #e53935, #b71c1c);
+    }
+
+    .content { padding: 10px 0; line-height: 1.6; }
+    
+    .details-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      background: #fdfdfd;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #ebebeb;
+    }
+    .details-table td {
+      padding: 12px 15px;
+      border-bottom: 1px solid #ebebeb;
+      font-size: 14px;
+    }
+    .details-table td.label {
+      font-weight: 600;
+      color: #555555;
+      width: 45%;
+    }
+    .details-table td.value {
+      color: #111111;
+      font-family: 'Courier New', Courier, monospace;
+      font-weight: bold;
+    }
+    .details-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .warning-box {
+      background: #fff8f8;
+      border-left: 4px solid #e53935;
+      padding: 15px;
+      border-radius: 4px;
+      margin: 20px 0;
+      font-size: 14px;
+      color: #c62828;
+    }
+    
+    .footer { text-align: center; color: #999999; font-size: 12px; margin-top: 30px; border-top: 1px solid #eeeeee; padding-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Beverage Shop — Quản Lý Kho</h1>
+      <p>Hệ thống cảnh báo tự động</p>
+    </div>
+    
+    <div class="content">
+      {{#if isOutOfStock}}
+        <div class="alert-banner banner-outofstock">
+          🔴 HẾT HÀNG HOÀN TOÀN: {{ingredientName}}
+        </div>
+        <p>Kính gửi Admin,</p>
+        <p>Nguyên liệu <strong>{{ingredientName}}</strong> đã <strong>HẾT HÀNG HOÀN TOÀN (0 {{unit}})</strong>.</p>
+        
+        <div class="warning-box">
+          <strong>Lưu ý quan trọng:</strong> Hệ thống đã tự động ẩn (thiết lập <code>is_available = false</code>) toàn bộ các sản phẩm và biến thể cần nguyên liệu này để tránh khách hàng đặt mua. Vui lòng nhập kho ngay lập tức để tự động kích hoạt lại sản phẩm!
+        </div>
+      {{else}}
+        <div class="alert-banner banner-critical">
+          ⚠️ CẢNH BÁO NGHIÊM TRỌNG: {{ingredientName}}
+        </div>
+        <p>Kính gửi Admin,</p>
+        <p>Tồn kho của nguyên liệu <strong>{{ingredientName}}</strong> đã giảm xuống mức nghiêm trọng, dưới ngưỡng <strong>{{criticalPct}}%</strong> của mức cảnh báo tồn kho thấp.</p>
+      {{/if}}
+
+      <table class="details-table">
+        <tr>
+          <td class="label">Nguyên liệu:</td>
+          <td class="value" style="font-family: inherit;">{{ingredientName}}</td>
+        </tr>
+        <tr>
+          <td class="label">Tồn kho hiện tại:</td>
+          <td class="value" style="color: #e53935;">{{currentStock}} {{unit}}</td>
+        </tr>
+        <tr>
+          <td class="label">Ngưỡng cảnh báo (LOW):</td>
+          <td class="value">{{lowStockThreshold}} {{unit}}</td>
+        </tr>
+        <tr>
+          <td class="label">Ngưỡng nghiêm trọng (CRITICAL):</td>
+          <td class="value">{{criticalAbsolute}} {{unit}} ({{criticalPct}}%)</td>
+        </tr>
+        <tr>
+          <td class="label">Thời điểm ghi nhận:</td>
+          <td class="value" style="font-family: inherit; font-size: 13px; font-weight: normal; color: #666;">{{timestamp}}</td>
+        </tr>
+      </table>
+
+      {{#unless isOutOfStock}}
+        <div class="warning-box" style="border-left-color: #ff9900; color: #d84315; background: #fffaf4;">
+          Vui lòng lên kế hoạch nhập thêm nguyên liệu <strong>{{ingredientName}}</strong> sớm để tránh gián đoạn phục vụ.
+        </div>
+      {{/unless}}
+
+      <p>Trân trọng,<br><strong>Beverage Shop</strong></p>
+    </div>
+    
+    <div class="footer">
+      <p>Email này được gửi tự động từ hệ thống Beverage Shop IoT & Inventory Management. Vui lòng không trả lời trực tiếp email này.</p>
+    </div>
+  </div>
+</body>
+</html>

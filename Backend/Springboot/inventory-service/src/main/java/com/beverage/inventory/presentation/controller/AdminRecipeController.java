@@ -39,9 +39,10 @@ public class AdminRecipeController {
     @GetMapping
     @Operation(summary = "Danh sách công thức pha chế")
     public ResponseEntity<ApiResponse<List<RecipeResponse>>> list(
+            @RequestParam(required = false) Boolean isActive,
             @PageableDefault(size = 20, sort = "productName") Pageable pageable
     ) {
-        Page<RecipeResponse> page = recipeUseCase.listRecipes(pageable);
+        Page<RecipeResponse> page = recipeUseCase.listRecipes(isActive, pageable);
         return ResponseEntity.ok(ApiResponse.paged(page.getContent(), "Lấy danh sách công thức thành công", page));
     }
 
@@ -67,5 +68,12 @@ public class AdminRecipeController {
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         recipeUseCase.deleteRecipe(id);
         return ResponseEntity.ok(ApiResponse.success(null, "Xóa công thức thành công"));
+    }
+
+    @PostMapping("/{id}/restore")
+    @Operation(summary = "Khôi phục công thức pha chế đã xóa mềm")
+    public ResponseEntity<ApiResponse<RecipeResponse>> restore(@PathVariable UUID id) {
+        RecipeResponse response = recipeUseCase.restoreRecipe(id);
+        return ResponseEntity.ok(ApiResponse.success(response, "Khôi phục công thức thành công"));
     }
 }

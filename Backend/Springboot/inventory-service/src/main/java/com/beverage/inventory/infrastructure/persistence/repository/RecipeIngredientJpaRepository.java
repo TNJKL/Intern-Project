@@ -10,4 +10,6 @@ import java.util.UUID;
 @Repository
 public interface RecipeIngredientJpaRepository extends JpaRepository<RecipeIngredientEntity, UUID> {
     List<RecipeIngredientEntity> findByRecipeId(UUID recipeId);
+
+    List<RecipeIngredientEntity> findByRecipeIdIn(List<UUID> recipeIds);
 }

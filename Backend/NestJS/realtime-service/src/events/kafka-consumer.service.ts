@@ -15,7 +15,7 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(KafkaConsumerService.name);
   private kafka: Kafka;
   private consumer: Consumer;
-  private readonly TOPICS = ['order-events', 'order-timeout-events'];
+  private readonly TOPICS = ['order-events', 'order-timeout-events', 'inventory-events'];
   private readonly GROUP_ID = 'notification-service-group-v3';
   private isConnected = false;
   private reconnectAttempts = 0;
@@ -185,7 +185,12 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
 
     this.logger.log(`Processing event: ${data.eventType} (${eventId}) from topic: ${topic}`);
 
-    await this.eventsService.processOrderEvent(data.eventType, data);
+    // Route theo topic để tách biệt xử lý
+    if (topic === 'inventory-events') {
+      await this.eventsService.processInventoryEvent(data.eventType, data);
+    } else {
+      await this.eventsService.processOrderEvent(data.eventType, data);
+    }
 
     await this.markEventProcessed(eventId);
     this.logger.log(`Event ${eventId} (type: ${data.eventType}) processed successfully`);

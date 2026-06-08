@@ -20,7 +20,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/admin/inventory")
@@ -34,12 +37,13 @@ public class AdminInventoryController {
     private final InventoryTransactionJpaRepository inventoryTransactionJpaRepository;
 
     @GetMapping("/stock")
-    @Operation(summary = "Xem tồn kho của tất cả nguyên liệu (Hỗ trợ lọc cảnh báo tồn kho thấp)")
+    @Operation(summary = "Xem tồn kho của tất cả nguyên liệu (Hỗ trợ lọc cảnh báo tồn kho thấp và phân trang)")
     public ResponseEntity<ApiResponse<List<IngredientResponse>>> getStock(
-            @RequestParam(name = "low_stock", defaultValue = "false") boolean lowStock
+            @RequestParam(name = "low_stock", defaultValue = "false") boolean lowStock,
+            @PageableDefault(size = 20, sort = "name") Pageable pageable
     ) {
-        List<IngredientEntity> entities = ingredientJpaRepository.findStock(lowStock);
-        List<IngredientResponse> responses = entities.stream()
+        Page<IngredientEntity> page = ingredientJpaRepository.findStock(lowStock, pageable);
+        List<IngredientResponse> responses = page.getContent().stream()
                 .map(entity -> IngredientResponse.builder()
                         .id(entity.getId())
                         .name(entity.getName())
@@ -54,7 +58,7 @@ public class AdminInventoryController {
                         .build())
                 .toList();
 
-        return ResponseEntity.ok(ApiResponse.success(responses, "Lấy danh sách tồn kho thành công"));
+        return ResponseEntity.ok(ApiResponse.paged(responses, "Lấy danh sách tồn kho thành công", page));
     }
 
     @GetMapping("/stock/{productId}/{variantId}")
@@ -83,26 +87,37 @@ public class AdminInventoryController {
         Page<InventoryTransactionEntity> page = inventoryTransactionJpaRepository
                 .findTransactionsWithFilters(ingredientId, orderId, transactionType, pageable);
 
-        Page<InventoryTransactionResponse> responsePage = page.map(tx -> {
-            String ingredientName = "Không xác định";
-            IngredientEntity ingredient = ingredientJpaRepository.findById(tx.getIngredientId()).orElse(null);
-            if (ingredient != null) {
-                ingredientName = ingredient.getName();
-            }
-            return InventoryTransactionResponse.builder()
-                    .id(tx.getId())
-                    .ingredientId(tx.getIngredientId())
-                    .ingredientName(ingredientName)
-                    .orderId(tx.getOrderId())
-                    .transactionType(tx.getTransactionType())
-                    .quantity(tx.getQuantity())
-                    .quantityBefore(tx.getQuantityBefore())
-                    .quantityAfter(tx.getQuantityAfter())
-                    .note(tx.getNote())
-                    .createdAt(tx.getCreatedAt())
-                    .build();
-        });
+        // Batch load: collect all unique ingredient IDs in this page → 1 query
+        Set<UUID> ingredientIds = page.getContent().stream()
+                .map(InventoryTransactionEntity::getIngredientId)
+                .collect(Collectors.toSet());
 
-        return ResponseEntity.ok(ApiResponse.paged(responsePage.getContent(), "Lấy lịch sử giao dịch kho thành công", responsePage));
+        Map<UUID, String> ingredientNameMap = ingredientJpaRepository.findAllById(ingredientIds)
+                .stream()
+                .collect(Collectors.toMap(IngredientEntity::getId, IngredientEntity::getName));
+
+        List<InventoryTransactionResponse> responses = page.getContent().stream()
+                .map(tx -> InventoryTransactionResponse.builder()
+                        .id(tx.getId())
+                        .ingredientId(tx.getIngredientId())
+                        .ingredientName(ingredientNameMap.getOrDefault(tx.getIngredientId(), "Không xác định"))
+                        .orderId(tx.getOrderId())
+                        .transactionType(tx.getTransactionType())
+                        .quantity(tx.getQuantity())
+                        .quantityBefore(tx.getQuantityBefore())
+                        .quantityAfter(tx.getQuantityAfter())
+                        .note(tx.getNote())
+                        .createdAt(tx.getCreatedAt())
+                        .build())
+                .toList();
+
+        return ResponseEntity.ok(ApiResponse.paged(responses, "Lấy lịch sử giao dịch kho thành công", page));
+    }
+
+    @GetMapping("/toppings")
+    @Operation(summary = "Xem danh sách tồn kho của riêng các Toppings")
+    public ResponseEntity<ApiResponse<List<IngredientResponse>>> getToppingsStock() {
+        List<IngredientResponse> responses = inventoryUseCase.getToppingsStock();
+        return ResponseEntity.ok(ApiResponse.success(responses, "Lấy danh sách tồn kho toppings thành công"));
     }
 }

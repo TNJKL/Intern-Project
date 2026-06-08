@@ -35,14 +35,14 @@ public class OrderTimeoutWorker {
     private final VoucherService voucherService;
     
     //@Scheduled(cron = "0 */1000000 * * * *") 
-    // @Scheduled(fixedDelayString = "70000") 1 phút 10s trong trường hợp test 
-    @Scheduled(cron = "0 */30 * * * *") // 30 phút 
+    //@Scheduled(fixedDelayString = "70000") //1 phút 10s trong trường hợp test 
+    //@Scheduled(cron = "0 */30 * * * *") // 30 phút 
     @SchedulerLock(
             name = "orderTimeoutJob",
             lockAtMostFor = "25m",
             lockAtLeastFor = "5m"
-            // lockAtMostFor = "60s",
-            // lockAtLeastFor = "30s"
+             //lockAtMostFor = "60s",
+             //lockAtLeastFor = "30s"
         //lockAtMostFor = "400m",
         //lockAtLeastFor = "10000m"
     )
