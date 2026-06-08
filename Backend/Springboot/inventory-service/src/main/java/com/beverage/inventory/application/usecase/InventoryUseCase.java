@@ -36,6 +36,7 @@ public class InventoryUseCase {
     private final RecipeIngredientJpaRepository recipeIngredientJpaRepository;
     private final InventoryTransactionJpaRepository inventoryTransactionJpaRepository;
     private final ProductServiceClient productServiceClient;
+    private final LowStockAlertService lowStockAlertService;
 
     private void syncToppingIngredient(UUID toppingId) {
         if (!ingredientJpaRepository.existsById(toppingId)) {
@@ -130,6 +131,9 @@ public class InventoryUseCase {
 
             inventoryTransactionJpaRepository.saveAndFlush(tx);
             log.info("Da tru` kho nguyen lieu {}: {} -> {}", ingredient.getName(), quantityBefore, quantityAfter);
+
+            // Đánh giá và gửi cảnh báo tồn kho thấp (async-safe: dùng REQUIRES_NEW transaction)
+            lowStockAlertService.evaluateAndAlert(ingredientId, quantityAfter);
         }
     }
     @Transactional(rollbackFor = Exception.class)
@@ -181,6 +185,9 @@ public class InventoryUseCase {
 
             inventoryTransactionJpaRepository.saveAndFlush(restoreTx);
             log.info("Da hoan` kho nguyen lieu {}: {} -> {}", ingredient.getName(), quantityBefore, quantityAfter);
+
+            // Reset cờ alert và tự động kích hoạt lại nguyên liệu nếu trước đó bị deactive do hết hàng
+            lowStockAlertService.resetAlertOnRestock(ingredientId);
         }
     } 
 
@@ -303,6 +310,23 @@ public class InventoryUseCase {
     }
 
     private IngredientResponse toResponse(IngredientEntity entity) {
+        int pct = entity.getCriticalStockThresholdPct() != null ? entity.getCriticalStockThresholdPct() : 5;
+        java.math.BigDecimal criticalAbsolute = entity.getLowStockThreshold()
+                .multiply(java.math.BigDecimal.valueOf(pct))
+                .divide(java.math.BigDecimal.valueOf(100), 3, java.math.RoundingMode.HALF_UP);
+
+        java.math.BigDecimal stock = entity.getCurrentStock();
+        com.beverage.inventory.domain.model.StockAlertLevel level;
+        if (stock.compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            level = com.beverage.inventory.domain.model.StockAlertLevel.OUT_OF_STOCK;
+        } else if (stock.compareTo(criticalAbsolute) <= 0) {
+            level = com.beverage.inventory.domain.model.StockAlertLevel.CRITICAL;
+        } else if (stock.compareTo(entity.getLowStockThreshold()) <= 0) {
+            level = com.beverage.inventory.domain.model.StockAlertLevel.LOW;
+        } else {
+            level = com.beverage.inventory.domain.model.StockAlertLevel.NORMAL;
+        }
+
         return IngredientResponse.builder()
                 .id(entity.getId())
                 .name(entity.getName())
@@ -314,6 +338,10 @@ public class InventoryUseCase {
                 .isActive(entity.getIsActive())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
+                .criticalStockThresholdPct(pct)
+                .criticalAbsolute(criticalAbsolute)
+                .alertLevel(level.name())
+                .lowStockAlertSentAt(entity.getLowStockAlertSentAt())
                 .build();
     }
 }

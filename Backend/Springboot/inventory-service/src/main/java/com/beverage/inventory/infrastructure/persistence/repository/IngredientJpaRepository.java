@@ -41,4 +41,22 @@ public interface IngredientJpaRepository extends JpaRepository<IngredientEntity,
     @Query("SELECT i FROM IngredientEntity i WHERE i.isActive = true AND " +
            "(:lowStock = false OR i.currentStock <= i.lowStockThreshold)")
     Page<IngredientEntity> findStock(@Param("lowStock") boolean lowStock, Pageable pageable);
+
+    // -----------------------------------------------------------------------
+    // Low Stock Alert queries
+    // -----------------------------------------------------------------------
+
+    /**
+     * Lấy danh sách tất cả nguyên liệu đang ở trạng thái cảnh báo (LOW/CRITICAL/OUT_OF_STOCK).
+     * Điều kiện: currentStock <= lowStockThreshold (bao gồm cả = 0 và các ngưỡng thấp hơn).
+     * Bao gồm cả nguyên liệu isActive=false (đã hết hàng) để admin biết mà nhập kho.
+     */
+    @Query("SELECT i FROM IngredientEntity i WHERE i.currentStock <= i.lowStockThreshold ORDER BY i.currentStock ASC")
+    List<IngredientEntity> findAllLowStockIngredients();
+
+    /**
+     * Đếm số nguyên liệu đang ở trạng thái cảnh báo — dùng cho badge số đỏ ở navbar admin.
+     */
+    @Query("SELECT COUNT(i) FROM IngredientEntity i WHERE i.currentStock <= i.lowStockThreshold")
+    long countLowStockIngredients();
 }

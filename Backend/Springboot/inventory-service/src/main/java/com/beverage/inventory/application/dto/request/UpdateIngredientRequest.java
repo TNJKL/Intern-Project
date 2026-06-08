@@ -1,6 +1,8 @@
 package com.beverage.inventory.application.dto.request;
 
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -23,4 +25,12 @@ public class UpdateIngredientRequest {
 
     @DecimalMin(value = "0.0", message = "Giá vốn không được nhỏ hơn 0")
     private BigDecimal costPerUnit;
+
+    /**
+     * Phần trăm của lowStockThreshold để xác định ngưỡng CRITICAL.
+     * Optional — nếu không truyền thì giữ nguyên giá trị hiện tại.
+     */
+    @Min(value = 1, message = "Critical threshold phải từ 1%")
+    @Max(value = 50, message = "Critical threshold không được vượt quá 50%")
+    private Integer criticalStockThresholdPct;
 }

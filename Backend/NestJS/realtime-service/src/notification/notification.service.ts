@@ -65,6 +65,22 @@ export class NotificationService {
           isRead: saved.isRead,
           createdAt: saved.createdAt,
         });
+      } else if (saved.referenceType === 'INGREDIENT') {
+        // Admin alert (low stock) → emit vào room admin:alerts
+        // Admin frontend lắng nghe room này để nhận real-time badge cập nhật
+        this.notificationEmitter.emit({
+          id: saved.id,
+          userId: null,
+          userEmail: saved.userEmail,
+          channel: saved.channel,
+          title: saved.title,
+          body: saved.body,
+          data: saved.data,
+          status: saved.status,
+          isRead: saved.isRead,
+          createdAt: saved.createdAt,
+          // Admin gateway sẽ route vào room 'admin:alerts' khi nhận referenceType = INGREDIENT
+        });
       }
     }
 
