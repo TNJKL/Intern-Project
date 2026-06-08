@@ -2,7 +2,6 @@ import React from 'react';
 import { Drawer, Descriptions, Table, Typography, Spin, Divider, Select } from 'antd';
 import { useOrder, useUpdateOrderStatus } from '../hooks/useOrders';
 import { message } from '@/lib/antd';
-//import type { OrderDetailItem } from '@/services/orderService';
 
 const { Text, Title } = Typography;
 
@@ -52,7 +51,7 @@ const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({ orderId, isOpen, 
     <Drawer
       title={<span className="font-black text-gray-800 uppercase tracking-wide">Chi tiết đơn hàng</span>}
       placement="right"
-      width={600}
+      size={600}
       onClose={onClose}
       open={isOpen}
       styles={{ body: { paddingBottom: 80 } }}
@@ -99,7 +98,28 @@ const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({ orderId, isOpen, 
           <div>
             <Title level={5} className="!mb-4 uppercase text-sm tracking-widest text-gray-500">Thông tin khách hàng</Title>
             <Descriptions column={2} size="small" bordered className="bg-white">
+              <Descriptions.Item label="Loại khách" span={2}>
+                {order.userId ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block"></span>
+                    Thành viên
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-700 text-xs font-bold border border-orange-100">
+                    <span className="w-1.5 h-1.5 rounded-full bg-orange-500 inline-block"></span>
+                    Khách vãng lai
+                  </span>
+                )}
+              </Descriptions.Item>
+              {order.userId && (
+                <Descriptions.Item label="User ID" span={2}>
+                  <Text code copyable className="text-xs">{order.userId}</Text>
+                </Descriptions.Item>
+              )}
               <Descriptions.Item label="Người đặt" span={2}><Text strong>{order.userName || order.userEmail || 'Khách vãng lai'}</Text></Descriptions.Item>
+              {order.userEmail && (
+                <Descriptions.Item label="Email" span={2}>{order.userEmail}</Descriptions.Item>
+              )}
               <Descriptions.Item label="Số điện thoại" span={2}>{order.userPhone}</Descriptions.Item>
               <Descriptions.Item label="Địa chỉ giao hàng" span={2}>{order.deliveryAddress}</Descriptions.Item>
               <Descriptions.Item label="Ghi chú" span={2}>{order.note || <Text type="secondary">Không có</Text>}</Descriptions.Item>

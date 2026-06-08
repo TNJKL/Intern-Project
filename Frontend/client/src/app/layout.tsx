@@ -15,32 +15,35 @@ export const metadata: Metadata = {
   description: "Trải nghiệm cà phê tuyệt hảo từ những hạt cà phê tuyển chọn nhất.",
 };
 
-import { getServerApi } from "@/lib/server-api";
+// Hỗ trợ safe area (iPhone notch / home indicator) cho bottom nav
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
+import { SessionProvider } from "next-auth/react";
+import { auth } from "@/auth";
 
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  let user = null;
-  try {
-    // Thử lấy thông tin user trên server
-    const response = await getServerApi('/api/v1/auth/me');
-    user = response.data || response;
-  } catch (error) {
-    // Nếu lỗi (chưa login) thì user = null, không cần redirect ở đây
-    user = null;
-  }
+  const session = await auth();
+  const user = session?.user || null;
 
   return (
     <html lang="vi">
       <body className={`${quicksand.variable} font-sans antialiased`}>
-        <ReduxProvider>
-          <CustomerLayout initialUser={user}>
-            {children}
-          </CustomerLayout>
-          <Toaster position="top-right" />
-        </ReduxProvider>
+        <SessionProvider session={session}>
+          <ReduxProvider>
+            <CustomerLayout initialUser={user}>
+              {children}
+            </CustomerLayout>
+            <Toaster position="top-right" />
+          </ReduxProvider>
+        </SessionProvider>
       </body>
     </html>
   );

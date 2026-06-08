@@ -1,7 +1,7 @@
 import React from 'react';
 import { Tag } from 'antd';
 import { ToppingModal } from './components/ToppingModal';
-import { toppingService, type Topping } from '../../services/toppingService';
+import { toppingService, type Topping } from '../../services/topping.service';
 import { BaseManagement } from '../common/BaseManagement';
 
 const ToppingList: React.FC = () => {

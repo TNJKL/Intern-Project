@@ -3,7 +3,7 @@ import { Card, Table, Button, Input, Space } from 'antd';
 import { message, modal } from '@/lib/antd';
 import { PlusOutlined, SearchOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { userService } from '../../services/userService';
+import { userService } from '../../services/user.service';
 import type { User, UserPayload } from '@/types/user';
 import type { TablePaginationConfig } from 'antd';
 import { UserModal } from './components/UserModal';

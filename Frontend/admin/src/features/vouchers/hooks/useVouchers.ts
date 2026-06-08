@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { voucherService, type VoucherFormData } from '@/services/voucherService';
+import { voucherService, type VoucherFormData } from '@/services/voucher.service';
 import { message } from '@/lib/antd';
 
 export const useVouchers = () => {
@@ -28,9 +28,10 @@ export const useVouchers = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: VoucherFormData }) => 
+    mutationFn: ({ id, data }: { id: string; data: Omit<VoucherFormData, 'code'> }) => 
       voucherService.updateVoucher(id, data),
-    onSuccess: () => {
+    onSuccess: (response) => {
+      console.log("Server responded on update success:", response);
       queryClient.invalidateQueries({ queryKey: ['vouchers'] });
       message.success('Cập nhật khuyến mãi thành công');
     },

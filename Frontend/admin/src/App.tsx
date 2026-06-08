@@ -8,11 +8,13 @@ import Toppings from './pages/Toppings';
 import Orders from './pages/Orders';
 import Chat from './pages/Chat';
 import Categories from './pages/Categories';
+import Ingredients from './pages/Ingredients';
 import Users from './pages/Users';
 import Profile from './pages/Profile';
 import Vouchers from './pages/Vouchers';
 import { AuthGuard } from './components/AuthGuard';
 import { AntdStaticHelper } from './lib/antd';
+import { SocketProvider } from './components/providers/SocketProvider';
 
 
 
@@ -47,32 +49,35 @@ function App() {
       >
         <AntApp>
           <AntdStaticHelper />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
-              <Route
-                path="/admin/*"
-                element={
-                  <AuthGuard>
-                    <AdminLayout>
-                      <Routes>
-                        <Route path="dashboard" element={<Dashboard />} />
-                        <Route path="products" element={<Products />} />
-                        <Route path="toppings" element={<Toppings />} />
-                        <Route path="categories" element={<Categories />} />
-                        <Route path="users" element={<Users />} />
-                        <Route path="orders" element={<Orders />} />
-                        <Route path="chat" element={<Chat />} />
-                        <Route path="profile" element={<Profile />} />
-                        <Route path="vouchers" element={<Vouchers />} />
-                        <Route path="*" element={<Navigate to="dashboard" replace />} />
-                      </Routes>
-                    </AdminLayout>
-                  </AuthGuard>
-                }
-              />
-            </Routes>
-          </BrowserRouter>
+          <SocketProvider>
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
+                <Route
+                  path="/admin/*"
+                  element={
+                    <AuthGuard>
+                      <AdminLayout>
+                        <Routes>
+                          <Route path="dashboard" element={<Dashboard />} />
+                          <Route path="products" element={<Products />} />
+                          <Route path="toppings" element={<Toppings />} />
+                          <Route path="categories" element={<Categories />} />
+                          <Route path="ingredients" element={<Ingredients />} />
+                          <Route path="users" element={<Users />} />
+                          <Route path="orders" element={<Orders />} />
+                          <Route path="chat" element={<Chat />} />
+                          <Route path="profile" element={<Profile />} />
+                          <Route path="vouchers" element={<Vouchers />} />
+                          <Route path="*" element={<Navigate to="dashboard" replace />} />
+                        </Routes>
+                      </AdminLayout>
+                    </AuthGuard>
+                  }
+                />
+              </Routes>
+            </BrowserRouter>
+          </SocketProvider>
         </AntApp>
       </ConfigProvider>
     </QueryClientProvider>

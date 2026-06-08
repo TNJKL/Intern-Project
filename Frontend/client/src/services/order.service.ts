@@ -8,6 +8,8 @@ export interface OrderItemRequest {
 }
 
 export interface CreateOrderRequest {
+  userName?: string;
+  userEmail?: string;
   userPhone: string;
   deliveryAddress: string;
   paymentMethod: string;
@@ -70,6 +72,10 @@ export const orderService = {
   },
   cancelOrder: async (id: string) => {
     const response = await apiClient.post(`/orders/${id}/cancel`);
+    return response.data;
+  },
+  trackOrder: async (orderCode: string, userPhone?: string): Promise<OrderDetailResponse> => {
+    const response = await apiClient.post(`/orders/track?code=${encodeURIComponent(orderCode)}&phone=${encodeURIComponent(userPhone || '')}`);
     return response.data;
   },
 };

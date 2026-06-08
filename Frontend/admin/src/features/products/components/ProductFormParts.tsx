@@ -49,7 +49,7 @@ export const VariantSection: React.FC = () => (
       </div>
       <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Danh sách Size & Giá ban đầu</h4>
     </div>
-    <Form.List name="variants" initialValue={[{ sizeLabel: 'M', price: 0 }]}>
+    <Form.List name="variants" initialValue={[]}>
       {(fields, { add, remove }) => (
         <Row gutter={[16, 16]}>
           {fields.map(({ key, name, ...restField }) => (
