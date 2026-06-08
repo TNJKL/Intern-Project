@@ -1,24 +1,64 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { User, Mail, Phone, Calendar, MapPin, Camera, Sparkles, Lock, Edit3 } from "lucide-react";
 import Image from "next/image";
 import EditProfileModal from "./EditProfileModal";
 import ChangePasswordModal from "./ChangePasswordModal";
 import type { User as UserType } from "@/types/user";
+import { apiClient } from "@/lib/api";
 
 interface ProfileClientProps {
-  user: UserType;
+  initialUser: UserType | null;
+  isServerError?: boolean;
 }
 
-export default function ProfileClient({ user }: ProfileClientProps) {
+export default function ProfileClient({ initialUser, isServerError }: ProfileClientProps) {
+  const [user, setUser] = useState<UserType | null>(initialUser);
+  const [isLoading, setIsLoading] = useState(isServerError && !initialUser);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
+  useEffect(() => {
+    if (isServerError && !user) {
+      const fetchProfile = async () => {
+        setIsLoading(true);
+        try {
+          // Gửi request lấy thông tin me bằng apiClient ở client.
+          // Nếu access token hết hạn, Axios interceptor sẽ tự refresh.
+          const res = await apiClient.get("/auth/me");
+          if (res.data?.success && res.data?.data) {
+            setUser(res.data.data);
+          } else {
+            // Lỗi hoặc token không hợp lệ -> chuyển hướng đăng nhập
+            window.location.href = "/login?logout=true";
+          }
+        } catch (error) {
+          console.error("Lỗi lấy thông tin client-side:", error);
+          window.location.href = "/login?logout=true";
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchProfile();
+    }
+  }, [isServerError, user]);
+
+  if (isLoading || !user) {
+    return (
+      <div className="min-h-screen bg-[#fdfaf5] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-amber-800/20 border-t-amber-800 rounded-full animate-spin" />
+          <span className="text-sm font-bold text-amber-900/60 uppercase tracking-widest">Đang tải hồ sơ...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#fdfaf5] pt-24 sm:pt-28 md:pt-32 pb-16 px-4 sm:px-6 font-sans">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-3xl mx-auto"> {/* ✅ Tối ưu lại từ max-w-5xl xuống max-w-3xl để form 1 cột trên iPad không bị bè ngang quá rộng */}
 
         {/* Tiêu đề trang ẩn gọn gàng */}
         <div className="mb-6 flex items-center gap-2 text-amber-900/40 text-[11px] font-black uppercase tracking-widest">
@@ -27,13 +67,15 @@ export default function ProfileClient({ user }: ProfileClientProps) {
           <span className="text-amber-900">Hồ sơ cá nhân</span>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        {/* ✅ SỬA TẠI ĐÂY: Thay đổi từ `lg:grid-cols-3` thành `xl:grid-cols-3` và điều chỉnh flex/grid dọc */}
+        <div className="flex flex-col xl:grid xl:grid-cols-3 gap-8 items-stretch xl:items-start">
 
           {/* CỘT TRÁI: THẺ TÓM TẮT & HÀNH ĐỘNG */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-[32px] p-8 shadow-sm border border-amber-100/40 flex flex-col items-center text-center sticky top-28"
+            // ✅ SỬA TẠI ĐÂY: Bỏ `sticky` khi ở dạng 1 cột trên iPad, chỉ bật lại khi lên Desktop thực sự (xl:)
+            className="bg-white rounded-[32px] p-8 shadow-sm border border-amber-100/40 flex flex-col items-center text-center xl:sticky xl:top-28"
           >
             {/* Khung Avatar Brand */}
             <div className="relative group mb-5">
@@ -70,19 +112,20 @@ export default function ProfileClient({ user }: ProfileClientProps) {
             <div className="w-full border-t border-gray-100 my-2" />
 
             {/* Nhóm nút bấm hành động */}
-            <div className="flex flex-col gap-3 w-full mt-4">
+            {/* ✅ SỬA TẠI ĐÂY: Trên iPad, hai nút bấm "Sửa" và "Đổi mật khẩu" sẽ dàn hàng ngang (flex-row) cho đẹp thay vì xếp dọc nuốt hết diện tích */}
+            <div className="flex flex-col sm:flex-row xl:flex-col gap-3 w-full mt-4">
               <button
                 onClick={() => setIsEditModalOpen(true)}
-                className="w-full py-3.5 px-6 rounded-2xl bg-white border border-gray-200 text-gray-700 font-bold text-sm hover:bg-gray-50 hover:border-gray-300 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                className="flex-1 py-3.5 px-6 rounded-2xl bg-white border border-gray-200 text-gray-700 font-bold text-sm hover:bg-gray-50 hover:border-gray-300 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
               >
                 <Edit3 size={16} className="text-gray-400" />
                 Chỉnh sửa hồ sơ
               </button>
               <button
                 onClick={() => setIsPasswordModalOpen(true)}
-                className="w-full py-3.5 px-6 rounded-2xl bg-[#4d362b] text-white font-bold text-sm shadow-md shadow-[#4d362b]/10 hover:bg-[#3c2a21] transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                className="flex-1 py-3.5 px-6 rounded-2xl bg-white border border-amber-200/60 text-amber-900 font-bold text-sm hover:bg-amber-50/40 transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-sm"
               >
-                <Lock size={16} className="opacity-80" />
+                <Lock size={16} className="text-amber-800/60" />
                 Đổi mật khẩu
               </button>
             </div>
@@ -93,7 +136,8 @@ export default function ProfileClient({ user }: ProfileClientProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="lg:col-span-2 bg-white rounded-[32px] p-8 md:p-10 shadow-sm border border-amber-100/40"
+            // ✅ SỬA TẠI ĐÂY: Đổi `lg:col-span-2` thành `xl:col-span-2`
+            className="xl:col-span-2 bg-white rounded-[32px] p-8 md:p-10 shadow-sm border border-amber-100/40"
           >
             <div className="flex items-center gap-3 mb-8">
               <div className="w-1.5 h-5 bg-amber-800 rounded-full" />
@@ -130,7 +174,6 @@ export default function ProfileClient({ user }: ProfileClientProps) {
   );
 }
 
-// Sub-component hiển thị từng hàng thông tin được thiết kế mượt mà hơn
 function InfoRow({ icon, label, value }: { icon: React.ReactNode, label: string, value: string }) {
   return (
     <div className="flex items-center gap-4 p-3 rounded-2xl hover:bg-amber-50/30 transition-colors duration-200 group">

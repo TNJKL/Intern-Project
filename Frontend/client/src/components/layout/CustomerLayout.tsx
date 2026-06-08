@@ -10,6 +10,7 @@ import { useCartStore } from "@/store/zustand/useCartStore";
 import { useAppDispatch } from "@/store/redux/hooks";
 import { setCredentials, clearCredentials } from "@/store/redux/authSlice";
 import toast from "react-hot-toast";
+import { useSession, signOut } from "next-auth/react";
 import { SocketProvider } from "@/components/providers/SocketProvider";
 
 import { User } from "@/types/user";
@@ -24,16 +25,21 @@ export function CustomerLayout({ children, initialUser }: CustomerLayoutProps) {
   const { setUser, clearUser } = useAuthStore();
   const clearCart = useCartStore((s) => s.clearCart);
   const dispatch = useAppDispatch();
+  const { data: session, status } = useSession();
 
   const isAuthPage = pathname === "/login" || pathname === "/register";
 
-  // Đồng bộ dữ liệu từ Server xuống Client ngay khi có thể
+  // Đồng bộ dữ liệu NextAuth session xuống Redux và Zustand store
   useEffect(() => {
-    if (initialUser) {
-      dispatch(setCredentials({ user: initialUser, accessToken: "" }));
-      setUser(initialUser);
+    if (status === "authenticated" && session) {
+      const customUser = session.user as any;
+      dispatch(setCredentials({ user: customUser, accessToken: session.accessToken }));
+      setUser(customUser);
+    } else if (status === "unauthenticated") {
+      dispatch(clearCredentials());
+      clearUser();
     }
-  }, [initialUser, dispatch, setUser]);
+  }, [session, status, dispatch, setUser, clearUser]);
 
   // NOTE: Silent Refresh đã được xử lý tự động bởi Middleware (proxy.ts).
   // KHÔNG gọi refresh ở đây để tránh RTR (Refresh Token Rotation) conflict.
@@ -44,6 +50,7 @@ export function CustomerLayout({ children, initialUser }: CustomerLayoutProps) {
     const params = new URLSearchParams(window.location.search);
     const authDataParam = params.get('auth');
     const logoutParam = params.get('logout');
+    const loginParam = params.get('login');
 
     if (authDataParam) {
       try {
@@ -57,16 +64,23 @@ export function CustomerLayout({ children, initialUser }: CustomerLayoutProps) {
       }
     }
 
+    if (loginParam === 'success') {
+      toast.success('Đăng nhập thành công!');
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+
     if (logoutParam === 'true') {
       dispatch(clearCredentials());
       clearUser();
       clearCart();
+      signOut({ redirect: false });
       toast.success('Đã đăng xuất khỏi hệ thống');
       // Xóa tham số logout trên URL để tránh loop khi F5
       const newUrl = window.location.pathname;
       window.history.replaceState({}, document.title, newUrl);
     }
-  }, [dispatch, setUser, clearUser]);
+  }, [dispatch, setUser, clearUser, pathname]);
 
   // Khởi tạo và đồng bộ giao diện (Theme & Preset) từ localStorage để tránh nhấp nháy
   useEffect(() => {
@@ -86,7 +100,7 @@ export function CustomerLayout({ children, initialUser }: CustomerLayoutProps) {
   }, []);
 
   if (isAuthPage) {
-    return <div className="h-screen overflow-hidden bg-background">{children}</div>;
+    return <div className="min-h-screen overflow-y-auto bg-background">{children}</div>;
   }
 
   return (

@@ -36,10 +36,9 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ open, onCancel, use
         email: values.email,
         phone: values.phone || '',
       };
-      
       const response = await userService.updateProfile(updateData);
       const updatedUser = response.data || { ...user, ...updateData };
-      setAuth(updatedUser, useAuthStore.getState().accessToken || '', useAuthStore.getState().refreshToken || '');
+      setAuth(updatedUser, useAuthStore.getState().accessToken || '');
 
       message.success('Cập nhật hồ sơ thành công!');
       onCancel();

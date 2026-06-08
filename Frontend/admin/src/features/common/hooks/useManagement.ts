@@ -20,7 +20,7 @@ export const useManagement = <T extends { id: string }>(
   const [editingRecord, setEditingRecord] = useState<T | null>(null);
   const [searchText, setSearchText] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(10);
 
   // Filters State
   const [includeDeleted, setIncludeDeleted] = useState(includeDeletedDefault);

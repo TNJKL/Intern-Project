@@ -27,6 +27,7 @@ const nextConfig: NextConfig = {
     // Luôn ưu tiên biến môi trường từ file .env ở gốc, nếu không có mới dùng fallback
     GLOBAL_BACKEND_IP: rootEnv.GLOBAL_BACKEND_IP || 'http://localhost:8080',
     NEXT_PUBLIC_GLOBAL_BACKEND_IP: rootEnv.NEXT_PUBLIC_GLOBAL_BACKEND_IP || 'http://localhost:8080',
+    AUTH_SECRET: rootEnv.AUTH_SECRET,
   },
   images: {
     unoptimized: true,
@@ -54,6 +55,8 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+
+  typedRoutes: false,
 };
 
 export default nextConfig;

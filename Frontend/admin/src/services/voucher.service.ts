@@ -14,6 +14,7 @@ export interface Voucher {
   validUntil: string;
   isActive: boolean;
   applicableTier?: 'ALL' | 'MEMBER' | 'VIP';
+  maxUsagePerUser?: number | null;
   createdAt: string;
 }
 
@@ -29,6 +30,7 @@ export interface VoucherFormData {
   validUntil: string;
   isActive: boolean;
   applicableTier?: 'ALL' | 'MEMBER' | 'VIP';
+  maxUsagePerUser?: number | null;
 }
 
 export interface ApiResponse<T> {

@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, Package, Clock, CheckCircle2, Truck, Coffee, ArrowRight, X, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { orderService, OrderDetail } from "@/services/order.service";
 import { OrderDetailModal } from "./OrderDetailModal";
+import { apiClient } from "@/lib/api";
 
 interface OrderSummary {
   id: string;
@@ -14,6 +15,11 @@ interface OrderSummary {
   status: string;
   totalAmount: number;
   createdAt: string;
+}
+
+interface OrdersClientProps {
+  initialOrders: OrderSummary[];
+  isServerError?: boolean;
 }
 
 const ORDER_TABS = [
@@ -35,7 +41,9 @@ const getStatusDisplay = (status: string) => {
   }
 };
 
-export default function OrdersClient({ orders }: { orders: OrderSummary[] }) {
+export default function OrdersClient({ initialOrders, isServerError }: OrdersClientProps) {
+  const [orders, setOrders] = useState<OrderSummary[]>(initialOrders);
+  const [isLoading, setIsLoading] = useState(isServerError && initialOrders.length === 0);
   const [activeTab, setActiveTab] = useState("active");
   const [currentPage, setCurrentPage] = useState(1);
   const router = useRouter();
@@ -45,6 +53,36 @@ export default function OrdersClient({ orders }: { orders: OrderSummary[] }) {
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isServerError) {
+      const fetchOrders = async () => {
+        setIsLoading(true);
+        try {
+          const res = await apiClient.get('/orders?size=100&sort=createdAt,desc');
+          if (res.data?.success && res.data?.data) {
+            setOrders(res.data.data);
+          }
+        } catch (error) {
+          console.error("Failed to fetch orders client-side", error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchOrders();
+    }
+  }, [isServerError]);
+
+  if (isLoading) {
+    return (
+      <div className="w-full min-h-screen bg-[#fdf3eb]/30 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-10 h-10 text-[#5c3d2e] animate-spin" />
+          <span className="text-sm font-bold text-gray-500 uppercase tracking-widest">Đang tải đơn hàng...</span>
+        </div>
+      </div>
+    );
+  }
 
   const filteredOrders = orders.filter((order) => {
     const s = order.status.toLowerCase();

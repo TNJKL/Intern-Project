@@ -42,6 +42,7 @@ export const VoucherModal: React.FC<VoucherModalProps> = ({
       const formData: VoucherFormData = {
         ...rest,
         applicableTier: rest.applicableTier || 'ALL',
+        maxUsagePerUser: rest.maxUsagePerUser || null,
         validFrom: dateRange[0].toISOString().split('.')[0] + 'Z',
         validUntil: dateRange[1].toISOString().split('.')[0] + 'Z',
       };
@@ -141,7 +142,7 @@ export const VoucherModal: React.FC<VoucherModalProps> = ({
                     rules={[
                       { required: true, message: 'Vui lòng nhập mức giảm' },
                       { type: 'number', min: 0.01, message: 'Mức giảm phải lớn hơn 0' },
-                      isPercentage ? { type: 'number', max: 100, message: 'Giảm tối đa 100%' } : {}
+                      ...(isPercentage ? [{ type: 'number' as const, max: 100, message: 'Giảm tối đa 100%' }] : [])
                     ]}
                   >
                     <InputNumber 
@@ -241,12 +242,24 @@ export const VoucherModal: React.FC<VoucherModalProps> = ({
               name="maxUsageCount"
               label={
                 <span className="font-bold text-gray-750 text-sm uppercase tracking-wide">
-                  Số lượt dùng tối đa
+                  Tổng lượt dùng tối đa
                 </span>
               }
               rules={[{ required: true, message: 'Vui lòng nhập số lượt dùng' }]}
             >
               <InputNumber size="large" min={1} className="w-full rounded-xl" placeholder="Ví dụ: 100" />
+            </Form.Item>
+
+            {/* Số lượt dùng tối đa mỗi người */}
+            <Form.Item
+              name="maxUsagePerUser"
+              label={
+                <span className="font-bold text-gray-750 text-sm uppercase tracking-wide">
+                  Lượt dùng/Người
+                </span>
+              }
+            >
+              <InputNumber size="large" min={1} className="w-full rounded-xl" placeholder="Để trống nếu không giới hạn" />
             </Form.Item>
 
             {/* Trạng thái hoạt động */}

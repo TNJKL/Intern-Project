@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Descriptions, Avatar, Tag, Typography, Row, Col, Flex } from 'antd';
+import { Card, Descriptions, Avatar, Tag, Typography, Row, Col } from 'antd';
 import {
   UserOutlined,
   MailOutlined

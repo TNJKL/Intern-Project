@@ -8,6 +8,7 @@ import Toppings from './pages/Toppings';
 import Orders from './pages/Orders';
 import Chat from './pages/Chat';
 import Categories from './pages/Categories';
+import Ingredients from './pages/Ingredients';
 import Users from './pages/Users';
 import Profile from './pages/Profile';
 import Vouchers from './pages/Vouchers';
@@ -62,6 +63,7 @@ function App() {
                           <Route path="products" element={<Products />} />
                           <Route path="toppings" element={<Toppings />} />
                           <Route path="categories" element={<Categories />} />
+                          <Route path="ingredients" element={<Ingredients />} />
                           <Route path="users" element={<Users />} />
                           <Route path="orders" element={<Orders />} />
                           <Route path="chat" element={<Chat />} />

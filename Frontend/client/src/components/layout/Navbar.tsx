@@ -8,6 +8,7 @@ import { useAppDispatch, useAppSelector } from "@/store/redux/hooks";
 import { clearCredentials } from "@/store/redux/authSlice";
 import { useEffect, useState, useMemo } from "react";
 import axios from "axios";
+import { signOut } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -160,13 +161,7 @@ export function Navbar({ initialUser }: NavbarProps) {
                       dispatch(clearCredentials());
                       clearUser();
                       clearCart();
-                      axios.post('/api/auth/logout').then(() => {
-                        if (pathname === '/profile' || pathname.startsWith('/admin')) {
-                          router.push('/');
-                        } else {
-                          router.refresh();
-                        }
-                      });
+                      signOut({ callbackUrl: "/" });
                     }}
                     className="flex items-center gap-1 sm:gap-1.5 p-1.5 sm:p-2 text-gray-400 hover:text-red-500 transition-all group"
                   >
@@ -359,9 +354,7 @@ export function Navbar({ initialUser }: NavbarProps) {
                           dispatch(clearCredentials());
                           clearUser();
                           clearCart();
-                          axios.post('/api/auth/logout').then(() => {
-                            router.push('/');
-                          });
+                          signOut({ callbackUrl: "/" });
                         }}
                         className="w-full py-3 bg-red-50 text-red-500 rounded-xl font-bold hover:bg-red-100 transition-colors text-xs uppercase tracking-wider flex items-center justify-center gap-2"
                       >

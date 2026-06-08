@@ -2,11 +2,9 @@
 
 import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
-import { useAppSelector, useAppDispatch } from "@/store/redux/hooks";
-import { updateAccessToken } from "@/store/redux/authSlice";
+import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
-import { apiClient } from "../../lib/api"; // 🎯 IMPORT THÊM API_CLIENT CỦA BẠN VÀO ĐÂY
 
 interface SocketContextType {
   socket: Socket | null;
@@ -25,35 +23,11 @@ export const useSocket = () => useContext(SocketContext);
 export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const socketRef = useRef<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const { accessToken } = useAppSelector((state) => state.auth);
-  const dispatch = useAppDispatch();
+  const { data: session, status } = useSession();
+  const accessToken = session?.accessToken || null;
+  const isAuthChecked = status !== "loading";
+  const [reconnectTrigger, setReconnectTrigger] = useState(0);
   const router = useRouter();
-
-  // Khai báo một cờ kiểm tra xem đã hoàn thành việc check token ban đầu chưa
-  const [isAuthChecked, setIsAuthChecked] = useState(false);
-
-  // 1. Đồng bộ httpOnly access token nội bộ vào Redux Store khi khởi chạy bằng apiClient an toàn
-  useEffect(() => {
-    if (!accessToken) {
-      // 🎯 THAY THẾ FETCH BẰNG API_CLIENT ĐỂ TỰ ĐỘNG GỬI COOKIE VÀ HƯỞNG INTERCEPTOR INTERNALS
-      // Gọi qua endpoint proxy nội bộ đã được cấu hình loại trừ
-      apiClient.post("/../auth/token", {}, { baseURL: "/" })
-        .then((res) => {
-          const token = res.data?.accessToken;
-          if (token) {
-            dispatch(updateAccessToken({ accessToken: token }));
-          }
-        })
-        .catch(() => {
-          console.log("[Socket.IO] Không tìm thấy phiên Token cũ hợp lệ, tiếp tục với chế độ public/guest.");
-        })
-        .finally(() => {
-          setIsAuthChecked(true); // Đánh dấu đã quét xong token
-        });
-    } else {
-      setIsAuthChecked(true);
-    }
-  }, [accessToken, dispatch]);
 
   // 2. Quản lý vòng đời kết nối dựa trên trạng thái xác thực ĐÚNG THỜI ĐIỂM
   useEffect(() => {
@@ -175,7 +149,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         socketRef.current = null;
       }
     };
-  }, [accessToken, isAuthChecked]);
+  }, [accessToken, isAuthChecked, reconnectTrigger]);
 
   /**
    * Gọi hàm này khi Guest đặt hàng hoặc tra cứu thành công đơn hàng vãng lai
@@ -188,8 +162,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       socketRef.current.emit("join-guest", { guestSessionId });
     } else {
       console.log("[Socket.IO] Chưa có kết nối hoặc socket cũ đóng, chuẩn bị tái thiết lập...");
-      setIsAuthChecked(false);
-      setTimeout(() => setIsAuthChecked(true), 50);
+      setReconnectTrigger((prev) => prev + 1);
     }
   };
 

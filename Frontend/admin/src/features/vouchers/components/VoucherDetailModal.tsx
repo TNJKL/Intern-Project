@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Badge, Progress, Divider } from 'antd';
+import { Modal, Progress, Divider } from 'antd';
 import { CalendarOutlined, SafetyCertificateOutlined, InboxOutlined, ShoppingOutlined, TrophyOutlined } from '@ant-design/icons';
 import type { Voucher } from '@/services/voucher.service';
 import dayjs from 'dayjs';
@@ -111,9 +111,14 @@ export const VoucherDetailModal: React.FC<VoucherDetailModalProps> = ({
                 <span className="text-base font-black text-gray-550 uppercase flex items-center gap-3">
                   <InboxOutlined className="text-amber-600 text-lg" /> Lượt sử dụng
                 </span>
-                <span className="text-base font-black text-gray-800">
-                  {voucher.currentUsageCount} / {voucher.maxUsageCount} lượt
-                </span>
+                <div className="text-right">
+                  <span className="text-base font-black text-gray-800 block">
+                    {voucher.currentUsageCount} / {voucher.maxUsageCount} lượt
+                  </span>
+                  <span className="text-xs text-gray-500 font-medium">
+                    Mỗi người: {voucher.maxUsagePerUser ? `${voucher.maxUsagePerUser} lượt` : 'Không giới hạn'}
+                  </span>
+                </div>
               </div>
               <Progress 
                 percent={usagePercent} 

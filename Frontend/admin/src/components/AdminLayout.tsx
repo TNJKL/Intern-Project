@@ -65,6 +65,11 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
       label: 'Danh mục',
     },
     {
+      key: '/admin/ingredients',
+      icon: <TagsOutlined />,
+      label: 'Nguyên liệu',
+    },
+    {
       key: '/admin/users',
       icon: <UserOutlined />,
       label: 'Người dùng',
@@ -88,7 +93,8 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const handleMenuClick = (key: string) => {
     if (key === 'view-website') {
-      const { accessToken, refreshToken, user } = useAuthStore.getState();
+      const state = useAuthStore.getState() as any;
+      const { accessToken, refreshToken, user } = state;
       const authData = encodeURIComponent(JSON.stringify({ user, accessToken, refreshToken }));
       window.location.href = `http://localhost:3000?auth=${authData}`;
     } else {
@@ -157,7 +163,8 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
                     window.location.href = `http://localhost:3000/login?logout=true&t=${Date.now()}`;
                   } else if (key === 'view-website') {
                     // Pass current auth back to client to sync session
-                    const { accessToken, refreshToken, user } = useAuthStore.getState();
+                    const state = useAuthStore.getState() as any;
+                    const { accessToken, refreshToken, user } = state;
                     const authData = encodeURIComponent(JSON.stringify({ user, accessToken, refreshToken }));
                     window.location.href = `http://localhost:3000?auth=${authData}`;
                   } else if (key === 'profile') {

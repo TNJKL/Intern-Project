@@ -22,36 +22,28 @@ export const viewport = {
   viewportFit: "cover",
 };
 
-import { getServerApi } from "@/lib/server-api";
+import { SessionProvider } from "next-auth/react";
+import { auth } from "@/auth";
 
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  let user = null;
-  try {
-    // Thử lấy thông tin user trên server
-    const response = await getServerApi('/api/v1/auth/me');
-    if (response && response.success && response.data && !Array.isArray(response.data)) {
-      user = response.data;
-    } else {
-      user = null;
-    }
-  } catch (error) {
-    // Nếu lỗi (chưa login) thì user = null, không cần redirect ở đây
-    user = null;
-  }
+  const session = await auth();
+  const user = session?.user || null;
 
   return (
     <html lang="vi">
       <body className={`${quicksand.variable} font-sans antialiased`}>
-        <ReduxProvider>
-          <CustomerLayout initialUser={user}>
-            {children}
-          </CustomerLayout>
-          <Toaster position="top-right" />
-        </ReduxProvider>
+        <SessionProvider session={session}>
+          <ReduxProvider>
+            <CustomerLayout initialUser={user}>
+              {children}
+            </CustomerLayout>
+            <Toaster position="top-right" />
+          </ReduxProvider>
+        </SessionProvider>
       </body>
     </html>
   );

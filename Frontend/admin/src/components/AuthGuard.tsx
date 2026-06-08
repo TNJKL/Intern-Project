@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../store/zustand/useAuthStore';
+import { message } from '../lib/antd';
 
 export const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, user, setAuth, fetchUser, silentRefresh } = useAuthStore();
@@ -22,7 +23,10 @@ export const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children })
       if (authDataParam) {
         try {
           const authData = JSON.parse(decodeURIComponent(authDataParam));
-          setAuth(authData.user, authData.accessToken, authData.refreshToken);
+          setAuth(authData.user, authData.accessToken);
+          
+          // Show login success message
+          message.success('Đăng nhập thành công!');
           
           // Clean up URL
           window.history.replaceState({}, document.title, window.location.pathname);
