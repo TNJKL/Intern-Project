@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Form, Input, Space, Typography } from 'antd';
 import { message } from '@/lib/antd';
-import { userService } from '../../../services/userService';
-import { useAuthStore } from '../../../store/useAuthStore';
+import { userService } from '../../../services/user.service';
+import { useAuthStore } from '../../../store/zustand/useAuthStore';
 
 const { Title, Text } = Typography;
 
@@ -89,7 +89,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ open, onCance
       width={450}
       forceRender
       closable={!isSuccess}
-      maskClosable={!isSuccess}
+      mask={{ closable: !isSuccess }}
       styles={{
         body: { borderRadius: 24, padding: '32px 40px' },
         header: { marginBottom: 24, border: 'none' }

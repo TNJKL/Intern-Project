@@ -28,6 +28,9 @@ export default defineConfig(({ mode }) => {
               // Ép cứng Host về IP của Backend để Nginx không từ chối
               proxyReq.setHeader('Host', targetUrl.hostname);
               
+              // bypass ngrok warning page
+              proxyReq.setHeader('ngrok-skip-browser-warning', '69420');
+
               // Xóa Origin, Referer và Cookie để làm nhẹ Header, tránh lỗi 400 của Nginx
               proxyReq.removeHeader('Origin');
               proxyReq.removeHeader('Referer');

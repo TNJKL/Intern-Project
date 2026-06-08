@@ -1,9 +1,10 @@
 import React, { useEffect } from 'react';
 import { Modal, Form, Input, InputNumber, Button } from 'antd';
-import { CheckOutlined, DeleteOutlined, OrderedListOutlined } from '@ant-design/icons';
+import { CheckOutlined, DeleteOutlined, OrderedListOutlined, ExperimentOutlined } from '@ant-design/icons';
 import { message } from '@/lib/antd';
-import { productService, type Product } from '../../../services/productService';
+import { productService, type Product } from '../../../services/product.service';
 import { useQueryClient } from '@tanstack/react-query';
+import { RecipeModal } from './RecipeModal';
 
 interface ProductVariantModalProps {
   isOpen: boolean;
@@ -18,6 +19,8 @@ export const ProductVariantModal: React.FC<ProductVariantModalProps> = ({
 }) => {
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
+  const [isRecipeOpen, setIsRecipeOpen] = React.useState(false);
+  const [selectedVariant, setSelectedVariant] = React.useState<{ id: string; sizeLabel: string } | null>(null);
 
   useEffect(() => {
     if (isOpen && product) {
@@ -130,6 +133,24 @@ export const ProductVariantModal: React.FC<ProductVariantModalProps> = ({
                     </Form.Item>
                     
                     <div className="flex items-center gap-1.5 ml-2">
+                      {isExisting && (
+                        <Button 
+                          type="default" 
+                          icon={<ExperimentOutlined className="text-[11px]" />}
+                          onClick={() => {
+                            setSelectedVariant({
+                              id: variantId,
+                              sizeLabel: form.getFieldValue(['variants', name, 'sizeLabel'])
+                            });
+                            setIsRecipeOpen(true);
+                          }}
+                          className="h-10 px-3 rounded-xl flex items-center gap-1.5 border-amber-200 text-amber-600 hover:text-white hover:bg-amber-500 hover:border-amber-500 transition-all shadow-sm"
+                        >
+                          <span className="text-[10px] font-black uppercase tracking-wider">
+                            Công thức
+                          </span>
+                        </Button>
+                      )}
                       <Button 
                         type="primary"
                         icon={<CheckOutlined className="text-[11px]" />}
@@ -168,6 +189,20 @@ export const ProductVariantModal: React.FC<ProductVariantModalProps> = ({
           )}
         </Form.List>
       </Form>
+
+      {isRecipeOpen && selectedVariant && (
+        <RecipeModal
+          isOpen={isRecipeOpen}
+          onClose={() => {
+            setIsRecipeOpen(false);
+            setSelectedVariant(null);
+          }}
+          productId={product.id}
+          variantId={selectedVariant.id}
+          productName={product.name}
+          variantLabel={selectedVariant.sizeLabel}
+        />
+      )}
     </Modal>
   );
 };

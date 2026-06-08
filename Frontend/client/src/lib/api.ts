@@ -1,48 +1,55 @@
 import axios from 'axios';
-import { store } from '../store/store';
-import { updateAccessToken, clearCredentials } from '../store/authSlice';
+import { store } from '../store/redux/store';
+import { clearCredentials } from '../store/redux/authSlice';
+import { signOut } from 'next-auth/react';
+
+/**
+ * 📄 src/lib/api.ts
+ *
+ * Client-side Axios instance sử dụng hoàn toàn Cookie của trình duyệt.
+ *  - withCredentials: true bắt buộc để tự gửi cookie (accessToken, refreshToken).
+ *  - Response interceptor tự động bắt 401 để "ra tín hiệu" refresh token mà không cần truyền body.
+ */
 
 export const apiClient = axios.create({
   baseURL: '/api/v1',
-  withCredentials: true, // BẮT BUỘC: để browser gửi kèm refreshToken cookie
+  withCredentials: true, // BẮT BUỘC: để trình duyệt tự đính kèm cookie
   headers: {
     'Content-Type': 'application/json',
     'ngrok-skip-browser-warning': '69420',
   },
 });
 
-// ─── Refresh token queue ───
 let isRefreshing = false;
-let failedQueue: Array<{ resolve: (token: string) => void; reject: (err: any) => void }> = [];
+let failedQueue: Array<{ resolve: () => void; reject: (err: any) => void }> = [];
 
-const processQueue = (error: any, token: string | null = null) => {
-  failedQueue.forEach((p) => (error ? p.reject(error) : p.resolve(token!)));
+const processQueue = (error: any) => {
+  failedQueue.forEach((prom) => (error ? prom.reject(error) : prom.resolve()));
   failedQueue = [];
 };
 
-// ─── Request interceptor: Không cần gắn Token thủ công nữa, Proxy sẽ tự làm ───
-apiClient.interceptors.request.use((config) => {
-  return config;
-});
+// ─── Request interceptor ───
+apiClient.interceptors.request.use((config) => config);
 
-// ─── Response interceptor ───
+// ─── Response interceptor: Tự động refresh token bằng Cookie ───
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    const isExpired = error.response?.data?.errorCode === 'TOKEN_EXPIRED';
-    const isAuthError = isExpired || error.response?.status === 401 || error.response?.status === 403;
+    const status = error.response?.status;
+    const isAuthError = status === 401 || status === 403;
 
+    // Tránh loop vô hạn nếu request này đã retry hoặc không phải lỗi Auth
     if (!isAuthError || originalRequest._retry) {
       return Promise.reject(error);
     }
 
+    // Nếu đang có một tiến trình refresh token khác đang chạy -> Xếp hàng đợi
     if (isRefreshing) {
-      return new Promise<string>((resolve, reject) => {
+      return new Promise<void>((resolve, reject) => {
         failedQueue.push({ resolve, reject });
       })
-        .then((newToken) => {
-          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        .then(() => {
           return apiClient(originalRequest);
         })
         .catch((err) => Promise.reject(err));
@@ -52,20 +59,34 @@ apiClient.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      // Chỉ cần "ra tín hiệu" bằng cách gọi POST tới refresh. 
-      // Browser sẽ tự gửi refreshToken cookie và tự nhận Set-Cookie mới từ Backend.
+      // "Ra tín hiệu" refresh token: gửi POST rỗng sang endpoint của backend qua proxy.
+      // Trình duyệt sẽ tự động gửi kèm cookie refreshToken.
+      // Backend phản hồi và Set-Cookie cặp accessToken + refreshToken mới, proxy sẽ trả về cho trình duyệt lưu.
       await axios.post('/api/v1/auth/refresh', {}, { withCredentials: true });
 
-      processQueue(null, ""); 
-      // Retry request gốc — lúc này browser đã có accessToken cookie mới
+      processQueue(null);
       return apiClient(originalRequest);
     } catch (refreshError) {
-      processQueue(refreshError, null);
+      processQueue(refreshError);
 
-      // Xóa toàn bộ trạng thái auth khỏi RAM và điều hướng về login
+      // Nếu refresh thất bại (ví dụ: Refresh Token hết hạn thực sự) -> Đăng xuất
       store.dispatch(clearCredentials());
+      try {
+        await signOut({ redirect: false });
+      } catch {}
+
       if (typeof window !== 'undefined') {
-        window.location.href = '/login';
+        // Xóa tạm thời cookie ở client side (chỉ xóa được nếu cookie không phải HttpOnly, 
+        // nhưng ghi đè hết hạn là best practice để dọn dẹp)
+        document.cookie = "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+        document.cookie = "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+
+        const pathname = window.location.pathname;
+        const protectedPaths = ['/profile', '/orders', '/admin'];
+        const isProtected = protectedPaths.some((p) => pathname.startsWith(p));
+        if (isProtected) {
+          window.location.href = '/login';
+        }
       }
 
       return Promise.reject(refreshError);

@@ -10,26 +10,29 @@ export const metadata: Metadata = {
 };
 
 export default async function OrdersPage() {
-  // Server-side auth check: thử gọi refresh — nếu không có refreshToken cookie hợp lệ thì redirect
+  // Server-side auth check: kiểm tra sự tồn tại của refreshToken cookie
   const cookieStore = await cookies();
-  const allCookies = cookieStore.getAll();
-  const hasRefreshToken = allCookies.some(c => c.name === 'refreshToken' || c.name === 'refresh_token');
+  const hasRefreshToken = cookieStore.has('refreshToken');
 
-  // Nếu không có bất kỳ auth cookie nào, redirect ngay
-  if (!hasRefreshToken && allCookies.length === 0) {
-    redirect("/login");
+  // Nếu không có refreshToken, redirect sang trang tra cứu đơn hàng vãng lai
+  if (!hasRefreshToken) {
+    redirect("/orders/track");
   }
 
   let orders = [];
+  let isServerError = false;
   try {
-    // Fetch user's orders from the server API
-    const response = await getServerApi('/api/v1/orders');
+    // Tải danh sách đơn hàng của người dùng từ API Server
+    const response = await getServerApi('/api/v1/orders?size=100&sort=createdAt,desc');
     if (response?.success && response?.data) {
       orders = response.data;
+    } else if (response === null) {
+      isServerError = true;
     }
   } catch (error) {
     console.error("Lỗi khi tải lịch sử đơn hàng:", error);
+    isServerError = true;
   }
 
-  return <OrdersClient orders={orders} />;
+  return <OrdersClient initialOrders={orders} isServerError={isServerError} />;
 }

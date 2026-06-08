@@ -11,7 +11,7 @@ export function Categories({ categories }: CategoriesProps) {
   const displayCategories = categories.length > 0 ? categories : [];
 
   return (
-    <section className="bg-[#fdfaf5] py-12">
+    <section id="home-categories" className="bg-[#fdfaf5] py-12 scroll-mt-24">
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-2xl font-black text-coffee-dark uppercase tracking-tight">Danh mục</h2>

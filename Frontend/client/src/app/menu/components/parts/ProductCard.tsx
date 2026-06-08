@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import Image from "next/image";
+import { SafeImage } from "@/components/SafeImage";
 import { Coffee, Star, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -26,21 +26,20 @@ export const ProductCard = ({ product, index, categories }: ProductCardProps) =>
       onClick={() => router.push(`/product/${product.id}`)}
     >
       <div className="relative aspect-square rounded-[20px] overflow-hidden mb-3 bg-gray-50">
-        {product.imageUrl ? (
-          <Image
-            src={product.imageUrl}
-            alt={product.name}
-            fill
-            priority={index < 10}
-            className="object-cover transition-transform duration-700 group-hover:scale-110"
-            sizes="(max-width: 768px) 50vw, 20vw"
-          />
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full text-primary/20">
-            <Coffee className="w-10 h-10 mb-1" />
-            <span className="text-[10px] font-black uppercase">No Image</span>
-          </div>
-        )}
+        <SafeImage
+          src={product.imageUrl || ""}
+          alt={product.name}
+          fill
+          priority={index < 10}
+          className="object-cover transition-transform duration-700 group-hover:scale-110"
+          sizes="(max-width: 768px) 50vw, 20vw"
+          fallback={
+            <div className="flex flex-col items-center justify-center h-full text-primary/20">
+              <Coffee className="w-10 h-10 mb-1" />
+              <span className="text-[10px] font-black uppercase">No Image</span>
+            </div>
+          }
+        />
         <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-md px-2 py-1 rounded-xl flex items-center gap-1 shadow-sm border border-black/5">
           <Star className="w-3 h-3 text-orange-400 fill-current" />
           <span className="text-[10px] font-black">4.9</span>
