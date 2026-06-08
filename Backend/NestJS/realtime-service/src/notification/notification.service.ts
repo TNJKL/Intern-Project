@@ -72,6 +72,7 @@ export class NotificationService {
           id: saved.id,
           userId: null,
           userEmail: saved.userEmail,
+          referenceType: saved.referenceType,
           channel: saved.channel,
           title: saved.title,
           body: saved.body,

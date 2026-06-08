@@ -4,6 +4,7 @@ export interface NotificationPayload {
   id: string;
   userId?: string;
   userEmail?: string;
+  referenceType?: string;
   channel: string;
   title: string;
   body?: string;
