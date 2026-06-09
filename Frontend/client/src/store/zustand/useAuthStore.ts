@@ -3,6 +3,11 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { User } from '../../types/user';
 
+// Dọn dẹp dữ liệu cũ trong localStorage nếu còn sót lại từ phiên bản trước
+if (typeof window !== 'undefined') {
+  localStorage.removeItem('user-storage');
+}
+
 /**
  * Zustand store chỉ lưu thông tin User (tên, email...).
  * accessToken được quản lý bởi Redux (RAM only).

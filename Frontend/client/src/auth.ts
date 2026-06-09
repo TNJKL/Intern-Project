@@ -109,21 +109,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             `  accessToken hết hạn lúc: ${expiry ? new Date(expiry).toISOString() : 'KHÔNG XÁC ĐỊNH (exp=0)'}`
           );
 
-          // Ghi cookies HttpOnly vào trình duyệt
+          // Ghi cookies HttpOnly vào trình duyệt với hạn dùng 7 ngày (tránh biến thành Session Cookie)
           try {
             const cookieStore = await cookies();
-            cookieStore.set('accessToken', accessToken, {
+            const cookieOptions = {
               path: '/',
               httpOnly: true,
               secure: process.env.NODE_ENV === 'production',
-              sameSite: 'lax',
-            });
-            cookieStore.set('refreshToken', refreshToken, {
-              path: '/',
-              httpOnly: true,
-              secure: process.env.NODE_ENV === 'production',
-              sameSite: 'lax',
-            });
+              sameSite: 'lax' as const,
+              maxAge: 7 * 24 * 60 * 60, // 7 ngày (tính bằng giây)
+            };
+            cookieStore.set('accessToken', accessToken, cookieOptions);
+            cookieStore.set('refreshToken', refreshToken, cookieOptions);
           } catch (e) {
             console.warn('[NextAuth] authorize: Không thể set browser cookies:', e);
           }

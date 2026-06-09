@@ -75,6 +75,32 @@ async function proxyRequest(request: NextRequest, { params }: { params: Promise<
       }
     }
 
+    // Nếu gọi API refresh token của backend qua proxy
+    if (pathStr === 'auth/refresh' && request.method === 'POST') {
+      let hasRefreshTokenInBody = false;
+      if (body) {
+        try {
+          const parsed = JSON.parse(body);
+          if (parsed && parsed.refreshToken) {
+            hasRefreshTokenInBody = true;
+          }
+        } catch {}
+      }
+
+      if (!hasRefreshTokenInBody) {
+        const cookieHeader = request.headers.get('cookie') || '';
+        const getCookie = (name: string) => {
+          const match = cookieHeader.match(new RegExp('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)'));
+          return match ? decodeURIComponent(match[2]) : null;
+        };
+        const refreshToken = getCookie('refreshToken');
+        if (refreshToken) {
+          body = JSON.stringify({ refreshToken });
+          forwardHeaders['Content-Type'] = 'application/json';
+        }
+      }
+    }
+
     const backendResponse = await fetch(targetUrl, {
       method: request.method,
       headers: forwardHeaders,
@@ -94,15 +120,26 @@ async function proxyRequest(request: NextRequest, { params }: { params: Promise<
     });
 
     // Chuyển tiếp nguyên vẹn Set-Cookie từ backend để trình duyệt tự động cập nhật
+    // Đồng thời ép thời hạn Max-Age (7 ngày) cho accessToken và refreshToken để tránh biến thành Session Cookie
     const setCookieHeaders = backendResponse.headers.getSetCookie();
     if (setCookieHeaders && setCookieHeaders.length > 0) {
       setCookieHeaders.forEach((c) => {
-        responseHeaders.append('Set-Cookie', c);
+        let processedCookie = c;
+        const isTokenCookie = c.toLowerCase().includes('accesstoken=') || c.toLowerCase().includes('refreshtoken=');
+        if (isTokenCookie && !c.includes('Max-Age=') && !c.includes('Expires=')) {
+          processedCookie = `${c}; Max-Age=${7 * 24 * 60 * 60}`;
+        }
+        responseHeaders.append('Set-Cookie', processedCookie);
       });
     } else {
       const setCookie = backendResponse.headers.get('set-cookie');
       if (setCookie) {
-        responseHeaders.set('Set-Cookie', setCookie);
+        let processedCookie = setCookie;
+        const isTokenCookie = setCookie.toLowerCase().includes('accesstoken=') || setCookie.toLowerCase().includes('refreshtoken=');
+        if (isTokenCookie && !setCookie.includes('Max-Age=') && !setCookie.includes('Expires=')) {
+          processedCookie = `${setCookie}; Max-Age=${7 * 24 * 60 * 60}`;
+        }
+        responseHeaders.set('Set-Cookie', processedCookie);
       }
     }
 
