@@ -11,10 +11,13 @@ import {
   GlobalOutlined,
   GiftOutlined,
   MenuOutlined,
+  BellOutlined,
 } from '@ant-design/icons';
-import { Layout, Menu, Button, theme, Avatar, Dropdown, Space, Drawer } from 'antd';
+import { Layout, Menu, Button, theme, Avatar, Dropdown, Space, Drawer, Badge } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/zustand/useAuthStore';
+import { useQuery } from '@tanstack/react-query';
+import { ingredientService } from '../services/ingredient.service';
 
 const { Header, Sider, Content } = Layout;
 
@@ -28,6 +31,14 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
+
+  const { data: alertCountRes } = useQuery({
+    queryKey: ['ingredients', 'alerts-count'],
+    queryFn: () => ingredientService.getIngredientAlertCount(),
+    refetchInterval: 30000,
+    enabled: !!user,
+  });
+  const alertCount = alertCountRes?.count || 0;
 
   useEffect(() => {
     const handleResize = () => {
@@ -150,6 +161,15 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
             style={{ fontSize: '16px', width: 64, height: 64 }}
           />
           <div className="flex items-center gap-4 pr-6">
+            <Badge count={alertCount} size="small" offset={[-2, 2]}>
+              <Button
+                type="text"
+                icon={<BellOutlined style={{ fontSize: '18px' }} />}
+                onClick={() => navigate('/admin/ingredients/alerts')}
+                style={{ width: 40, height: 40 }}
+                className="flex items-center justify-center text-gray-600 hover:text-orange-500"
+              />
+            </Badge>
             <Dropdown
               menu={{
                 items: [

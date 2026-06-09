@@ -71,6 +71,16 @@ export const ingredientService = {
     return response.data.data || response.data;
   },
 
+  getIngredientAlerts: async (): Promise<any> => {
+    const response = await apiClient.get('/admin/ingredients/alerts');
+    return response.data.data || response.data;
+  },
+
+  getIngredientAlertCount: async (): Promise<any> => {
+    const response = await apiClient.get('/admin/ingredients/alerts/count');
+    return response.data.data || response.data;
+  },
+
   getInventoryStock: async (params?: {
     low_stock?: boolean;
     page?: number;

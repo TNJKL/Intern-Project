@@ -26,7 +26,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   // ─── Bootstrap socket connection ───
   useEffect(() => {
     const backendIp =
-      import.meta.env.VITE_GLOBAL_BACKEND_IP || "http://localhost:8080";
+      import.meta.env.VITE_GLOBAL_BACKEND_IP || "http://localhost:80";
 
     const socket = io(`${backendIp}/notifications`, {
       path: "/ws",
@@ -51,6 +51,35 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     // ─── joined ───
     socket.on("joined", (data: { room: string; success: boolean } | null) => {
       console.log("[Socket.IO] Admin joined room:", data?.room);
+    });
+
+    // ─── admin:alerts (Low stock warnings) ───
+    socket.on("admin:alerts", (payload: any) => {
+      console.log("[Socket.IO] Admin stock alert received:", payload);
+      const title = payload?.title || "[Kho] Cảnh báo tồn kho";
+      const body = payload?.body || "Nguyên liệu kho sắp hết.";
+      const level = payload?.data?.alertLevel;
+
+      if (level === "OUT_OF_STOCK") {
+        notification.error({
+          message: title,
+          description: body,
+          placement: "topRight",
+          duration: 8,
+        });
+      } else {
+        notification.warning({
+          message: title,
+          description: body,
+          placement: "topRight",
+          duration: 8,
+        });
+      }
+
+      // Làm mới badge đếm số lượng cảnh báo và trang danh sách cảnh báo tồn kho
+      queryClient.invalidateQueries({ queryKey: ["ingredients", "alerts-count"] });
+      queryClient.invalidateQueries({ queryKey: ["ingredients", "alerts"] });
+      queryClient.invalidateQueries({ queryKey: ["ingredients", "low-stock"] });
     });
 
     // ─── notification ───
@@ -82,7 +111,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     // ─── disconnect ───
-    socket.on("disconnect", (reason) => {
+    socket.on("disconnect", (reason: any) => {
       console.log("[Socket.IO] Admin disconnected:", reason);
       setIsConnected(false);
     });

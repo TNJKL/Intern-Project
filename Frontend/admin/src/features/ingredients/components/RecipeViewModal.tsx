@@ -52,7 +52,7 @@ export const RecipeViewModal: React.FC<RecipeViewModalProps> = ({
   }, [isOpen]);
 
   const activeRecipe = recipes.find((r) => r.variantId === activeVariantId);
-  const activeVariant = variants.find((v) => v.id === activeVariantId);
+  const activeVariant = variants.find((v: any) => v.id === activeVariantId);
   const activeVariantLabel = activeVariant?.sizeLabel || 'Mặc định';
 
   return (
@@ -109,7 +109,7 @@ export const RecipeViewModal: React.FC<RecipeViewModalProps> = ({
             activeKey={activeVariantId}
             onChange={(key) => setActiveVariantId(key)}
             className="font-bold custom-view-tabs mb-6"
-            items={variants.map((v) => ({
+            items={variants.map((v: any) => ({
               key: v.id,
               label: `Size ${v.sizeLabel || 'Mặc định'}`,
             }))}
