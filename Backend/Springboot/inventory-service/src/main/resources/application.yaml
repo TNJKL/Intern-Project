@@ -56,6 +56,10 @@ app:
       inventory-events: ${KAFKA_TOPIC_INVENTORY_EVENTS:inventory-events}
   internal:
     secret: ${INTERNAL_SERVICE_SECRET:internal-beverage-secret-2024}
+  scheduler:
+    cleanup:
+      retention-days: ${SCHEDULER_CLEANUP_RETENTION_DAYS:30}
+      cron: ${SCHEDULER_CLEANUP_CRON:0 0 2 * * ?}
 
 server:
   port: 8084
