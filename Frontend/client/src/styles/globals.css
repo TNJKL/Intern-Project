@@ -1,0 +1,221 @@
+@import "tailwindcss";
+
+:root {
+  --background: #fdfaf5;
+  --foreground: #2d241e;
+  --primary: #6f4e37; /* Coffee brown */
+  --secondary: #f4e9da;
+  --accent: #d37533; /* Darker orange */
+  --coffee-dark: #3c2a21;
+}
+
+/* Preset màu sắc Light Mode */
+.preset-matcha {
+  --primary: #587f3d;
+  --accent: #829a28;
+  --coffee-dark: #1b2f15;
+  --secondary: #eef5e9;
+}
+
+.preset-berry {
+  --primary: #96354e;
+  --accent: #c42756;
+  --coffee-dark: #33121b;
+  --secondary: #fbf0f2;
+}
+
+/* Dark Mode Mặc định (Espresso Dark) */
+.dark {
+  --background: #140f0c;
+  --foreground: #f4eae1;
+  --primary: #a1785c;
+  --secondary: #221813;
+  --accent: #e58b4c;
+  --coffee-dark: #1c1512;
+}
+
+/* Dark Mode kết hợp với Preset */
+.dark.preset-matcha {
+  --background: #0f140c;
+  --foreground: #edf4e8;
+  --primary: #83aa66;
+  --secondary: #162011;
+  --accent: #adc44a;
+  --coffee-dark: #12180e;
+}
+
+.dark.preset-berry {
+  --background: #140c0f;
+  --foreground: #f4e8eb;
+  --primary: #bd6c81;
+  --secondary: #221116;
+  --accent: #e55e88;
+  --coffee-dark: #1d0f12;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
+  --color-coffee-dark: var(--coffee-dark);
+  --font-sans: 'Quicksand', sans-serif;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  min-height: 100vh;
+  transition: background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/70 backdrop-blur-md border border-white/20;
+  }
+  
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    height: 3px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(111, 78, 55, 0.1);
+    border-radius: 10px;
+    transition: all 0.3s;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(111, 78, 55, 0.3);
+  }
+
+  /* For Firefox */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(111, 78, 55, 0.1) transparent;
+  }
+
+  @keyframes steam {
+    0% {
+      transform: translateY(0) scaleX(1);
+      opacity: 0;
+    }
+    15% {
+      opacity: 0.9;
+    }
+    50% {
+      transform: translateY(-16px) scaleX(1.3);
+      opacity: 0.6;
+    }
+    100% {
+      transform: translateY(-36px) scaleX(1.6);
+      opacity: 0;
+    }
+  }
+
+  .steam-line {
+    animation: steam 2s infinite linear;
+  }
+  .steam-line-1 { animation-delay: 0s; }
+  .steam-line-2 { animation-delay: 0.6s; }
+  .steam-line-3 { animation-delay: 1.2s; }
+
+  @keyframes spin-slow {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .animate-spin-slow {
+    animation: spin-slow 15s infinite linear;
+  }
+
+  /* ===== BOTTOM NAV SAFE AREA (iPhone notch / home indicator) ===== */
+  /* Thêm khoảng trống bổ sung cho thanh home indicator của iPhone */
+  .bottom-nav-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* ===== GLOBAL DARK MODE OVERRIDES ===== */
+/* Tự động thích nghi nền trắng/xám sang màu tối trong dark mode */
+.dark .dark-card {
+  background-color: var(--secondary) !important;
+  border-color: rgba(255,255,255,0.06) !important;
+  color: var(--foreground);
+}
+
+/* Page wrapper backgrounds */
+.dark .page-bg {
+  background-color: var(--background) !important;
+}
+
+/* Overrides for white cards/panels in dark mode */
+.dark [class*="bg-white"]:not([class*="bg-white/"]):not(.keep-white) {
+  background-color: var(--secondary) !important;
+  color: var(--foreground);
+}
+
+/* Overrides for gray-50/gray-100 surfaces in dark mode */
+.dark [class*="bg-gray-50"]:not(.keep-light) {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+.dark [class*="bg-gray-100"]:not(.keep-light) {
+  background-color: rgba(255, 255, 255, 0.07) !important;
+}
+
+/* Overrides for hardcoded cream page backgrounds */
+.dark [class*="bg-\\[\\#fcf9f2\\]"],
+.dark [class*="bg-\\[\\#fdfaf5\\]"],
+.dark [class*="bg-\\[\\#fdf3eb\\]"] {
+  background-color: var(--background) !important;
+}
+
+/* Text color overrides in dark mode */
+.dark [class*="text-gray-800"],
+.dark [class*="text-gray-900"] {
+  color: var(--foreground);
+}
+.dark [class*="text-gray-600"],
+.dark [class*="text-gray-700"] {
+  color: rgba(244, 234, 225, 0.7);
+}
+.dark [class*="text-gray-500"],
+.dark [class*="text-gray-400"] {
+  color: rgba(244, 234, 225, 0.45);
+}
+
+/* Border overrides */
+.dark [class*="border-gray-100"],
+.dark [class*="border-gray-200"] {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Input overrides in dark mode */
+.dark input:not([class*="bg-"]),
+.dark textarea:not([class*="bg-"]) {
+  background-color: rgba(255,255,255,0.06);
+  color: var(--foreground);
+  border-color: rgba(255,255,255,0.12);
+}
+
+/* Sticky modal headers in dark mode */
+.dark [class*="sticky"] {
+  background-color: inherit;
+}
