@@ -63,8 +63,8 @@ export const useAuthStore = create<AuthState>()(
 
       silentRefresh: async () => {
         try {
-          const refreshUrl = 'http://localhost:3000/api/auth/session-token';
-          const response = await axios.get(refreshUrl, {
+          const refreshUrl = 'http://localhost:3000/api/v1/auth/refresh';
+          const response = await axios.post(refreshUrl, {}, {
             withCredentials: true,
             headers: {
               'ngrok-skip-browser-warning': '69420',
@@ -72,10 +72,10 @@ export const useAuthStore = create<AuthState>()(
           });
 
           const responseData = response.data;
-          const newToken = responseData?.accessToken;
-          const user = responseData?.user;
+          const newToken = responseData?.accessToken || responseData?.data?.accessToken;
+          const user = responseData?.user || responseData?.data?.user;
 
-          if (newToken && responseData?.error !== 'RefreshTokenError') {
+          if (newToken) {
             const currentUser = user || get().user;
             if (currentUser) {
               get().setAuth(currentUser, newToken);
@@ -86,7 +86,7 @@ export const useAuthStore = create<AuthState>()(
           }
           return false;
         } catch (error) {
-          console.error('[AuthStore] Silent refresh thông qua Proxy thất bại:', error);
+          console.error('[AuthStore] Silent refresh thông qua Backend thất bại:', error);
           return false;
         }
       },

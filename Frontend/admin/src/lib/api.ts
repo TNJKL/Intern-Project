@@ -66,9 +66,9 @@ apiClient.interceptors.response.use(
 
     try {
       // ✅ SỬA LỖI ĐƯỜNG DẪN: Ép URL tuyệt đối chạy qua cổng của Next.js Proxy
-      const refreshUrl = `${NEXTJS_PROXY_URL}/api/auth/session-token`;
+      const refreshUrl = `${NEXTJS_PROXY_URL}/api/v1/auth/refresh`;
 
-      const response = await axios.get(refreshUrl, {
+      const response = await axios.post(refreshUrl, {}, {
         withCredentials: true, // Ép trình duyệt đính kèm cookie của Next.js (chứa refreshToken) lên
         headers: {
           'ngrok-skip-browser-warning': '69420',
@@ -76,10 +76,10 @@ apiClient.interceptors.response.use(
       });
 
       const responseData = response.data;
-      const newToken = responseData?.accessToken;
+      const newToken = responseData?.accessToken || responseData?.data?.accessToken;
 
-      if (!newToken || responseData?.error === 'RefreshTokenError') {
-        throw new Error('No access token returned from proxy refresh');
+      if (!newToken) {
+        throw new Error('No access token returned from backend refresh');
       }
 
       // Cập nhật lại trạng thái Auth mới vào Zustand
