@@ -40,6 +40,7 @@ class InventoryUseCaseTest {
     @Mock private RecipeIngredientJpaRepository recipeIngredientJpaRepository;
     @Mock private InventoryTransactionJpaRepository inventoryTransactionJpaRepository;
     @Mock private ProductServiceClient productServiceClient;
+    @Mock private LowStockAlertService lowStockAlertService;
 
     @InjectMocks
     private InventoryUseCase inventoryUseCase;
@@ -312,6 +313,148 @@ class InventoryUseCaseTest {
                     inventoryUseCase.restoreStock(orderId));
 
             // Assert: không gọi addStock
+            then(ingredientJpaRepository).should(never()).addStock(any(), any());
+        }
+
+        @Test
+        @DisplayName("Đã hoàn kho thủ công trước đó → bỏ qua tự động hoàn kho (double-refund prevention)")
+        void restoreStock_alreadyManuallyRestored_skips() {
+            // Arrange: đã có MANUAL_RESTORE transaction cho đơn này
+            InventoryTransactionEntity deductTx = InventoryTransactionEntity.builder()
+                    .orderId(orderId)
+                    .ingredientId(ingredientId)
+                    .transactionType(InventoryTransactionType.DEDUCT)
+                    .quantity(new BigDecimal("10.000"))
+                    .build();
+            InventoryTransactionEntity manualRestoreTx = InventoryTransactionEntity.builder()
+                    .orderId(orderId)
+                    .ingredientId(ingredientId)
+                    .transactionType(InventoryTransactionType.MANUAL_RESTORE)
+                    .quantity(new BigDecimal("10.000"))
+                    .build();
+
+            given(inventoryTransactionJpaRepository.findByOrderId(orderId))
+                    .willReturn(List.of(deductTx, manualRestoreTx));
+
+            // Act
+            assertThatNoException().isThrownBy(() ->
+                    inventoryUseCase.restoreStock(orderId));
+
+            // Assert: KHÔNG gọi addStock vì đã hoàn rồi
+            then(ingredientJpaRepository).should(never()).addStock(any(), any());
+        }
+    }
+
+    // ==================== manualRestoreStock ====================
+
+    @Nested
+    @DisplayName("manualRestoreStock()")
+    class ManualRestoreStockTests {
+
+        @Test
+        @DisplayName("Hoàn kho thủ công thành công và ghi MANUAL_RESTORE transaction")
+        void manualRestoreStock_success() {
+            // Arrange
+            UUID adminId = UUID.randomUUID();
+            String note = "Admin hoàn kho thủ công do Kafka bị đứt kết nối";
+
+            InventoryTransactionEntity deductTx = InventoryTransactionEntity.builder()
+                    .id(UUID.randomUUID())
+                    .orderId(orderId)
+                    .ingredientId(ingredientId)
+                    .transactionType(InventoryTransactionType.DEDUCT)
+                    .quantity(new BigDecimal("10.000"))
+                    .quantityBefore(new BigDecimal("100.000"))
+                    .quantityAfter(new BigDecimal("90.000"))
+                    .build();
+
+            given(inventoryTransactionJpaRepository.findByOrderId(orderId))
+                    .willReturn(List.of(deductTx));
+            given(ingredientJpaRepository.findById(ingredientId))
+                    .willReturn(Optional.of(ingredient));
+            given(inventoryTransactionJpaRepository.saveAndFlush(any()))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            // Act
+            assertThatNoException().isThrownBy(() ->
+                    inventoryUseCase.manualRestoreStock(orderId, adminId, note));
+
+            // Assert: gọi addStock với đúng lượng cần hoàn
+            then(ingredientJpaRepository).should().addStock(ingredientId, new BigDecimal("10.000"));
+
+            // Assert: lưu MANUAL_RESTORE transaction
+            ArgumentCaptor<InventoryTransactionEntity> txCaptor =
+                    ArgumentCaptor.forClass(InventoryTransactionEntity.class);
+            then(inventoryTransactionJpaRepository).should().saveAndFlush(txCaptor.capture());
+            InventoryTransactionEntity savedTx = txCaptor.getValue();
+            assertThat(savedTx.getTransactionType()).isEqualTo(InventoryTransactionType.MANUAL_RESTORE);
+            assertThat(savedTx.getCreatedBy()).isEqualTo(adminId);
+            assertThat(savedTx.getNote()).isEqualTo(note);
+        }
+
+        @Test
+        @DisplayName("Đơn hàng đã được hoàn kho trước đó (qua RESTORE) → ném BusinessException")
+        void manualRestoreStock_alreadyRestoredAuto_throwsException() {
+            // Arrange: đã có RESTORE transaction cho đơn này
+            InventoryTransactionEntity deductTx = InventoryTransactionEntity.builder()
+                    .orderId(orderId)
+                    .transactionType(InventoryTransactionType.DEDUCT)
+                    .build();
+            InventoryTransactionEntity restoreTx = InventoryTransactionEntity.builder()
+                    .orderId(orderId)
+                    .transactionType(InventoryTransactionType.RESTORE)
+                    .build();
+
+            given(inventoryTransactionJpaRepository.findByOrderId(orderId))
+                    .willReturn(List.of(deductTx, restoreTx));
+
+            // Act & Assert
+            assertThatThrownBy(() ->
+                    inventoryUseCase.manualRestoreStock(orderId, UUID.randomUUID(), "Lý do"))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("đã được hoàn kho trước đó");
+
+            then(ingredientJpaRepository).should(never()).addStock(any(), any());
+        }
+
+        @Test
+        @DisplayName("Đơn hàng đã được hoàn kho trước đó (qua MANUAL_RESTORE) → ném BusinessException")
+        void manualRestoreStock_alreadyRestoredManually_throwsException() {
+            // Arrange: đã có MANUAL_RESTORE transaction cho đơn này
+            InventoryTransactionEntity deductTx = InventoryTransactionEntity.builder()
+                    .orderId(orderId)
+                    .transactionType(InventoryTransactionType.DEDUCT)
+                    .build();
+            InventoryTransactionEntity manualRestoreTx = InventoryTransactionEntity.builder()
+                    .orderId(orderId)
+                    .transactionType(InventoryTransactionType.MANUAL_RESTORE)
+                    .build();
+
+            given(inventoryTransactionJpaRepository.findByOrderId(orderId))
+                    .willReturn(List.of(deductTx, manualRestoreTx));
+
+            // Act & Assert
+            assertThatThrownBy(() ->
+                    inventoryUseCase.manualRestoreStock(orderId, UUID.randomUUID(), "Lý do"))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("đã được hoàn kho trước đó");
+
+            then(ingredientJpaRepository).should(never()).addStock(any(), any());
+        }
+
+        @Test
+        @DisplayName("Không có DEDUCT transaction → ném BusinessException")
+        void manualRestoreStock_noDeductTransactions_throwsException() {
+            // Arrange: đơn chưa bị trừ kho
+            given(inventoryTransactionJpaRepository.findByOrderId(orderId))
+                    .willReturn(List.of());
+
+            // Act & Assert
+            assertThatThrownBy(() ->
+                    inventoryUseCase.manualRestoreStock(orderId, UUID.randomUUID(), "Lý do"))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("Không tìm thấy lịch sử trừ kho");
+
             then(ingredientJpaRepository).should(never()).addStock(any(), any());
         }
     }

@@ -158,7 +158,7 @@ public class IngredientUseCase {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public IngredientResponse restockIngredient(UUID id, RestockRequest request) {
+    public IngredientResponse restockIngredient(UUID id, RestockRequest request, UUID adminId) {
         IngredientEntity entity = ingredientJpaRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("Không tìm thấy nguyên liệu có ID: " + id));
 
@@ -178,6 +178,7 @@ public class IngredientUseCase {
                 .quantityBefore(quantityBefore)
                 .quantityAfter(quantityAfter)
                 .note(request.getNote() != null ? request.getNote() : "Nhập kho thêm thủ công")
+                .createdBy(adminId)
                 .build();
 
         inventoryTransactionJpaRepository.saveAndFlush(tx);

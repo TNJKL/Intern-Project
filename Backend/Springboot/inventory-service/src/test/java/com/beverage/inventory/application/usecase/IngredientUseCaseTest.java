@@ -34,6 +34,7 @@ class IngredientUseCaseTest {
 
     @Mock private IngredientJpaRepository ingredientJpaRepository;
     @Mock private InventoryTransactionJpaRepository inventoryTransactionJpaRepository;
+    @Mock private LowStockAlertService lowStockAlertService;
 
     @InjectMocks
     private IngredientUseCase ingredientUseCase;
@@ -240,6 +241,7 @@ class IngredientUseCaseTest {
         @DisplayName("Nhập kho thành công và ghi RESTOCK transaction")
         void restock_success() {
             // Arrange
+            UUID adminId = UUID.randomUUID();
             RestockRequest request = RestockRequest.builder()
                     .quantity(new BigDecimal("50.000"))
                     .note("Nhập hàng tuần")
@@ -267,7 +269,7 @@ class IngredientUseCaseTest {
                     .willAnswer(inv -> inv.getArgument(0));
 
             // Act
-            IngredientResponse response = ingredientUseCase.restockIngredient(ingredientId, request);
+            IngredientResponse response = ingredientUseCase.restockIngredient(ingredientId, request, adminId);
 
             // Assert stock updated
             assertThat(response.getCurrentStock()).isEqualByComparingTo(new BigDecimal("150.000"));
@@ -280,6 +282,7 @@ class IngredientUseCaseTest {
             assertThat(tx.getTransactionType()).isEqualTo(InventoryTransactionType.RESTOCK);
             assertThat(tx.getQuantity()).isEqualByComparingTo(new BigDecimal("50.000"));
             assertThat(tx.getNote()).isEqualTo("Nhập hàng tuần");
+            assertThat(tx.getCreatedBy()).isEqualTo(adminId);
         }
 
         @Test
@@ -289,7 +292,7 @@ class IngredientUseCaseTest {
 
             assertThatThrownBy(() ->
                     ingredientUseCase.restockIngredient(ingredientId,
-                            RestockRequest.builder().quantity(BigDecimal.TEN).build()))
+                            RestockRequest.builder().quantity(BigDecimal.TEN).build(), UUID.randomUUID()))
                     .isInstanceOf(BusinessException.class);
         }
     }

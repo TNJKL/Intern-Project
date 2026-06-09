@@ -1,5 +1,6 @@
 package com.beverage.inventory.presentation.controller;
 
+import com.beverage.inventory.application.dto.request.ManualRestoreRequest;
 import com.beverage.inventory.application.dto.response.IngredientResponse;
 import com.beverage.inventory.application.dto.response.InventoryTransactionResponse;
 import com.beverage.inventory.application.usecase.InventoryUseCase;
@@ -9,14 +10,17 @@ import com.beverage.inventory.infrastructure.persistence.entity.IngredientEntity
 import com.beverage.inventory.infrastructure.persistence.entity.InventoryTransactionEntity;
 import com.beverage.inventory.infrastructure.persistence.repository.IngredientJpaRepository;
 import com.beverage.inventory.infrastructure.persistence.repository.InventoryTransactionJpaRepository;
+import com.beverage.shared.jwt.JwtUserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -107,6 +111,7 @@ public class AdminInventoryController {
                         .quantityBefore(tx.getQuantityBefore())
                         .quantityAfter(tx.getQuantityAfter())
                         .note(tx.getNote())
+                        .createdBy(tx.getCreatedBy())
                         .createdAt(tx.getCreatedAt())
                         .build())
                 .toList();
@@ -119,5 +124,17 @@ public class AdminInventoryController {
     public ResponseEntity<ApiResponse<List<IngredientResponse>>> getToppingsStock() {
         List<IngredientResponse> responses = inventoryUseCase.getToppingsStock();
         return ResponseEntity.ok(ApiResponse.success(responses, "Lấy danh sách tồn kho toppings thành công"));
+    }
+
+    @PostMapping("/orders/{orderId}/manual-restore")
+    @Operation(summary = "Admin hoàn kho thủ công cho đơn hàng (trong trường hợp Kafka lỗi)")
+    public ResponseEntity<ApiResponse<Void>> manualRestoreOrder(
+            @PathVariable UUID orderId,
+            @Valid @RequestBody ManualRestoreRequest request,
+            @AuthenticationPrincipal JwtUserPrincipal principal
+    ) {
+        UUID adminId = principal != null ? principal.getUserId() : null;
+        inventoryUseCase.manualRestoreStock(orderId, adminId, request.getNote());
+        return ResponseEntity.ok(ApiResponse.success(null, "Yêu cầu hoàn kho thủ công cho đơn hàng thành công"));
     }
 }

@@ -18,6 +18,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import com.beverage.shared.jwt.JwtUserPrincipal;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -84,9 +86,11 @@ public class AdminIngredientController {
     @Operation(summary = "Nhập kho thêm nguyên liệu")
     public ResponseEntity<ApiResponse<IngredientResponse>> restock(
             @PathVariable UUID id,
-            @Valid @RequestBody RestockRequest request
+            @Valid @RequestBody RestockRequest request,
+            @AuthenticationPrincipal JwtUserPrincipal principal
     ) {
-        IngredientResponse response = ingredientUseCase.restockIngredient(id, request);
+        UUID adminId = principal != null ? principal.getUserId() : null;
+        IngredientResponse response = ingredientUseCase.restockIngredient(id, request, adminId);
         return ResponseEntity.ok(ApiResponse.success(response, "Nhập kho thêm nguyên liệu thành công"));
     }
 
