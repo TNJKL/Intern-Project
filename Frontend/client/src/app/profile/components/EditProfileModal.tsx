@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { userService, UpdateProfileData } from "@/services/userService";
-import { useAuthStore } from "@/store/useAuthStore";
+import { userService, UpdateProfileData } from "@/services/user.service";
+import { useAuthStore } from "@/store/zustand/useAuthStore";
 import toast from "react-hot-toast";
 
 import { useRouter } from "next/navigation";

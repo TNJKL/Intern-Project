@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Modal, Form, Input, InputNumber, Switch, Button } from 'antd';
-import type { Topping } from '../../../services/toppingService';
+import type { Topping } from '../../../services/topping.service';
 
 interface ToppingModalProps {
   isOpen: boolean;

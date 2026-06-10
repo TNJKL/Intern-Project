@@ -24,5 +24,6 @@ public class InventoryTransactionResponse {
     private BigDecimal quantityBefore;
     private BigDecimal quantityAfter;
     private String note;
+    private UUID createdBy;
     private Instant createdAt;
 }

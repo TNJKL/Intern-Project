@@ -142,7 +142,8 @@ public class InventoryUseCase {
 
         boolean alreadyRestored = inventoryTransactionJpaRepository.findByOrderId(orderId)
                 .stream()
-                .anyMatch(tx -> tx.getTransactionType() == InventoryTransactionType.RESTORE);
+                .anyMatch(tx -> tx.getTransactionType() == InventoryTransactionType.RESTORE 
+                             || tx.getTransactionType() == InventoryTransactionType.MANUAL_RESTORE);
         if (alreadyRestored) {
             log.warn("Don` hang` {} da~ duoc. hoan` kho truoc' do'. Bo? qua.", orderId);
             return;
@@ -189,7 +190,64 @@ public class InventoryUseCase {
             // Reset cờ alert và tự động kích hoạt lại nguyên liệu nếu trước đó bị deactive do hết hàng
             lowStockAlertService.resetAlertOnRestock(ingredientId);
         }
-    } 
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void manualRestoreStock(UUID orderId, UUID adminId, String note) {
+        log.info("Bắt đầu hoàn kho thủ công cho đơn hàng: {} bởi admin: {}", orderId, adminId);
+
+        boolean alreadyRestored = inventoryTransactionJpaRepository.findByOrderId(orderId)
+                .stream()
+                .anyMatch(tx -> tx.getTransactionType() == InventoryTransactionType.RESTORE 
+                             || tx.getTransactionType() == InventoryTransactionType.MANUAL_RESTORE);
+        if (alreadyRestored) {
+            log.warn("Đơn hàng {} đã được hoàn kho trước đó. Bỏ qua.", orderId);
+            throw new BusinessException("Đơn hàng này đã được hoàn kho trước đó.");
+        }
+
+        List<InventoryTransactionEntity> deductTxs = inventoryTransactionJpaRepository.findByOrderId(orderId)
+                .stream()
+                .filter(tx -> tx.getTransactionType() == InventoryTransactionType.DEDUCT)
+                .toList();
+
+        if (deductTxs.isEmpty()) {
+            log.warn("Không tìm thấy lịch sử trừ kho cho đơn hàng: {}", orderId);
+            throw new BusinessException("Không tìm thấy lịch sử trừ kho cho đơn hàng: " + orderId);
+        }
+
+        for (InventoryTransactionEntity deductTx : deductTxs) {
+            UUID ingredientId = deductTx.getIngredientId();
+            BigDecimal quantityToRestore = deductTx.getQuantity();
+
+            IngredientEntity ingredient = ingredientJpaRepository.findById(ingredientId)
+                    .orElseThrow(() -> new BusinessException("Không tìm thấy nguyên liệu có ID: " + ingredientId));
+
+            BigDecimal quantityBefore = ingredient.getCurrentStock();
+            
+            // Atomic update in DB
+            ingredientJpaRepository.addStock(ingredientId, quantityToRestore);
+
+            BigDecimal quantityAfter = quantityBefore.add(quantityToRestore);
+
+            // Log Transaction
+            InventoryTransactionEntity restoreTx = InventoryTransactionEntity.builder()
+                    .ingredientId(ingredientId)
+                    .orderId(orderId)
+                    .transactionType(InventoryTransactionType.MANUAL_RESTORE)
+                    .quantity(quantityToRestore)
+                    .quantityBefore(quantityBefore)
+                    .quantityAfter(quantityAfter)
+                    .note(note != null ? note : "Hoàn kho thủ công cho đơn hàng: " + orderId)
+                    .createdBy(adminId)
+                    .build();
+
+            inventoryTransactionJpaRepository.saveAndFlush(restoreTx);
+            log.info("Đã hoàn kho thủ công nguyên liệu {}: {} -> {}", ingredient.getName(), quantityBefore, quantityAfter);
+
+            // Reset cờ alert và tự động kích hoạt lại nguyên liệu nếu trước đó bị deactive do hết hàng
+            lowStockAlertService.resetAlertOnRestock(ingredientId);
+        }
+    }
 
     public boolean checkAvailability(List<InventoryItemRequest> items) {
         try {

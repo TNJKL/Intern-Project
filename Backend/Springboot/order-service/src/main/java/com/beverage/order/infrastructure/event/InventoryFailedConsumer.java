@@ -27,6 +27,11 @@ public class InventoryFailedConsumer {
             return;
         }
 
+        if (event.getOrderId() == null) {
+            log.debug("Received an event on inventory-events topic without orderId (likely a low stock alert). Ignoring.");
+            return;
+        }
+
         log.info("Received inventory failure event for orderId={} reason={}", event.getOrderId(), event.getReason());
         try {
             orderUseCase.cancelOrderFromInventory(event.getOrderId(), "Thiếu nguyên liệu trong kho: " + event.getReason());

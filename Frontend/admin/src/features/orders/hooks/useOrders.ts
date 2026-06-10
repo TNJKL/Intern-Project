@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { orderService, type GetOrdersParams } from '@/services/orderService';
+import { orderService, type GetOrdersParams } from '@/services/order.service';
 
 export const useOrders = (params?: GetOrdersParams) => {
   return useQuery({
@@ -25,5 +25,11 @@ export const useUpdateOrderStatus = () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['order'] });
     },
+  });
+};
+
+export const useTrackOrder = () => {
+  return useMutation({
+    mutationFn: (orderCode: string) => orderService.trackOrder(orderCode),
   });
 };

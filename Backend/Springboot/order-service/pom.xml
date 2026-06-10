@@ -130,6 +130,16 @@
 			<artifactId>shedlock-provider-redis-spring</artifactId>
 			<version>5.10.0</version>
 		</dependency>
+		<!-- Spring AOP cho Circuit Breaker Annotations -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-aop</artifactId>
+		</dependency>
+		<!-- Spring Cloud Circuit Breaker Resilience4j -->
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-circuitbreaker-resilience4j</artifactId>
+		</dependency>
 	</dependencies>
 	<dependencyManagement>
 		<dependencies>

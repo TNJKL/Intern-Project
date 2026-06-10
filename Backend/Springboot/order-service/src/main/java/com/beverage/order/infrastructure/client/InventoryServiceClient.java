@@ -1,9 +1,11 @@
 package com.beverage.order.infrastructure.client;
 
 import com.beverage.order.domain.exception.BusinessException;
+import com.beverage.order.domain.exception.ServiceUnavailableException;
 import com.beverage.order.infrastructure.client.dto.InventoryItemRequest;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -20,6 +22,7 @@ public class InventoryServiceClient {
     private final RestClient inventoryRestClient;
     private final ObjectMapper objectMapper;
 
+    @CircuitBreaker(name = "inventoryService", fallbackMethod = "fallbackCheckStockAvailability")
     public void checkStockAvailability(List<InventoryItemRequest> items) {
         if (items == null || items.isEmpty()) {
             return;
@@ -37,12 +40,15 @@ public class InventoryServiceClient {
             log.warn("Inventory check availability returned HTTP status={}: {}", e.getStatusCode(), responseBody);
             String message = extractMessage(responseBody);
             throw new BusinessException(message, "INVENTORY_STOCK_UNAVAILABLE");
-        } catch (BusinessException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("Failed to perform synchronous inventory check: {}", e.getMessage(), e);
-            throw new BusinessException("Dịch vụ kho hàng tạm thời không khả dụng, vui lòng thử lại sau.", "INVENTORY_SERVICE_UNAVAILABLE");
         }
+    }
+
+    public void fallbackCheckStockAvailability(List<InventoryItemRequest> items, Throwable t) {
+        if (t instanceof BusinessException) {
+            throw (BusinessException) t;
+        }
+        log.error("Circuit breaker 'inventoryService' triggered! Fallback ném lỗi 503. Nguyên nhân: {}", t.getMessage());
+        throw new ServiceUnavailableException("Hệ thống đang bảo trì, vui lòng thử lại sau ít phút");
     }
 
     private String extractMessage(String json) {

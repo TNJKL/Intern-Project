@@ -59,12 +59,14 @@ CREATE TABLE IF NOT EXISTS inventory_transactions (
                         'DEDUCT',    -- trừ khi đặt hàng
                         'RESTORE',   -- hoàn khi hủy đơn
                         'RESTOCK',   -- nhập kho
-                        'ADJUST'     -- điều chỉnh thủ công
+                        'ADJUST',    -- điều chỉnh thủ công
+                        'MANUAL_RESTORE' -- admin hoàn thủ công
                     )),
     quantity        DECIMAL(10,3) NOT NULL,
     quantity_before DECIMAL(10,3) NOT NULL,  -- tồn kho trước
     quantity_after  DECIMAL(10,3) NOT NULL,  -- tồn kho sau
     note            TEXT,
+    created_by      UUID,                    -- NULL = system tự động, UUID = admin thực hiện thủ công
     created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
