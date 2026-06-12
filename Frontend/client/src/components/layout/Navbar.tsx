@@ -37,7 +37,7 @@ export function Navbar({ initialUser }: NavbarProps) {
 
   useEffect(() => {
     setIsMounted(true);
-    
+
     const syncSteam = () => {
       const savedSteam = localStorage.getItem("steamEffect") === "true";
       setSteamEffect(savedSteam);

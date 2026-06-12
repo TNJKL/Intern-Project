@@ -1,22 +1,25 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAuthStore } from '../store/zustand/useAuthStore';
 import { message } from '../lib/antd';
+import Cookies from 'js-cookie';
 
 export const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, user, setAuth, fetchUser, silentRefresh } = useAuthStore();
+  const { user, setAuth, fetchUser, silentRefresh } = useAuthStore();
   const [isHydrated, setIsHydrated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  // Ref để đảm bảo checkAuth chỉ chạy đúng 1 lần
+  const hasChecked = useRef(false);
 
   useEffect(() => {
-    // Wait for zustand persist to hydrate
     setIsHydrated(true);
   }, []);
 
   useEffect(() => {
-    if (!isHydrated || !isCheckingAuth) return;
+    if (!isHydrated || hasChecked.current) return;
+    hasChecked.current = true;
 
     const checkAuth = async () => {
-      // 1. Check for auth data in URL (passed from client login)
+      // 1. Kiểm tra dữ liệu auth trong URL (được truyền từ client login)
       const urlParams = new URLSearchParams(window.location.search);
       const authDataParam = urlParams.get('auth');
 
@@ -24,52 +27,50 @@ export const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children })
         try {
           const authData = JSON.parse(decodeURIComponent(authDataParam));
           setAuth(authData.user, authData.accessToken);
-          
-          // Show login success message
           message.success('Đăng nhập thành công!');
-          
-          // Clean up URL
           window.history.replaceState({}, document.title, window.location.pathname);
           setIsCheckingAuth(false);
           return;
         } catch (e) {
-          console.error('Failed to parse auth data', e);
+          console.error('[AuthGuard] Failed to parse auth data from URL', e);
         }
       }
 
-      // 2. If not authenticated, try silent refresh
-      if (!isAuthenticated) {
-        const success = await silentRefresh();
-        if (success) {
-          setIsCheckingAuth(false);
-          return;
+      // 2. Kiểm tra có adminAccessToken cookie không (non-HttpOnly, js-cookie đọc được)
+      //    Nếu có → đã login, chỉ cần fetchUser để lấy thông tin user mới nhất
+      //    Axios interceptor sẽ tự refresh khi token hết hạn (trả về 401)
+      const adminToken = Cookies.get('adminAccessToken');
+      if (adminToken) {
+        try {
+          await fetchUser();
+        } catch (err) {
+          console.error('[AuthGuard] fetchUser thất bại:', err);
+          // fetchUser thất bại với 401 → interceptor sẽ tự xử lý refresh
+          // Không cần redirect ở đây, để interceptor làm việc
         }
-        
-        // If silent refresh failed, redirect to login
-        window.location.href = 'http://localhost:3000/login?logout=true';
+        setIsCheckingAuth(false);
         return;
       }
 
-      // 3. If authenticated but NOT an admin, redirect to client homepage
-      if (user && user.role?.toUpperCase() !== 'ADMIN') {
-        window.location.href = 'http://localhost:3000';
+      // 3. Không có token → thử silent refresh qua cookie HttpOnly (refreshToken)
+      //    Trường hợp này: tab mới mở hoặc adminAccessToken đã hết hạn trong cookie
+      console.log('[AuthGuard] Không có adminAccessToken, thử silent refresh...');
+      const success = await silentRefresh();
+      if (success) {
+        setIsCheckingAuth(false);
         return;
       }
 
-      // 4. Fetch latest profile
-      try {
-        await fetchUser();
-      } catch (err) {
-        console.error('Failed to fetch user profile:', err);
-      }
-      
-      setIsCheckingAuth(false);
+      // 4. Thất bại → về trang login
+      console.log('[AuthGuard] Silent refresh thất bại, chuyển về login');
+      window.location.href = 'http://localhost:3000/login?logout=true';
     };
 
     checkAuth();
-  }, [isHydrated, isCheckingAuth, isAuthenticated, setAuth, fetchUser, silentRefresh, user]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHydrated]);
 
-  // Show loading while hydrating or redirecting
+  // Hiển thị loading trong khi kiểm tra auth
   if (!isHydrated || isCheckingAuth || user?.role?.toUpperCase() !== 'ADMIN') {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-[#fdfaf5]">

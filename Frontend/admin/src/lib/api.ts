@@ -3,20 +3,19 @@ import axios from 'axios';
 import Cookies from 'js-cookie';
 import { useAuthStore } from '../store/zustand/useAuthStore';
 
-// Xác định domain của Next.js Server gánh proxy (môi trường dev thường là http://localhost:3000)
+// Next.js proxy URL (môi trường dev)
 const NEXTJS_PROXY_URL = 'http://localhost:3000';
 
 export const apiClient = axios.create({
-  // Sử dụng URL tuyệt đối trỏ sang Next.js để proxy bên đó xử lý viết lại rewrite xuống NestJS
   baseURL: `${NEXTJS_PROXY_URL}/api/v1`,
-  withCredentials: true,
+  withCredentials: true, // Trình duyệt tự gửi cookie (accessToken, refreshToken) kèm mỗi request
   headers: {
     'Content-Type': 'application/json',
     'ngrok-skip-browser-warning': '69420',
   },
 });
 
-// ─── Refresh token queue ───
+// ─── Refresh token queue (tránh gọi refresh song song) ───
 let isRefreshing = false;
 let failedQueue: Array<{ resolve: (token: string) => void; reject: (err: any) => void }> = [];
 
@@ -25,10 +24,13 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
-// ─── Request interceptor ───
+// ─── Request interceptor: gắn accessToken vào Authorization header ───
 apiClient.interceptors.request.use((config) => {
-  // Lấy token đồng bộ từ cookie để khớp hoàn toàn với Next.js Proxy Middleware
-  const token = Cookies.get('adminAccessToken') || Cookies.get('accessToken') || useAuthStore.getState().accessToken;
+  // Đọc token từ store (luôn mới nhất sau refresh) hoặc cookie dự phòng
+  const token =
+    useAuthStore.getState().accessToken ||
+    Cookies.get('adminAccessToken') ||
+    Cookies.get('accessToken');
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -36,20 +38,21 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// ─── Response interceptor ───
+// ─── Response interceptor: tự động refresh khi token hết hạn ───
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // Nhận diện mã lỗi TOKEN_EXPIRED từ Backend hoặc mã TOKEN_EXPIRED_NEED_REFRESH cứu vãn từ proxy.ts
-    const isExpired = error.response?.data?.errorCode === 'TOKEN_EXPIRED' || error.response?.data?.code === 'TOKEN_EXPIRED_NEED_REFRESH';
-    const isAuthError = isExpired || error.response?.status === 401 || error.response?.status === 403;
+    // Chỉ bắt 401 Unauthorized (token hết hạn) — KHÔNG bắt 403 Forbidden (thiếu quyền)
+    const isExpired = error.response?.data?.errorCode === 'TOKEN_EXPIRED';
+    const isAuthError = isExpired || error.response?.status === 401;
 
     if (!isAuthError || originalRequest._retry) {
       return Promise.reject(error);
     }
 
+    // Xếp hàng nếu đang có refresh khác chạy
     if (isRefreshing) {
       return new Promise<string>((resolve, reject) => {
         failedQueue.push({ resolve, reject });
@@ -65,27 +68,41 @@ apiClient.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      // ✅ SỬA LỖI ĐƯỜNG DẪN: Ép URL tuyệt đối chạy qua cổng của Next.js Proxy
-      const refreshUrl = `${NEXTJS_PROXY_URL}/api/auth/session-token`;
-
-      const response = await axios.get(refreshUrl, {
-        withCredentials: true, // Ép trình duyệt đính kèm cookie của Next.js (chứa refreshToken) lên
-        headers: {
-          'ngrok-skip-browser-warning': '69420',
+      // Gọi refresh qua proxy với body rỗng.
+      // Trình duyệt tự đính kèm cookie refreshToken (HttpOnly) nhờ withCredentials: true.
+      // Proxy forward cookie lên backend, backend trả token mới.
+      // Proxy tự set lại Set-Cookie bền vững (Max-Age=7 ngày) về trình duyệt.
+      const response = await axios.post(
+        `${NEXTJS_PROXY_URL}/api/v1/auth/refresh`,
+        {}, // body rỗng
+        {
+          withCredentials: true,
+          headers: { 'ngrok-skip-browser-warning': '69420' },
         }
-      });
+      );
 
       const responseData = response.data;
-      const newToken = responseData?.accessToken;
+      const newToken = responseData?.data?.accessToken || responseData?.accessToken;
+      const newUser = responseData?.data?.user || responseData?.user;
 
-      if (!newToken || responseData?.error === 'RefreshTokenError') {
-        throw new Error('No access token returned from proxy refresh');
+      if (!newToken) {
+        throw new Error('No access token returned from refresh');
       }
 
-      // Cập nhật lại trạng thái Auth mới vào Zustand
-      const currentUser = useAuthStore.getState().user;
+      // QUAN TRỌNG: Luôn cập nhật token mới vào cookie và store
+      // kể cả khi user chưa được fetch (currentUser = null)
+      const currentUser = newUser || useAuthStore.getState().user;
       if (currentUser) {
         useAuthStore.getState().setAuth(currentUser, newToken);
+      } else {
+        const isSecure = window.location.protocol === 'https:';
+        Cookies.set('adminAccessToken', newToken, {
+          expires: 7,
+          path: '/',
+          sameSite: 'lax',
+          secure: isSecure,
+        });
+        useAuthStore.setState({ accessToken: newToken, isAuthenticated: true });
       }
 
       processQueue(null, newToken);
@@ -93,7 +110,24 @@ apiClient.interceptors.response.use(
       return apiClient(originalRequest);
     } catch (refreshError) {
       processQueue(refreshError, null);
-      // Khi Refresh Token chết hẳn (quá hạn 7 ngày), dọn sạch cookie và ép quay về trang đăng nhập
+
+      // Lưu chi tiết lỗi vào localStorage trước khi chuyển hướng để tránh mất log
+      try {
+        const isAxiosErr = axios.isAxiosError(refreshError);
+        const errDetail = {
+          timestamp: new Date().toISOString(),
+          status: isAxiosErr ? refreshError.response?.status : 'unknown',
+          data: isAxiosErr ? refreshError.response?.data : null,
+          message: refreshError instanceof Error ? refreshError.message : String(refreshError),
+          url: isAxiosErr ? refreshError.config?.url : '',
+        };
+        console.error('[Admin API Client] Refresh Token Failed:', errDetail);
+        localStorage.setItem('last_auth_error_admin', JSON.stringify(errDetail));
+      } catch (e) {
+        console.error('[Admin API Client] Failed to save error details:', e);
+      }
+
+      // Refresh token hết hạn thật sự → đăng xuất
       useAuthStore.getState().logout();
       return Promise.reject(refreshError);
     } finally {

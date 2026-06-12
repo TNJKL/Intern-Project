@@ -11,7 +11,7 @@ import { useAuthStore } from "@/store/zustand/useAuthStore";
 import { useAppDispatch } from "@/store/redux/hooks";
 import { setCredentials } from "@/store/redux/authSlice";
 import { signIn, getSession } from "next-auth/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AlertCircle, Coffee } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 
@@ -26,8 +26,35 @@ export default function LoginPage() {
     const router = useRouter();
     const { setUser } = useAuthStore();
     const dispatch = useAppDispatch();
-    
+
     const [loginApiError, setLoginApiError] = useState<string | null>(null);
+    const [persistedError, setPersistedError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const errClient = localStorage.getItem('last_auth_error_client');
+            const errAdmin = localStorage.getItem('last_auth_error_admin');
+            if (errClient) {
+                try {
+                    const parsed = JSON.parse(errClient);
+                    setPersistedError(`[Client] ${parsed.message} (Status: ${parsed.status}) — URL: ${parsed.url || ''} — Data: ${JSON.stringify(parsed.data || '')}`);
+                    localStorage.removeItem('last_auth_error_client');
+                } catch {
+                    setPersistedError(`[Client] Refresh failed: ${errClient}`);
+                    localStorage.removeItem('last_auth_error_client');
+                }
+            } else if (errAdmin) {
+                try {
+                    const parsed = JSON.parse(errAdmin);
+                    setPersistedError(`[Admin] ${parsed.message} (Status: ${parsed.status}) — URL: ${parsed.url || ''} — Data: ${JSON.stringify(parsed.data || '')}`);
+                    localStorage.removeItem('last_auth_error_admin');
+                } catch {
+                    setPersistedError(`[Admin] Refresh failed: ${errAdmin}`);
+                    localStorage.removeItem('last_auth_error_admin');
+                }
+            }
+        }
+    }, []);
 
     const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginFormValues>({
         resolver: zodResolver(loginSchema),
@@ -82,6 +109,16 @@ export default function LoginPage() {
                 <h1 className="text-3xl font-bold text-white tracking-wide mb-2">Đăng nhập</h1>
                 <p className="text-white/70 text-sm">Chào mừng trở lại với Brewtra.</p>
             </div>
+
+            {persistedError && (
+                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-3.5 bg-amber-500/10 text-amber-300 rounded-xl text-xs font-medium border border-amber-500/20 flex items-start gap-2 mb-4 leading-relaxed">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
+                    <div>
+                      <strong className="block text-amber-400 font-bold mb-0.5">Lỗi tự động làm mới token (Auto-Logout Cause):</strong>
+                      <span>{persistedError}</span>
+                    </div>
+                </motion.div>
+            )}
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 {loginApiError && (
