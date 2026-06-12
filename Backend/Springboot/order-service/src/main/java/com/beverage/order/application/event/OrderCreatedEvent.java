@@ -1,6 +1,7 @@
 package com.beverage.order.application.event;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -17,6 +18,8 @@ public class OrderCreatedEvent extends OrderEventWrapper {
     private String userPhone;
     private BigDecimal totalAmount;
     private List<OrderItemEventDto> items;
+    private String paymentMethod;
+    private Instant paymentDeadline;
 
     public OrderCreatedEvent() {
         super();
@@ -95,6 +98,22 @@ public class OrderCreatedEvent extends OrderEventWrapper {
         this.items = items;
     }
 
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
+    }
+
+    public Instant getPaymentDeadline() {
+        return paymentDeadline;
+    }
+
+    public void setPaymentDeadline(Instant paymentDeadline) {
+        this.paymentDeadline = paymentDeadline;
+    }
+
     public static OrderCreatedEventBuilder builder() {
         return new OrderCreatedEventBuilder();
     }
@@ -109,7 +128,9 @@ public class OrderCreatedEvent extends OrderEventWrapper {
         private String userPhone;
         private BigDecimal totalAmount;
         private List<OrderItemEventDto> items;
-        private java.time.Instant occurredAt;
+        private String paymentMethod;
+        private Instant paymentDeadline;
+        private Instant occurredAt;
 
         public OrderCreatedEventBuilder eventType(String eventType) {
             this.eventType = eventType;
@@ -156,7 +177,17 @@ public class OrderCreatedEvent extends OrderEventWrapper {
             return this;
         }
 
-        public OrderCreatedEventBuilder occurredAt(java.time.Instant occurredAt) {
+        public OrderCreatedEventBuilder paymentMethod(String paymentMethod) {
+            this.paymentMethod = paymentMethod;
+            return this;
+        }
+
+        public OrderCreatedEventBuilder paymentDeadline(Instant paymentDeadline) {
+            this.paymentDeadline = paymentDeadline;
+            return this;
+        }
+
+        public OrderCreatedEventBuilder occurredAt(Instant occurredAt) {
             this.occurredAt = occurredAt;
             return this;
         }
@@ -172,6 +203,8 @@ public class OrderCreatedEvent extends OrderEventWrapper {
             event.setUserPhone(this.userPhone);
             event.setTotalAmount(this.totalAmount);
             event.setItems(this.items);
+            event.setPaymentMethod(this.paymentMethod);
+            event.setPaymentDeadline(this.paymentDeadline);
             event.setOccurredAt(this.occurredAt);
             return event;
         }

@@ -8,4 +8,5 @@ public final class OrderTopics {
     public static final String ORDER_EVENTS = "order-events";
     public static final String ORDER_TIMEOUT_EVENTS = "order-timeout-events";
     public static final String INVENTORY_EVENTS = "inventory-events";
+    public static final String PAYMENT_EVENTS = "payment-events";
 }

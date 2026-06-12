@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS payments (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     order_id            UUID NOT NULL UNIQUE,
     order_code          VARCHAR(30) NOT NULL,
-    user_id             UUID NOT NULL,
+    user_id             UUID ,
     amount              DECIMAL(12,0) NOT NULL CHECK (amount > 0),
     payment_method      VARCHAR(30) NOT NULL CHECK (payment_method IN ('VNPAY', 'MOMO', 'COD')),
     status              VARCHAR(30) NOT NULL DEFAULT 'PENDING'
@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS payments (
     payment_url         VARCHAR(1000),
     gateway_response    JSONB,
     paid_at             TIMESTAMP WITH TIME ZONE,
+    idempotency_key     VARCHAR(100) UNIQUE,
+    expired_at          TIMESTAMP WITH TIME ZONE,
     created_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
@@ -33,15 +35,24 @@ CREATE TABLE IF NOT EXISTS refunds (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     payment_id          UUID NOT NULL,
     order_id            UUID NOT NULL,
-    user_id             UUID NOT NULL,
+    user_id             UUID ,
     amount              DECIMAL(12,0) NOT NULL CHECK (amount > 0),
     reason              TEXT NOT NULL,
     status              VARCHAR(30) NOT NULL DEFAULT 'PENDING'
                         CHECK (status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED')),
     transaction_id      VARCHAR(255),
+    requested_by        UUID,
     processed_at        TIMESTAMP WITH TIME ZONE,
     created_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+-- ============================================================
+-- PROCESSED EVENTS FOR KAFKA IDEMPOTENCY
+-- ============================================================
+CREATE TABLE IF NOT EXISTS processed_events (
+    event_id     VARCHAR(200) PRIMARY KEY,
+    processed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- ============================================================

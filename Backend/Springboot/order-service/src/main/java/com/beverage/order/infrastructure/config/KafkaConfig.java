@@ -1,6 +1,7 @@
 package com.beverage.order.infrastructure.config;
 
 import com.beverage.order.application.event.OrderEventWrapper;
+import com.beverage.order.application.event.payment.PaymentEventWrapper;
 import com.beverage.order.application.event.OrderTimeoutEvent;
 import com.beverage.order.infrastructure.event.OrderTopics;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -177,6 +178,42 @@ public class KafkaConfig {
         ConcurrentKafkaListenerContainerFactory<String, com.beverage.order.application.event.OrderInventoryFailedEvent> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(inventoryFailedConsumerFactory());
+        factory.setConcurrency(3);
+        factory.setCommonErrorHandler(errorHandler());
+        return factory;
+    }
+
+    @Bean
+    public ConsumerFactory<String, PaymentEventWrapper> paymentEventConsumerFactory() {
+        Map<String, Object> props = new HashMap<>();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "order-service-payment-handler");
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+        props.put(ErrorHandlingDeserializer.KEY_DESERIALIZER_CLASS, StringDeserializer.class);
+        props.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class);
+        props.put(JsonDeserializer.TRUSTED_PACKAGES, "com.beverage.order.application.event.payment");
+        props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, PaymentEventWrapper.class.getName());
+        props.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, false);
+
+        JsonDeserializer<PaymentEventWrapper> jsonDeserializer =
+                new JsonDeserializer<>(PaymentEventWrapper.class, kafkaObjectMapper(), false);
+        ErrorHandlingDeserializer<PaymentEventWrapper> errorHandlingDeserializer =
+                new ErrorHandlingDeserializer<>(jsonDeserializer);
+
+        return new DefaultKafkaConsumerFactory<>(
+                props,
+                new StringDeserializer(),
+                errorHandlingDeserializer
+        );
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, PaymentEventWrapper> paymentEventListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, PaymentEventWrapper> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(paymentEventConsumerFactory());
         factory.setConcurrency(3);
         factory.setCommonErrorHandler(errorHandler());
         return factory;

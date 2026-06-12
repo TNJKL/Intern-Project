@@ -326,6 +326,36 @@ public class OrderUseCase {
         log.info("Successfully cancelled order id={} from inventory event due to: {}", orderId, reason);
     }
 
+    @Transactional
+    public void confirmOrderFromPayment(UUID orderId) {
+        OrderEntity order = orderJpaRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Đơn hàng", "id", orderId));
+
+        if (order.getStatus() != OrderStatus.PENDING) {
+            log.warn("Cannot auto-confirm order {} because its status is {}", orderId, order.getStatus());
+            return;
+        }
+
+        // Chỉ xác nhận tự động đối với các phương thức thanh toán online (VNPay)
+        String method = order.getPaymentMethod();
+        if (!"VNPAY".equalsIgnoreCase(method)) {
+            log.warn("Skipping auto-confirm for order {} because payment method is {}", orderId, method);
+            return;
+        }
+
+        order.setStatus(OrderStatus.CONFIRMED);
+        orderJpaRepository.save(order);
+
+        appendStatusHistory(orderId, OrderStatus.CONFIRMED, "Thanh toán trực tuyến thành công. Hệ thống tự động xác nhận đơn hàng.");
+        
+        // Phát sự kiện local để đồng bộ trạng thái sang các service liên quan 
+        applicationEventPublisher.publishEvent(new OrderApplicationEvent.OrderStatusChanged(
+                this, order, OrderStatus.PENDING, OrderStatus.CONFIRMED, "Tự động xác nhận qua cổng thanh toán"));
+
+        orderDetailCacheService.evict(orderId);
+        log.info("Successfully confirmed order id={} automatically due to successful payment", orderId);
+    }
+
     @Transactional(readOnly = true)
     public Page<OrderSummaryResponse> listAllOrders(
             OrderStatus status,

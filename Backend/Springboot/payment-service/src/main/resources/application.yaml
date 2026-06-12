@@ -1,3 +1,87 @@
 spring:
   application:
     name: payment-service
+  config:
+    import: optional:file:.env[.properties],optional:file:./.env[.properties],optional:file:../.env[.properties],optional:file:../../.env[.properties]
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:payment_db}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:kakarot1996}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 5000ms
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+    consumer:
+      group-id: payment-service-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.beverage.payment.infrastructure.event.dto,com.beverage.order.infrastructure.event.dto"
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+
+server:
+  port: 8085
+  max-http-request-header-size: 16384
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+    enabled: true
+
+jwt:
+  secret-key: ${JWT_SECRET_KEY:dGhpc2lzYXZlcnlsb25nc2VjcmV0a2V5Zm9yand0dG9rZW5nZW5lcmF0aW9uYW5kZGVjcnlwdGlvbg==}
+  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:60000}
+  refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:604800000}
+
+auth:
+  access-cookie:
+    name: ${AUTH_ACCESS_COOKIE_NAME:accessToken}
+
+springdoc:
+  api-docs:
+    path: /payment/v3/api-docs
+  swagger-ui:
+    path: /payment/swagger-ui.html
+    enabled: true
+    tags-sorter: alpha
+    operations-sorter: alpha
+
+app:
+  cors:
+    allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:3000,http://localhost:5173,http://127.0.0.1:*,https://*.ngrok-free.app,https://*.ngrok-free.dev}
+  internal:
+    secret: ${INTERNAL_SERVICE_SECRET:internal-beverage-secret-2024}
+  kafka:
+    topics:
+      order-events: ${KAFKA_TOPIC_ORDER_EVENTS:order-events}
+      payment-events: ${KAFKA_TOPIC_PAYMENT_EVENTS:payment-events}
+  payment:
+    vnpay:
+      tmn-code: ${VNPAY_TMN_CODE}
+      hash-secret: ${VNPAY_HASH_SECRET}
+      url: ${VNPAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+      return-url: ${VNPAY_RETURN_URL:http://localhost:8080/api/v1/payments/vnpay/callback}
+  frontend:
+    payment-result-url: ${FRONTEND_PAYMENT_RESULT_URL:http://localhost:3000/payment/result}
