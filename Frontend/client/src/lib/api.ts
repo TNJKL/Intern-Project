@@ -69,6 +69,24 @@ apiClient.interceptors.response.use(
     } catch (refreshError) {
       processQueue(refreshError);
 
+      // Lưu chi tiết lỗi vào localStorage trước khi chuyển hướng để tránh mất log
+      if (typeof window !== 'undefined') {
+        try {
+          const isAxiosErr = axios.isAxiosError(refreshError);
+          const errDetail = {
+            timestamp: new Date().toISOString(),
+            status: isAxiosErr ? refreshError.response?.status : 'unknown',
+            data: isAxiosErr ? refreshError.response?.data : null,
+            message: refreshError instanceof Error ? refreshError.message : String(refreshError),
+            url: isAxiosErr ? refreshError.config?.url : '',
+          };
+          console.error('[API Client] Refresh Token Failed:', errDetail);
+          localStorage.setItem('last_auth_error_client', JSON.stringify(errDetail));
+        } catch (e) {
+          console.error('[API Client] Failed to save error details:', e);
+        }
+      }
+
       // Nếu refresh thất bại (ví dụ: Refresh Token hết hạn thực sự) -> Đăng xuất
       store.dispatch(clearCredentials());
       try {

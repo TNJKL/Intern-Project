@@ -1,9 +1,10 @@
 // 📄 src/app/api/v1/[...path]/route.ts
 // Catch-all proxy: chuyển tiếp mọi request /api/v1/* sang backend
-// 
-// Thiết kế cookie-only thuần túy:
+//
+// Thiết kế:
 //  - Chuyển tiếp nguyên vẹn Cookie từ trình duyệt gửi lên (accessToken, refreshToken)
-//  - Chuyển tiếp nguyên vẹn Set-Cookie từ backend trả về để trình duyệt cập nhật cookie
+//  - Backend đọc refreshToken từ cookie (không cần body)
+//  - Khi auth/refresh hoặc auth/login thành công: tự tạo Set-Cookie bền vững (Max-Age=7 ngày)
 
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -27,6 +28,32 @@ function getCorsHeaders(origin: string | null) {
   };
 }
 
+/** Đảm bảo cookie accessToken/refreshToken luôn có Max-Age=7 ngày và được lưu ở Path=/ */
+function ensurePersistentCookie(cookieStr: string): string {
+  if (!cookieStr.includes('accessToken') && !cookieStr.includes('refreshToken')) {
+    return cookieStr;
+  }
+  
+  // Kiểm tra xem đây có phải là cookie xóa (Max-Age=0 hoặc giá trị trống/đã hết hạn)
+  const isDelete = /Max-Age=0/i.test(cookieStr) || /expires=Thu, 01 Jan 1970/i.test(cookieStr);
+  
+  // Xóa sạch các thuộc tính cũ để tránh trùng lặp
+  let c = cookieStr
+    .replace(/;\s*Max-Age=[^;]*/gi, '')
+    .replace(/;\s*Expires=[^;]*/gi, '')
+    .replace(/;\s*Path=[^;]*/gi, '')
+    .replace(/;\s*HttpOnly/gi, '');
+  
+  if (isDelete) {
+    c += '; Path=/; HttpOnly; Max-Age=0';
+  } else {
+    c += '; Path=/; HttpOnly; Max-Age=604800'; // 7 ngày
+  }
+  
+  if (!/;\s*SameSite=/i.test(c)) c += '; SameSite=Lax';
+  return c;
+}
+
 // Xử lý OPTIONS preflight
 export async function OPTIONS(request: NextRequest) {
   const origin = request.headers.get('origin');
@@ -47,6 +74,16 @@ async function proxyRequest(request: NextRequest, { params }: { params: Promise<
     const searchParams = request.nextUrl.searchParams.toString();
     const targetUrl = `${BACKEND_URL}/api/v1/${pathStr}${searchParams ? `?${searchParams}` : ''}`;
 
+    // ── Đọc body gốc từ request (nếu có) ────────────────────────────────────
+    let body: string | undefined;
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      try {
+        body = await request.text();
+      } catch {
+        body = undefined;
+      }
+    }
+
     // ── Chuẩn bị headers để forward ────────────────────────────────────────
     const forwardHeaders: Record<string, string> = {
       'Content-Type': request.headers.get('content-type') || 'application/json',
@@ -60,21 +97,12 @@ async function proxyRequest(request: NextRequest, { params }: { params: Promise<
     }
 
     // Forward nguyên vẹn Cookie của trình duyệt (chứa accessToken, refreshToken)
-    const cookie = request.headers.get('cookie');
-    if (cookie) {
-      forwardHeaders['Cookie'] = cookie;
+    const cookieHeader = request.headers.get('cookie') || '';
+    if (cookieHeader) {
+      forwardHeaders['Cookie'] = cookieHeader;
     }
 
-    // Lấy body (nếu có)
-    let body: string | undefined;
-    if (request.method !== 'GET' && request.method !== 'HEAD') {
-      try {
-        body = await request.text();
-      } catch {
-        body = undefined;
-      }
-    }
-
+    // ── Gửi request đến backend ─────────────────────────────────────────────
     const backendResponse = await fetch(targetUrl, {
       method: request.method,
       headers: forwardHeaders,
@@ -87,22 +115,49 @@ async function proxyRequest(request: NextRequest, { params }: { params: Promise<
     // ── Chuẩn bị headers cho response trả về client ─────────────────────────
     const responseHeaders = new Headers();
     responseHeaders.set('Content-Type', backendResponse.headers.get('content-type') || 'application/json');
-    
+
     // Đính kèm CORS
     Object.entries(corsHeaders).forEach(([key, val]) => {
       responseHeaders.set(key, val);
     });
 
-    // Chuyển tiếp nguyên vẹn Set-Cookie từ backend để trình duyệt tự động cập nhật
-    const setCookieHeaders = backendResponse.headers.getSetCookie();
-    if (setCookieHeaders && setCookieHeaders.length > 0) {
-      setCookieHeaders.forEach((c) => {
-        responseHeaders.append('Set-Cookie', c);
+    // ── Khi auth/refresh hoặc auth/login thành công: set cookie bền vững ────
+    // Backend Springboot trả token trong JSON body (không phải Set-Cookie header)
+    // → Proxy tự tạo Set-Cookie với Max-Age=7 ngày, HttpOnly
+    if ((pathStr === 'auth/refresh' || pathStr === 'auth/login') && backendResponse.ok) {
+      try {
+        const data = JSON.parse(responseText);
+        const newAccessToken = data?.data?.accessToken || data?.accessToken;
+        const newRefreshToken = data?.data?.refreshToken || data?.refreshToken;
+
+        if (newAccessToken) {
+          const secureFlag = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+          responseHeaders.append(
+            'Set-Cookie',
+            `accessToken=${newAccessToken}; Path=/; HttpOnly; Max-Age=604800; SameSite=Lax${secureFlag}`
+          );
+          if (newRefreshToken) {
+            responseHeaders.append(
+              'Set-Cookie',
+              `refreshToken=${newRefreshToken}; Path=/; HttpOnly; Max-Age=604800; SameSite=Lax${secureFlag}`
+            );
+          }
+        }
+      } catch {
+        // Không parse được JSON – bỏ qua, vẫn trả về response bình thường
+      }
+    }
+
+    // ── Chuyển tiếp Set-Cookie từ backend (nếu có), đảm bảo hạn dùng 7 ngày ─
+    const setCookieValues = backendResponse.headers.getSetCookie();
+    if (setCookieValues.length > 0) {
+      setCookieValues.forEach((c) => {
+        responseHeaders.append('Set-Cookie', ensurePersistentCookie(c));
       });
     } else {
       const setCookie = backendResponse.headers.get('set-cookie');
       if (setCookie) {
-        responseHeaders.set('Set-Cookie', setCookie);
+        responseHeaders.set('Set-Cookie', ensurePersistentCookie(setCookie));
       }
     }
 

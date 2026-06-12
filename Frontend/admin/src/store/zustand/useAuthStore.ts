@@ -6,6 +6,8 @@ import axios from 'axios';
 import type { User } from '@/types/user';
 import { userService } from '@/services/user.service';
 
+const NEXTJS_PROXY_URL = 'http://localhost:3000';
+
 interface AuthState {
   user: User | null;
   accessToken: string | null;
@@ -20,27 +22,27 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
-      accessToken: Cookies.get('adminAccessToken') || Cookies.get('accessToken') || null,
-      isAuthenticated: !!(Cookies.get('adminAccessToken') || Cookies.get('accessToken')),
+      // Đọc từ cookie non-HttpOnly (adminAccessToken) khi khởi tạo
+      accessToken: Cookies.get('adminAccessToken') || null,
+      isAuthenticated: !!Cookies.get('adminAccessToken'),
 
       setAuth: (user, accessToken) => {
-        const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || window.location.pathname.startsWith('/admin');
-
         const isSecure = window.location.protocol === 'https:';
-        if (isAdmin) {
-          Cookies.set('adminAccessToken', accessToken, { expires: 7, path: '/', sameSite: 'lax', secure: isSecure });
-        } else {
-          Cookies.set('accessToken', accessToken, { expires: 7, path: '/', sameSite: 'lax', secure: isSecure });
-        }
-
+        // Lưu accessToken dưới dạng non-HttpOnly để request interceptor đọc được
+        // refreshToken là HttpOnly — được proxy set, không cần xử lý ở đây
+        Cookies.set('adminAccessToken', accessToken, {
+          expires: 7,
+          path: '/',
+          sameSite: 'lax',
+          secure: isSecure,
+        });
         set({ user, accessToken, isAuthenticated: true });
       },
 
       logout: () => {
+        // Chỉ xóa cookie non-HttpOnly mà js-cookie có quyền xóa
+        // HttpOnly cookies (accessToken, refreshToken) do server quản lý
         Cookies.remove('adminAccessToken', { path: '/' });
-        Cookies.remove('accessToken', { path: '/' });
-        Cookies.remove('refreshToken', { path: '/' });
-
         set({ user: null, accessToken: null, isAuthenticated: false });
         window.location.href = `http://localhost:3000/login?logout=true&t=${Date.now()}`;
       },
@@ -51,11 +53,10 @@ export const useAuthStore = create<AuthState>()(
           const userData = response.data || response;
           set({ user: userData, isAuthenticated: true });
         } catch (error: any) {
-          console.error('Failed to fetch user profile:', error);
+          console.error('[AuthStore] fetchUser thất bại:', error);
           const status = error.response?.status;
           if (status === 401 || status === 403) {
             Cookies.remove('adminAccessToken', { path: '/' });
-            Cookies.remove('accessToken', { path: '/' });
             set({ user: null, accessToken: null, isAuthenticated: false });
           }
         }
@@ -63,30 +64,41 @@ export const useAuthStore = create<AuthState>()(
 
       silentRefresh: async () => {
         try {
-          const refreshUrl = 'http://localhost:3000/api/auth/session-token';
-          const response = await axios.get(refreshUrl, {
-            withCredentials: true,
-            headers: {
-              'ngrok-skip-browser-warning': '69420',
+          // Gọi refresh qua proxy với body rỗng.
+          // Trình duyệt tự gửi kèm cookie refreshToken (HttpOnly) nhờ withCredentials: true.
+          // Proxy forward cookie lên backend, backend xác thực và trả token mới.
+          const response = await axios.post(
+            `${NEXTJS_PROXY_URL}/api/v1/auth/refresh`,
+            {}, // body rỗng
+            {
+              withCredentials: true,
+              headers: { 'ngrok-skip-browser-warning': '69420' },
             }
-          });
+          );
 
           const responseData = response.data;
-          const newToken = responseData?.accessToken;
-          const user = responseData?.user;
+          const newToken = responseData?.data?.accessToken || responseData?.accessToken;
+          const newUser = responseData?.data?.user || responseData?.user;
 
-          if (newToken && responseData?.error !== 'RefreshTokenError') {
-            const currentUser = user || get().user;
+          if (newToken) {
+            const currentUser = newUser || get().user;
             if (currentUser) {
               get().setAuth(currentUser, newToken);
             } else {
+              const isSecure = window.location.protocol === 'https:';
+              Cookies.set('adminAccessToken', newToken, {
+                expires: 7,
+                path: '/',
+                sameSite: 'lax',
+                secure: isSecure,
+              });
               set({ accessToken: newToken, isAuthenticated: true });
             }
             return true;
           }
           return false;
         } catch (error) {
-          console.error('[AuthStore] Silent refresh thông qua Proxy thất bại:', error);
+          console.error('[AuthStore] Silent refresh thất bại:', error);
           return false;
         }
       },
@@ -94,7 +106,8 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'admin-auth-storage',
       storage: createJSONStorage(() => sessionStorage),
-      partialize: (state) => ({ user: state.user }), // Chỉ cache thông tin user, không cache Token tĩnh
+      // Chỉ cache user info, không cache token (token luôn đọc từ cookie)
+      partialize: (state) => ({ user: state.user }),
     }
   )
 );

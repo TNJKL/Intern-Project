@@ -78,12 +78,11 @@ apiClient.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      // 🎯 SỬA CHÍ MẠNG Ở ĐÂY: Gọi đúng route đánh chặn nội bộ của file proxy.ts
-      // Không gọi sang '/api/v1/auth/refresh' nữa để tránh bị trôi tuột xuống Backend
-      const res = await axios.post('/api/auth/token', {}, { withCredentials: true });
+      // Gọi refresh token qua proxy
+      const res = await axios.post('/api/v1/auth/refresh', {}, { withCredentials: true });
 
-      // Lấy Access Token trả về (nếu có) truyền vào Redux Store để đồng bộ trạng thái RAM
-      const newAccessToken = res.data?.accessToken;
+      // Lấy Access Token trả về truyền vào Redux Store để đồng bộ trạng thái RAM
+      const newAccessToken = res.data?.data?.accessToken || res.data?.accessToken;
       if (newAccessToken) {
         store.dispatch(updateAccessToken(newAccessToken));
       }
