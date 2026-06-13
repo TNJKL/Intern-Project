@@ -4,7 +4,7 @@ spring:
   config:
     import: optional:file:.env[.properties],optional:file:./.env[.properties],optional:file:../.env[.properties],optional:file:../../.env[.properties]
   datasource:
-    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:payment_db}
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${PAYMENT_DB_NAME:payment_db}
     username: ${POSTGRES_USER:postgres}
     password: ${POSTGRES_PASSWORD:kakarot1996}
     driver-class-name: org.postgresql.Driver

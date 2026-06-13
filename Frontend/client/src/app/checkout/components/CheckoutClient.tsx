@@ -8,6 +8,7 @@ import { useCartStore } from "@/store/zustand/useCartStore";
 import { useAuthStore } from "@/store/zustand/useAuthStore";
 import { orderService } from "@/services/order.service";
 import { voucherService } from "@/services/voucher.service";
+import { paymentService } from "@/services/payment.service";
 import type { Voucher, ValidateVoucherResult } from "@/services/voucher.service";
 import toast from "react-hot-toast";
 import { useSocket } from "@/components/providers/SocketProvider";
@@ -252,12 +253,45 @@ export default function CheckoutClient() {
       const res = await orderService.createOrder(payload as any);
       if (res && res.success && res.data) {
         setCreatedOrderCode(res.data.orderCode);
+        const orderId = res.data.id;
 
         if (!user && res.data.guestSessionId) {
           const { guestSessionId, orderCode } = res.data;
           localStorage.setItem('brewtra_guest_session_id', guestSessionId);
           localStorage.setItem('brewtra_guest_order_code', orderCode);
           joinGuestRoom(guestSessionId);
+        }
+
+        // Xử lý chuyển hướng nếu chọn VNPay
+        if (paymentMethod === "vnpay") {
+          toast.loading("Đang kết nối tới cổng thanh toán VNPay...", { id: "payment-redirect" });
+          
+          let paymentUrl = "";
+          // Cơ chế tự động thử lại 3 lần phòng trường hợp Kafka delay tạo URL
+          for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+              const paymentRes = await paymentService.getPaymentUrl(orderId);
+              if (paymentRes.success && paymentRes.data.paymentUrl) {
+                paymentUrl = paymentRes.data.paymentUrl;
+                break;
+              }
+            } catch (err) {
+              console.warn(`Attempt ${attempt} to fetch payment URL failed.`);
+            }
+            // Đợi 500ms trước khi thử lại
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+
+          if (paymentUrl) {
+            toast.success("Đang chuyển hướng...", { id: "payment-redirect" });
+            clearCart();
+            localStorage.removeItem('brewtra_applied_voucher');
+            window.location.href = paymentUrl;
+            return;
+          } else {
+            toast.error("Không thể kết nối đến cổng thanh toán lúc này. Bạn có thể thanh toán lại tại trang Lịch sử đơn hàng.", { id: "payment-redirect", duration: 6000 });
+            // Vẫn hiển thị đặt đơn thành công PENDING để họ không mất đơn hàng
+          }
         }
       }
       clearCart();

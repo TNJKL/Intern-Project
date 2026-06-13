@@ -39,6 +39,9 @@ public class SecurityConfig {
                                 // Public VNPay IPN and Callback
                                 "/api/v1/payments/vnpay/callback",
                                 "/api/v1/payments/vnpay/ipn",
+                                // Public endpoints for guest payments
+                                "/api/v1/payments/*/url",
+                                "/api/v1/payments/*/status",
                                 // Internal APIs (protected by InternalRequestFilter)
                                 "/api/v1/internal/payments/**"
                         ).permitAll()
