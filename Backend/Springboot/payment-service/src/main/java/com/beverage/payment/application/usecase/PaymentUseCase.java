@@ -3,8 +3,13 @@ package com.beverage.payment.application.usecase;
 import com.beverage.payment.application.dto.request.PaymentInitiateRequest;
 import com.beverage.payment.application.dto.response.PaymentDetailResponse;
 import com.beverage.payment.application.dto.response.PaymentUrlResponse;
+import com.beverage.payment.domain.model.PaymentMethod;
+import com.beverage.payment.domain.model.PaymentStatus;
 import com.beverage.payment.infrastructure.event.dto.OrderCreatedEvent;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
@@ -15,4 +20,14 @@ public interface PaymentUseCase {
     Map<String, String> processVNPayIPN(Map<String, String> params);
     void handleVNPayCallback(Map<String, String> params);
     void expirePendingPayments();
+    Page<PaymentDetailResponse> getPayments(
+            UUID orderId,
+            String orderCode,
+            UUID userId,
+            PaymentStatus status,
+            PaymentMethod paymentMethod,
+            Instant createdFrom,
+            Instant createdTo,
+            Pageable pageable
+    );
 }

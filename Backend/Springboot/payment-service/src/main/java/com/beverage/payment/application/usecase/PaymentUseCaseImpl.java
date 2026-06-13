@@ -16,9 +16,13 @@ import com.beverage.payment.infrastructure.event.dto.PaymentUrlCreatedEvent;
 import com.beverage.payment.infrastructure.event.producer.PaymentEventPublisher;
 import com.beverage.payment.infrastructure.persistence.entity.PaymentEntity;
 import com.beverage.payment.infrastructure.persistence.repository.PaymentJpaRepository;
+import com.beverage.payment.infrastructure.persistence.spec.PaymentSpecifications;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -280,5 +284,34 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
 
             log.info("Payment for orderCode={} marked as EXPIRED", payment.getOrderCode());
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<PaymentDetailResponse> getPayments(
+            UUID orderId,
+            String orderCode,
+            UUID userId,
+            PaymentStatus status,
+            PaymentMethod paymentMethod,
+            Instant createdFrom,
+            Instant createdTo,
+            Pageable pageable
+    ) {
+        log.info("Searching payments with filters: orderId={}, orderCode={}, userId={}, status={}, method={}",
+                orderId, orderCode, userId, status, paymentMethod);
+        
+        Specification<PaymentEntity> spec = Specification
+                .where(PaymentSpecifications.withOrderId(orderId))
+                .and(PaymentSpecifications.withOrderCode(orderCode))
+                .and(PaymentSpecifications.withUserId(userId))
+                .and(PaymentSpecifications.withStatus(status))
+                .and(PaymentSpecifications.withPaymentMethod(paymentMethod))
+                .and(PaymentSpecifications.createdFrom(createdFrom))
+                .and(PaymentSpecifications.createdTo(createdTo));
+
+        return paymentRepository.findAll(spec, pageable)
+                .map(PaymentEntity::toDomain)
+                .map(PaymentDetailResponse::fromDomain);
     }
 }

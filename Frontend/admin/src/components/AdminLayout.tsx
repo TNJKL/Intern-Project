@@ -12,6 +12,7 @@ import {
   GiftOutlined,
   MenuOutlined,
   BellOutlined,
+  CreditCardOutlined,
 } from '@ant-design/icons';
 import { Layout, Menu, Button, theme, Avatar, Dropdown, Space, Drawer, Badge } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -59,6 +60,11 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
       key: '/admin/orders',
       icon: <ShoppingCartOutlined />,
       label: 'Đơn hàng',
+    },
+    {
+      key: '/admin/payments-refunds',
+      icon: <CreditCardOutlined />,
+      label: 'Thanh toán & Hoàn tiền',
     },
     {
       key: '/admin/products',

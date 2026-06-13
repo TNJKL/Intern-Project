@@ -1,6 +1,7 @@
 package com.beverage.payment.application.usecase;
 
 import com.beverage.payment.application.dto.request.RefundCreateRequest;
+import com.beverage.payment.application.dto.response.PaymentDetailResponse;
 import com.beverage.payment.domain.exception.BusinessException;
 import com.beverage.payment.domain.exception.PaymentNotFoundException;
 import com.beverage.payment.domain.model.PaymentStatus;
@@ -10,8 +11,12 @@ import com.beverage.payment.infrastructure.persistence.entity.PaymentEntity;
 import com.beverage.payment.infrastructure.persistence.entity.RefundEntity;
 import com.beverage.payment.infrastructure.persistence.repository.PaymentJpaRepository;
 import com.beverage.payment.infrastructure.persistence.repository.RefundJpaRepository;
+import com.beverage.payment.infrastructure.persistence.spec.RefundSpecifications;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,10 +35,11 @@ public class RefundUseCaseImpl implements RefundUseCase {
 
     @Override
     @Transactional
-    public void createRefund(UUID paymentId, RefundCreateRequest request, UUID adminId) {
+    public PaymentDetailResponse createRefund(UUID paymentId, RefundCreateRequest request, UUID adminId) {
         log.info("Admin {} creating refund for paymentId={} amount={}", adminId, paymentId, request.getAmount());
 
-        PaymentEntity payment = paymentRepository.findById(paymentId)
+        // Use lock to prevent concurrent refund cumulative calculation errors
+        PaymentEntity payment = paymentRepository.findByIdWithLock(paymentId)
                 .orElseThrow(() -> new PaymentNotFoundException("Payment record not found for id: " + paymentId));
 
         if (payment.getStatus() != PaymentStatus.SUCCESS) {
@@ -71,6 +77,7 @@ public class RefundUseCaseImpl implements RefundUseCase {
 
         refundRepository.save(refund);
         log.info("Refund created successfully with ID: {}", refund.getId());
+        return PaymentDetailResponse.fromDomain(payment.toDomain());
     }
 
     @Override
@@ -92,5 +99,33 @@ public class RefundUseCaseImpl implements RefundUseCase {
         return refundRepository.findAll().stream()
                 .map(RefundEntity::toDomain)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<Refund> getRefunds(
+            UUID paymentId,
+            UUID orderId,
+            UUID userId,
+            RefundStatus status,
+            UUID requestedBy,
+            Instant createdFrom,
+            Instant createdTo,
+            Pageable pageable
+    ) {
+        log.info("Searching refunds with filters: paymentId={}, orderId={}, userId={}, status={}, requestedBy={}",
+                paymentId, orderId, userId, status, requestedBy);
+
+        Specification<RefundEntity> spec = Specification
+                .where(RefundSpecifications.withPaymentId(paymentId))
+                .and(RefundSpecifications.withOrderId(orderId))
+                .and(RefundSpecifications.withUserId(userId))
+                .and(RefundSpecifications.withStatus(status))
+                .and(RefundSpecifications.withRequestedBy(requestedBy))
+                .and(RefundSpecifications.createdFrom(createdFrom))
+                .and(RefundSpecifications.createdTo(createdTo));
+
+        return refundRepository.findAll(spec, pageable)
+                .map(RefundEntity::toDomain);
     }
 }
