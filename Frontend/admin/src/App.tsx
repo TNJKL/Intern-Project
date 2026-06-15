@@ -13,6 +13,7 @@ import IngredientAlerts from './pages/IngredientAlerts';
 import Users from './pages/Users';
 import Profile from './pages/Profile';
 import Vouchers from './pages/Vouchers';
+import PaymentsRefunds from './pages/PaymentsRefunds';
 import { AuthGuard } from './components/AuthGuard';
 import { AntdStaticHelper } from './lib/antd';
 import { SocketProvider } from './components/providers/SocketProvider';
@@ -69,8 +70,9 @@ function App() {
                           <Route path="users" element={<Users />} />
                           <Route path="orders" element={<Orders />} />
                           <Route path="chat" element={<Chat />} />
-                          <Route path="profile" element={<Profile />} />
+                           <Route path="profile" element={<Profile />} />
                           <Route path="vouchers" element={<Vouchers />} />
+                          <Route path="payments-refunds" element={<PaymentsRefunds />} />
                           <Route path="*" element={<Navigate to="dashboard" replace />} />
                         </Routes>
                       </AdminLayout>

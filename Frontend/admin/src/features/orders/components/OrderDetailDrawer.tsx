@@ -1,7 +1,13 @@
-import React from 'react';
-import { Drawer, Descriptions, Table, Typography, Spin, Divider, Select } from 'antd';
+import React, { useState } from 'react';
+import { Drawer, Descriptions, Table, Typography, Spin, Divider, Select, Button, Tag } from 'antd';
+import { RedoOutlined } from '@ant-design/icons';
 import { useOrder, useUpdateOrderStatus } from '../hooks/useOrders';
 import { message } from '@/lib/antd';
+import { useQuery } from '@tanstack/react-query';
+import { paymentService } from '@/services/payment.service';
+import { RefundModal } from '@/components/payment/RefundModal';
+import { UserResolver } from '@/components/payment/UserResolver';
+import dayjs from 'dayjs';
 
 const { Text, Title } = Typography;
 
@@ -15,6 +21,28 @@ const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({ orderId, isOpen, 
   const { data: response, isLoading } = useOrder(orderId);
   const order = response?.data;
   const updateStatusMutation = useUpdateOrderStatus();
+
+  const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
+
+  const { data: paymentsData, isLoading: isPaymentsLoading } = useQuery({
+    queryKey: ['payments', 'order', orderId],
+    queryFn: () => paymentService.getPayments({ orderId }),
+    enabled: !!orderId && isOpen,
+  });
+
+  const payment = paymentsData?.data?.[0];
+
+  const { data: refundsData } = useQuery({
+    queryKey: ['refunds', 'payment', payment?.id],
+    queryFn: () => paymentService.getRefunds({ paymentId: payment!.id }),
+    enabled: !!payment?.id,
+  });
+
+  const refunds = refundsData?.data || [];
+  const totalRefunded = refunds
+    .filter(r => r.status === 'COMPLETED')
+    .reduce((sum, r) => sum + r.amount, 0);
+  const remainingRefundable = payment ? payment.amount - totalRefunded : 0;
 
   const itemColumns = [
     {
@@ -126,6 +154,131 @@ const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({ orderId, isOpen, 
             </Descriptions>
           </div>
 
+          {/* Thông tin Thanh toán & Hoàn tiền */}
+          <div>
+            <Title level={5} className="!mb-4 uppercase text-sm tracking-widest text-gray-500">Thông tin Thanh toán</Title>
+            {isPaymentsLoading ? (
+              <Spin size="small" />
+            ) : payment ? (
+              <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3 shadow-sm">
+                <Descriptions column={2} size="small" bordered className="bg-white">
+                  <Descriptions.Item label="Phương thức" span={1}>
+                    <Tag className="font-extrabold text-[10px] rounded-lg border-none px-2.5 py-0.5" color={payment.paymentMethod === 'VNPAY' ? 'blue' : 'orange'}>
+                      {payment.paymentMethod}
+                    </Tag>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Trạng thái" span={1}>
+                    {(() => {
+                      let color = '';
+                      let label = payment.status as string;
+                      switch (payment.status) {
+                        case 'SUCCESS':
+                          color = 'bg-emerald-50 text-emerald-700';
+                          label = 'THÀNH CÔNG';
+                          break;
+                        case 'PENDING':
+                          color = 'bg-amber-50 text-amber-700';
+                          label = 'CHỜ THANH TOÁN';
+                          break;
+                        case 'FAILED':
+                          color = 'bg-rose-50 text-rose-700';
+                          label = 'THẤT BẠI';
+                          break;
+                        case 'EXPIRED':
+                          color = 'bg-gray-100 text-gray-500';
+                          label = 'QUÁ HẠN';
+                          break;
+                      }
+                      return (
+                        <Tag className={`font-extrabold rounded-lg px-2.5 py-0.5 text-[10px] border-none ${color}`}>
+                          {label}
+                        </Tag>
+                      );
+                    })()}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Số tiền giao dịch" span={1}>
+                    <Text strong>{payment.amount?.toLocaleString()}đ</Text>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Đã hoàn trả" span={1}>
+                    <Text className={totalRefunded > 0 ? "text-rose-600 font-bold" : "text-gray-500"}>
+                      {totalRefunded?.toLocaleString()}đ
+                    </Text>
+                  </Descriptions.Item>
+                  {payment.transactionId && (
+                    <Descriptions.Item label="Mã giao dịch" span={2}>
+                      <Text code className="text-xs">{payment.transactionId}</Text>
+                    </Descriptions.Item>
+                  )}
+                  {payment.paidAt && (
+                    <Descriptions.Item label="Thời gian thanh toán" span={2}>
+                      {dayjs(payment.paidAt).format('DD/MM/YYYY HH:mm')}
+                    </Descriptions.Item>
+                  )}
+                </Descriptions>
+
+                {/* Nút Hoàn tiền */}
+                {payment.status === 'SUCCESS' && payment.paymentMethod === 'VNPAY' && (
+                  <div className="pt-2 flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-dashed border-gray-200">
+                    <div>
+                      <div className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">Số tiền có thể hoàn trả</div>
+                      <div className="text-sm font-black text-gray-800">{remainingRefundable?.toLocaleString()}đ</div>
+                    </div>
+                    {remainingRefundable > 0 ? (
+                      <Button
+                        type="primary"
+                        danger
+                        size="middle"
+                        icon={<RedoOutlined />}
+                        onClick={() => setIsRefundModalOpen(true)}
+                        className="rounded-xl font-bold text-xs"
+                      >
+                        Hoàn tiền
+                      </Button>
+                    ) : (
+                      <Tag className="font-extrabold text-[10px] rounded-lg border-none px-2.5 py-1 bg-gray-100 text-gray-400">
+                        ĐÃ HOÀN ĐỦ TIỀN
+                      </Tag>
+                    )}
+                  </div>
+                )}
+
+                {/* Danh sách hoàn tiền cũ */}
+                {refunds.length > 0 && (
+                  <div className="pt-3 border-t border-gray-100 space-y-2">
+                    <div className="text-xs font-black text-gray-500 uppercase tracking-wider">Lịch sử hoàn tiền</div>
+                    <div className="space-y-2">
+                      {refunds.map((ref) => (
+                        <div key={ref.id} className="bg-red-50/20 border border-red-100/50 rounded-xl p-3 text-xs flex justify-between items-center">
+                          <div className="space-y-1">
+                            <div>
+                              Số tiền hoàn: <b className="text-rose-600">-{ref.amount?.toLocaleString()}đ</b>
+                            </div>
+                            <div className="text-gray-500 font-medium">Lý do: {ref.reason}</div>
+                            <div className="text-[10px] text-gray-400">
+                              Người duyệt: <UserResolver userId={ref.requestedBy} fallbackText="Hệ thống" />
+                            </div>
+                          </div>
+                          <div className="text-right flex flex-col items-end gap-1">
+                            <Tag className="font-extrabold text-[9px] rounded-lg border-none px-2 py-0.5 bg-emerald-50 text-emerald-700">
+                              THÀNH CÔNG
+                            </Tag>
+                            <div className="text-[9px] text-gray-400">
+                              {dayjs(ref.processedAt).format('DD/MM/YYYY HH:mm')}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-xs text-gray-400 bg-gray-50 p-4 rounded-xl border border-gray-100 text-center">
+                Không có dữ liệu thanh toán trực tuyến cho đơn hàng này (COD hoặc giao dịch chưa tạo).
+              </div>
+            )}
+          </div>
+
           <div>
             <Title level={5} className="!mb-4 uppercase text-sm tracking-widest text-gray-500">Chi tiết sản phẩm</Title>
             <Table
@@ -167,6 +320,16 @@ const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({ orderId, isOpen, 
         <div className="text-center py-10 text-gray-400">
           Không tìm thấy thông tin đơn hàng
         </div>
+      )}
+
+      {payment && (
+        <RefundModal
+          paymentId={payment.id}
+          orderCode={order?.orderCode}
+          maxAmount={remainingRefundable}
+          isOpen={isRefundModalOpen}
+          onClose={() => setIsRefundModalOpen(false)}
+        />
       )}
     </Drawer>
   );
