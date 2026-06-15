@@ -3,6 +3,7 @@ package com.beverage.payment.infrastructure.event.consumer;
 import com.beverage.payment.application.usecase.PaymentUseCase;
 import com.beverage.payment.domain.exception.DuplicateEventException;
 import com.beverage.payment.infrastructure.event.dto.OrderCreatedEvent;
+import com.beverage.payment.infrastructure.event.dto.OrderCancelledEvent;
 import com.beverage.payment.infrastructure.event.dto.OrderEventWrapper;
 import com.beverage.payment.infrastructure.persistence.entity.ProcessedEventEntity;
 import com.beverage.payment.infrastructure.persistence.repository.ProcessedEventJpaRepository;
@@ -49,6 +50,12 @@ public class OrderCreatedConsumer {
         try {
             if (event instanceof OrderCreatedEvent orderCreatedEvent) {
                 paymentUseCase.initiatePaymentFromEvent(orderCreatedEvent);
+            } else if (event instanceof OrderCancelledEvent orderCancelledEvent) {
+                paymentUseCase.updateOrderStatus(orderCancelledEvent.getOrderId(), "CANCELLED");
+            } else if (event instanceof OrderEventWrapper.StatusChangedStub statusChangedEvent) {
+                paymentUseCase.updateOrderStatus(statusChangedEvent.getOrderId(), statusChangedEvent.getCurrentStatus());
+            } else if (event instanceof OrderEventWrapper.CompletedStub completedEvent) {
+                paymentUseCase.updateOrderStatus(completedEvent.getOrderId(), "COMPLETED");
             } else {
                 log.debug("Skipping unhandled event type: {}", event.getEventType());
             }

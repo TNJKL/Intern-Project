@@ -16,6 +16,9 @@ import com.beverage.payment.infrastructure.event.dto.PaymentUrlCreatedEvent;
 import com.beverage.payment.infrastructure.event.producer.PaymentEventPublisher;
 import com.beverage.payment.infrastructure.persistence.entity.PaymentEntity;
 import com.beverage.payment.infrastructure.persistence.repository.PaymentJpaRepository;
+import com.beverage.payment.infrastructure.persistence.repository.RefundJpaRepository;
+import com.beverage.payment.infrastructure.persistence.entity.RefundEntity;
+import com.beverage.payment.domain.model.RefundStatus;
 import com.beverage.payment.infrastructure.persistence.spec.PaymentSpecifications;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +42,7 @@ import java.util.UUID;
 public class PaymentUseCaseImpl implements PaymentUseCase {
 
     private final PaymentJpaRepository paymentRepository;
+    private final RefundJpaRepository refundRepository;
     private final VNPayUseCase vnpayUseCase;
     private final PaymentEventPublisher eventPublisher;
     private final ObjectMapper objectMapper;
@@ -146,7 +150,7 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
     public PaymentDetailResponse getPaymentByOrderId(UUID orderId) {
         PaymentEntity entity = paymentRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new PaymentNotFoundException("Payment details not found for orderId: " + orderId));
-        return PaymentDetailResponse.fromDomain(entity.toDomain());
+        return mapToDetailResponse(entity);
     }
 
     @Override
@@ -311,7 +315,35 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
                 .and(PaymentSpecifications.createdTo(createdTo));
 
         return paymentRepository.findAll(spec, pageable)
-                .map(PaymentEntity::toDomain)
-                .map(PaymentDetailResponse::fromDomain);
+                .map(this::mapToDetailResponse);
+    }
+
+    private PaymentDetailResponse mapToDetailResponse(PaymentEntity entity) {
+        if (entity == null) return null;
+
+        List<RefundEntity> refunds = refundRepository.findByPaymentId(entity.getId());
+        BigDecimal totalRefunded = refunds.stream()
+                .filter(r -> r.getStatus() == RefundStatus.COMPLETED)
+                .map(RefundEntity::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        com.beverage.payment.domain.model.Payment domain = entity.toDomain();
+        domain.setRefundedAmount(totalRefunded);
+
+        return PaymentDetailResponse.fromDomain(domain);
+    }
+
+    @Override
+    @Transactional
+    public void updateOrderStatus(UUID orderId, String orderStatus) {
+        log.info("Updating orderStatus={} for orderId={}", orderStatus, orderId);
+        PaymentEntity payment = paymentRepository.findByOrderId(orderId).orElse(null);
+        if (payment != null) {
+            payment.setOrderStatus(orderStatus);
+            paymentRepository.save(payment);
+            log.info("Successfully updated orderStatus={} for payment id={}", orderStatus, payment.getId());
+        } else {
+            log.warn("Payment not found for orderId={} to update orderStatus={}", orderId, orderStatus);
+        }
     }
 }

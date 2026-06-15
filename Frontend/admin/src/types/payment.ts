@@ -15,6 +15,8 @@ export interface PaymentDetailResponse {
   gatewayResponse?: string;
   paidAt?: string;
   expiredAt?: string;
+  orderStatus?: string;
+  refundedAmount?: number;
   createdAt: string;
   updatedAt: string;
 }

@@ -9,6 +9,7 @@ interface RefundModalProps {
   orderCode?: string;
   maxAmount: number;
   isOpen: boolean;
+  isFixedAmount?: boolean;
   onClose: () => void;
   onSuccess?: () => void;
 }
@@ -18,6 +19,7 @@ export const RefundModal: React.FC<RefundModalProps> = ({
   orderCode,
   maxAmount,
   isOpen,
+  isFixedAmount = false,
   onClose,
   onSuccess,
 }) => {
@@ -29,12 +31,14 @@ export const RefundModal: React.FC<RefundModalProps> = ({
     if (isOpen) {
       form.setFieldsValue({
         amount: maxAmount,
-        reasonSelect: 'Khách hàng yêu cầu hủy đơn',
+        reasonSelect: isFixedAmount
+          ? 'Hoàn tiền cho đơn hàng đã bị hủy'
+          : 'Khách hàng yêu cầu hủy đơn',
         customReason: '',
       });
       setIsOtherReason(false);
     }
-  }, [isOpen, maxAmount, form]);
+  }, [isOpen, maxAmount, form, isFixedAmount]);
 
   const refundMutation = useMutation({
     mutationFn: ({ pId, amount, reason }: { pId: string; amount: number; reason: string }) =>
@@ -107,8 +111,9 @@ export const RefundModal: React.FC<RefundModalProps> = ({
           <InputNumber
             className="w-full rounded-xl py-1.5"
             formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-            parser={(value) => value!.replace(/\$\s?|(,*)/g, '')}
+            parser={(value) => (value ? `${value}` : '').replace(/\$\s?|(,*)/g, '')}
             addonAfter="đ"
+            disabled={isFixedAmount}
           />
         </Form.Item>
 
@@ -121,13 +126,23 @@ export const RefundModal: React.FC<RefundModalProps> = ({
             className="w-full rounded-xl"
             popupClassName="rounded-xl"
             onChange={(val) => setIsOtherReason(val === 'other')}
-            options={[
-              { value: 'Khách hàng yêu cầu hủy đơn', label: 'Khách hàng yêu cầu hủy đơn' },
-              { value: 'Hết nguyên liệu sản phẩm', label: 'Hết nguyên liệu sản phẩm' },
-              { value: 'Không thể giao hàng / Sai địa chỉ', label: 'Không thể giao hàng / Sai địa chỉ' },
-              { value: 'Giao dịch bị trùng lặp', label: 'Giao dịch bị trùng lặp' },
-              { value: 'other', label: 'Lý do khác (Nhập thủ công)...' },
-            ]}
+            options={
+              isFixedAmount
+                ? [
+                  {
+                    value: 'Đơn hàng đã bị hủy nhưng nhận được thanh toán thành công',
+                    label: 'Đơn hàng đã bị hủy nhưng nhận được thanh toán thành công',
+                  },
+                  { value: 'other', label: 'Lý do khác (Nhập thủ công)...' },
+                ]
+                : [
+                  { value: 'Khách hàng yêu cầu hủy đơn', label: 'Khách hàng yêu cầu hủy đơn' },
+                  { value: 'Hết nguyên liệu sản phẩm', label: 'Hết nguyên liệu sản phẩm' },
+                  { value: 'Không thể giao hàng / Sai địa chỉ', label: 'Không thể giao hàng / Sai địa chỉ' },
+                  { value: 'Giao dịch bị trùng lặp', label: 'Giao dịch bị trùng lặp' },
+                  { value: 'other', label: 'Lý do khác (Nhập thủ công)...' },
+                ]
+            }
           />
         </Form.Item>
 

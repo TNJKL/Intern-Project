@@ -25,6 +25,8 @@ public class PaymentDetailResponse {
     private String transactionId;
     private String paymentUrl;
     private Instant paidAt;
+    private String orderStatus;
+    private BigDecimal refundedAmount;
     private Instant createdAt;
     private Instant updatedAt;
 
@@ -41,6 +43,8 @@ public class PaymentDetailResponse {
                 .transactionId(payment.getTransactionId())
                 .paymentUrl(payment.getPaymentUrl())
                 .paidAt(payment.getPaidAt())
+                .orderStatus(payment.getOrderStatus())
+                .refundedAmount(payment.getRefundedAmount())
                 .createdAt(payment.getCreatedAt())
                 .updatedAt(payment.getUpdatedAt())
                 .build();

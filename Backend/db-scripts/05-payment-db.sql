@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS payments (
     paid_at             TIMESTAMP WITH TIME ZONE,
     idempotency_key     VARCHAR(100) UNIQUE,
     expired_at          TIMESTAMP WITH TIME ZONE,
+    order_status        VARCHAR(30) DEFAULT 'PENDING',
     created_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );

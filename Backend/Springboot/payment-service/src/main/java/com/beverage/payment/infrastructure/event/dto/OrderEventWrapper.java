@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @JsonTypeInfo(
         use = JsonTypeInfo.Id.NAME,
@@ -35,6 +36,9 @@ public abstract class OrderEventWrapper {
     @Getter
     @Setter
     public static class StatusChangedStub extends OrderEventWrapper {
+        private UUID orderId;
+        private String currentStatus;
+
         @Override
         public String getEventType() {
             return "ORDER_STATUS_CHANGED";
@@ -45,6 +49,8 @@ public abstract class OrderEventWrapper {
     @Getter
     @Setter
     public static class CompletedStub extends OrderEventWrapper {
+        private UUID orderId;
+
         @Override
         public String getEventType() {
             return "ORDER_COMPLETED";

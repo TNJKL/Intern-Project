@@ -30,4 +30,5 @@ public interface PaymentUseCase {
             Instant createdTo,
             Pageable pageable
     );
+    void updateOrderStatus(UUID orderId, String orderStatus);
 }

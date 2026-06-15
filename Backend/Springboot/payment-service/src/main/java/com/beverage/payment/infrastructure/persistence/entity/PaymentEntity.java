@@ -64,6 +64,9 @@ public class PaymentEntity {
     @Column(name = "expired_at")
     private Instant expiredAt;
 
+    @Column(name = "order_status", length = 30)
+    private String orderStatus;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -104,6 +107,7 @@ public class PaymentEntity {
                 .paidAt(paidAt)
                 .idempotencyKey(idempotencyKey)
                 .expiredAt(expiredAt)
+                .orderStatus(orderStatus)
                 .createdAt(createdAt)
                 .updatedAt(updatedAt)
                 .build();
@@ -125,6 +129,7 @@ public class PaymentEntity {
                 .paidAt(domain.getPaidAt())
                 .idempotencyKey(domain.getIdempotencyKey())
                 .expiredAt(domain.getExpiredAt())
+                .orderStatus(domain.getOrderStatus())
                 .createdAt(domain.getCreatedAt())
                 .updatedAt(domain.getUpdatedAt())
                 .build();

@@ -27,6 +27,8 @@ public class Payment {
     private Instant paidAt;
     private String idempotencyKey;
     private Instant expiredAt;
+    private String orderStatus;
+    private BigDecimal refundedAmount;
     private Instant createdAt;
     private Instant updatedAt;
 

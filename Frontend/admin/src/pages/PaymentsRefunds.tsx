@@ -31,7 +31,7 @@ const PaymentsRefunds: React.FC = () => {
   const [refRequestedBy, setRefRequestedBy] = useState<string | undefined>();
 
   // Refund Modal State
-  const [selectedPayment, setSelectedPayment] = useState<{ id: string; orderCode: string; amount: number } | null>(null);
+  const [selectedPayment, setSelectedPayment] = useState<{ id: string; orderCode: string; amount: number; refundedAmount?: number; orderStatus?: string } | null>(null);
   const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
 
   // Load Payments Query
@@ -88,8 +88,8 @@ const PaymentsRefunds: React.FC = () => {
       }),
   });
 
-  const handleOpenRefundModal = (paymentId: string, orderCode: string, amount: number) => {
-    setSelectedPayment({ id: paymentId, orderCode, amount });
+  const handleOpenRefundModal = (paymentId: string, orderCode: string, amount: number, refundedAmount?: number, orderStatus?: string) => {
+    setSelectedPayment({ id: paymentId, orderCode, amount, refundedAmount, orderStatus });
     setIsRefundModalOpen(true);
   };
 
@@ -113,6 +113,48 @@ const PaymentsRefunds: React.FC = () => {
       render: (amt: number) => <b className="text-gray-800">{amt?.toLocaleString()}đ</b>,
     },
     {
+      title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">TRẠNG THÁI ĐƠN</span>,
+      dataIndex: 'orderStatus',
+      key: 'orderStatus',
+      render: (orderStatus: string) => {
+        let color = '';
+        let label = orderStatus || 'PENDING';
+        switch (orderStatus) {
+          case 'PENDING':
+            color = 'bg-gray-100 text-gray-500';
+            label = 'CHỜ XỬ LÝ';
+            break;
+          case 'CONFIRMED':
+            color = 'bg-blue-50 text-blue-700';
+            label = 'ĐÃ XÁC NHẬN';
+            break;
+          case 'PREPARING':
+            color = 'bg-amber-50 text-amber-700';
+            label = 'ĐANG PHA CHẾ';
+            break;
+          case 'DELIVERING':
+            color = 'bg-purple-50 text-purple-700';
+            label = 'ĐANG GIAO';
+            break;
+          case 'COMPLETED':
+            color = 'bg-emerald-50 text-emerald-700';
+            label = 'HOÀN THÀNH';
+            break;
+          case 'CANCELLED':
+            color = 'bg-rose-50 text-rose-700';
+            label = 'ĐÃ HỦY';
+            break;
+          default:
+            color = 'bg-gray-50 text-gray-600';
+        }
+        return (
+          <Tag className={`font-extrabold rounded-lg px-2.5 py-0.5 text-[10px] border-none ${color}`}>
+            {label}
+          </Tag>
+        );
+      },
+    },
+    {
       title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">PHƯƠNG THỨC</span>,
       dataIndex: 'paymentMethod',
       key: 'paymentMethod',
@@ -123,10 +165,23 @@ const PaymentsRefunds: React.FC = () => {
       ),
     },
     {
-      title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">TRẠNG THÁI</span>,
+      title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">TRẠNG THÁI GD</span>,
       dataIndex: 'status',
       key: 'status',
-      render: (status: string) => {
+      render: (status: string, record: any) => {
+        // Phát hiện lỗi đối soát (thanh toán thành công cho đơn đã hủy)
+        const isDisputed = status === 'SUCCESS' && record.orderStatus === 'CANCELLED';
+
+        if (isDisputed) {
+          return (
+            <Tooltip title="Khách hàng đã thanh toán thành công sau khi đơn hàng bị hủy. Cần hoàn tiền ngay!">
+              <Tag className="font-extrabold rounded-lg px-2.5 py-0.5 text-[10px] border-none bg-red-100 text-red-700 animate-pulse">
+                ĐÃ THANH TOÁN (CẦN HOÀN TIỀN)
+              </Tag>
+            </Tooltip>
+          );
+        }
+
         let color = '';
         let label = status;
         switch (status) {
@@ -136,7 +191,7 @@ const PaymentsRefunds: React.FC = () => {
             break;
           case 'PENDING':
             color = 'bg-amber-50 text-amber-700';
-            label = 'CHỜ XỬ LÝ';
+            label = 'CHỜ GIAO DỊCH';
             break;
           case 'FAILED':
             color = 'bg-rose-50 text-rose-700';
@@ -172,22 +227,54 @@ const PaymentsRefunds: React.FC = () => {
       title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">THAO TÁC</span>,
       key: 'action',
       render: (_: any, record: any) => {
-        const canRefund = record.status === 'SUCCESS' && record.paymentMethod === 'VNPAY';
+        const isSuccess = record.status === 'SUCCESS';
+        const isVnPay = record.paymentMethod === 'VNPAY';
+        const refundedAmt = record.refundedAmount || 0;
+        const totalAmt = record.amount || 0;
+
+        // Trạng thái đã từng hoàn tiền (dù một phần hay toàn bộ)
+        const hasRefunded = refundedAmt > 0;
+        const isFullyRefunded = refundedAmt >= totalAmt;
+        const isPartiallyRefunded = refundedAmt > 0 && refundedAmt < totalAmt;
+
+        // Chỉ cho phép hoàn tiền tối đa 1 lần nếu chưa từng có giao dịch hoàn tiền thành công
+        const canRefund = isSuccess && isVnPay && !hasRefunded;
+        const isDisputed = isSuccess && record.orderStatus === 'CANCELLED' && !hasRefunded;
+
         return (
-          <Space size="middle">
-            {canRefund ? (
+          <Space direction="vertical" size={2} className="w-full">
+            {isFullyRefunded && (
+              <Tag className="font-extrabold text-[10px] rounded-lg px-2.5 py-0.5 border-none bg-gray-100 text-gray-400">
+                ĐÃ HOÀN TIỀN
+              </Tag>
+            )}
+
+            {isPartiallyRefunded && (
+              <Tooltip title={`Đã đền bù/hoàn trả một phần: ${refundedAmt.toLocaleString()}đ (Tổng thanh toán gốc: ${totalAmt.toLocaleString()}đ)`}>
+                <Tag className="font-extrabold text-[10px] rounded-lg px-2.5 py-0.5 border-none bg-amber-50 text-amber-700">
+                  ĐÃ HOÀN MỘT PHẦN
+                </Tag>
+              </Tooltip>
+            )}
+
+            {canRefund && (
               <Button
                 type="primary"
-                danger
+                danger={!isDisputed}
                 size="small"
                 icon={<RedoOutlined />}
-                onClick={() => handleOpenRefundModal(record.id, record.orderCode, record.amount)}
-                className="rounded-lg font-bold text-xs"
+                onClick={() => handleOpenRefundModal(record.id, record.orderCode, record.amount, record.refundedAmount, record.orderStatus)}
+                className={`rounded-lg font-bold text-xs ${isDisputed
+                  ? 'bg-amber-500 hover:bg-amber-600 border-none text-white animate-bounce'
+                  : ''
+                  }`}
               >
-                Hoàn tiền
+                {isDisputed ? 'Hoàn tiền khẩn cấp' : 'Hoàn tiền'}
               </Button>
-            ) : (
-              <span className="text-gray-400 text-xs">-</span>
+            )}
+
+            {!canRefund && !hasRefunded && (
+              <span className="text-gray-300 text-xs">-</span>
             )}
           </Space>
         );
@@ -229,7 +316,7 @@ const PaymentsRefunds: React.FC = () => {
           <UserResolver userId={userId} />
           {userId && (
             <Tooltip title="Copy User ID">
-              <span 
+              <span
                 className="block font-mono text-[10px] text-gray-400 cursor-pointer hover:text-blue-600"
                 onClick={() => navigator.clipboard.writeText(userId)}
               >
@@ -271,7 +358,7 @@ const PaymentsRefunds: React.FC = () => {
           <UserResolver userId={adminId} fallbackText="Hệ thống" />
           {adminId && (
             <Tooltip title="Copy Admin ID">
-              <span 
+              <span
                 className="block font-mono text-[10px] text-gray-400 cursor-pointer hover:text-blue-600"
                 onClick={() => navigator.clipboard.writeText(adminId)}
               >
@@ -521,7 +608,8 @@ const PaymentsRefunds: React.FC = () => {
         <RefundModal
           paymentId={selectedPayment.id}
           orderCode={selectedPayment.orderCode}
-          maxAmount={selectedPayment.amount}
+          maxAmount={selectedPayment.amount - (selectedPayment.refundedAmount || 0)}
+          isFixedAmount={selectedPayment.orderStatus === 'CANCELLED'}
           isOpen={isRefundModalOpen}
           onClose={() => {
             setIsRefundModalOpen(false);

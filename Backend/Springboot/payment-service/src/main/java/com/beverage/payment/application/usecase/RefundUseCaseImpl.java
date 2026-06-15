@@ -51,15 +51,12 @@ public class RefundUseCaseImpl implements RefundUseCase {
             throw new BusinessException("Refund amount cannot exceed the original payment amount.");
         }
 
-        // Check if there are already completed refunds for this payment and verify cumulative amount
+        // Check if this payment has already been refunded or compensated
         List<RefundEntity> existingRefunds = refundRepository.findByPaymentId(paymentId);
-        BigDecimal totalRefunded = existingRefunds.stream()
-                .filter(r -> r.getStatus() == RefundStatus.COMPLETED)
-                .map(RefundEntity::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        if (totalRefunded.add(request.getAmount()).compareTo(payment.getAmount()) > 0) {
-            throw new BusinessException("Cumulative refund amount cannot exceed the original payment amount.");
+        boolean hasCompletedRefund = existingRefunds.stream()
+                .anyMatch(r -> r.getStatus() == RefundStatus.COMPLETED);
+        if (hasCompletedRefund) {
+            throw new BusinessException("Giao dịch thanh toán này đã được hoàn tiền/đền bù trước đó.");
         }
 
         // Create refund record
