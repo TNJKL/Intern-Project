@@ -1,9 +1,10 @@
 // 📄 Vị trí file: src/features/ingredients/IngredientList.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { BaseManagement } from '../common/BaseManagement';
 import { ingredientService, type Ingredient } from '@/services/ingredient.service';
-import { Tag, Space, Descriptions, Button, Tabs, Badge } from 'antd';
-import { PlusSquareOutlined, CoffeeOutlined, TagsOutlined, WarningOutlined, HistoryOutlined, ExperimentOutlined } from '@ant-design/icons';
+import { Tag, Space, Descriptions, Button } from 'antd';
+import { PlusSquareOutlined, WarningOutlined, HistoryOutlined } from '@ant-design/icons';
 import { IngredientModal } from './components/IngredientModal';
 import { useQuery } from '@tanstack/react-query';
 
@@ -16,8 +17,14 @@ import { ToppingStockTab } from './components/ToppingStockTab';
 import { RecipeListTab } from './components/RecipeListTab';
 
 const IngredientList: React.FC = () => {
-  // State quản lý Tab chính
-  const [activeMainTab, setActiveMainTab] = useState('ingredients');
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (location.pathname === '/admin/ingredients' || location.pathname === '/admin/ingredients/') {
+      navigate('/admin/ingredients/manage', { replace: true });
+    }
+  }, [location.pathname, navigate]);
 
   // State quản lý Modal Nhập kho và Sửa ngưỡng cảnh báo
   const [isRestockOpen, setIsRestockOpen] = useState(false);
@@ -39,21 +46,15 @@ const IngredientList: React.FC = () => {
   });
 
   // Tính số lượng topping sắp hết tồn kho
-  const toppingStockRecords = toppingStockRes 
+  const toppingStockRecords = toppingStockRes
     ? (Array.isArray(toppingStockRes) ? toppingStockRes : (toppingStockRes.data || toppingStockRes.records || []))
     : [];
 
-  const toppingLowStockCount = toppingStockRecords.filter((r: any) => {
-    const stock = r.currentStock !== undefined ? r.currentStock : (r.stock !== undefined ? r.stock : (r.quantity !== undefined ? r.quantity : 0));
-    const threshold = r.lowStockThreshold !== undefined ? r.lowStockThreshold : (r.threshold !== undefined ? r.threshold : 10);
-    return stock <= threshold;
-  }).length;
-
   // Tính số lượng nguyên liệu thô sắp hết tồn kho
-  const lowStockRecordsRaw = lowStockRes 
+  const lowStockRecordsRaw = lowStockRes
     ? (Array.isArray(lowStockRes) ? lowStockRes : (lowStockRes.data || lowStockRes.records || []))
     : [];
-  
+
   const lowStockRecordsCount = (() => {
     const toppingIds = new Set(toppingStockRecords.map((t: any) => t.id || t.toppingId));
     return lowStockRecordsRaw.filter((item: any) => !toppingIds.has(item.id)).length;
@@ -178,162 +179,124 @@ const IngredientList: React.FC = () => {
 
   return (
     <>
-      <Tabs
-        activeKey={activeMainTab}
-        onChange={setActiveMainTab}
-        size="large"
-        className="custom-main-tabs"
-        items={[
-          {
-            key: 'ingredients',
-            label: (
-              <span className="flex items-center gap-2 font-bold uppercase text-xs tracking-wider">
-                <CoffeeOutlined className="text-orange-500" />
-                Quản lý Nguyên liệu
-              </span>
-            ),
-            children: (
-              <BaseManagement<Ingredient>
-                title="Nguyên liệu kho"
-                description="Quản lý các nguyên liệu thô để pha chế (Sữa tươi, trà đen, syrup...)"
-                entityName="nguyên liệu"
-                addButtonText="Thêm nguyên liệu"
-                searchPlaceholder="Tìm tên nguyên liệu..."
-                queryKey="ingredients"
-                service={{
-                  getAll: async (params: any) => {
-                    const currentSize = params.size || 10;
+      {location.pathname.startsWith('/admin/ingredients/manage') && (
+        <BaseManagement<Ingredient>
+          title="Nguyên liệu kho"
+          description="Quản lý các nguyên liệu thô để pha chế (Sữa tươi, trà đen, syrup...)"
+          entityName="nguyên liệu"
+          addButtonText="Thêm nguyên liệu"
+          searchPlaceholder="Tìm tên nguyên liệu..."
+          queryKey="ingredients"
+          service={{
+            getAll: async (params: any) => {
+              const currentSize = params.size || 10;
 
-                    const apiParams = {
-                      ...params,
-                      page: params.page || 0,
-                      size: currentSize,
-                      excludeToppings: true
-                    };
+              const apiParams = {
+                ...params,
+                page: params.page || 0,
+                size: currentSize,
+                excludeToppings: true
+              };
 
-                    if (params.size === 1 && params.includeDeleted === true) {
-                      apiParams.size = 500;
-                    } else if (params.size === 1) {
-                      apiParams.size = currentSize;
-                    }
+              if (params.size === 1 && params.includeDeleted === true) {
+                apiParams.size = 500;
+              } else if (params.size === 1) {
+                apiParams.size = currentSize;
+              }
 
-                    const responseData: any = await ingredientService.getAllIngredients(apiParams);
+              const responseData: any = await ingredientService.getAllIngredients(apiParams);
 
-                    const finalData = responseData.data && Array.isArray(responseData.data)
-                      ? responseData.data
-                      : (responseData.content || responseData.results || responseData);
+              const finalData = responseData.data && Array.isArray(responseData.data)
+                ? responseData.data
+                : (responseData.content || responseData.results || responseData);
 
-                    const totalElements = responseData.totalElements !== undefined ? responseData.totalElements : (responseData.total || 0);
-                    const realPageSize = responseData.pageSize !== undefined ? responseData.pageSize : apiParams.size;
-                    const currentPage = responseData.currentPage !== undefined ? responseData.currentPage : apiParams.page;
-                    const totalPages = Math.ceil(totalElements / realPageSize);
+              const totalElements = responseData.totalElements !== undefined ? responseData.totalElements : (responseData.total || 0);
+              const realPageSize = responseData.pageSize !== undefined ? responseData.pageSize : apiParams.size;
+              const currentPage = responseData.currentPage !== undefined ? responseData.currentPage : apiParams.page;
+              const totalPages = Math.ceil(totalElements / realPageSize);
 
-                    return {
-                      data: Array.isArray(finalData) ? finalData : [],
-                      totalElements: totalElements,
-                      totalPages: totalPages,
-                      size: realPageSize,
-                      number: currentPage + 1
-                    };
-                  },
-                  getById: ingredientService.getIngredientById,
-                  create: ingredientService.createIngredient,
-                  update: ingredientService.updateIngredient,
-                  delete: ingredientService.deleteIngredient,
-                  restore: ingredientService.restoreIngredient,
-                }}
-                columns={columns}
-                ModalComponent={IngredientModal}
-                renderDetail={renderDetail}
-                formatSaveValues={(values) => ({
-                  name: values.name,
-                  sku: values.sku,
-                  unit: values.unit,
-                  currentStock: Number(values.currentStock || 0),
-                  lowStockThreshold: Number(values.lowStockThreshold || 0),
-                  costPerUnit: Number(values.costPerUnit || 0),
-                  isActive: values.isActive
-                })}
-                extraFilters={{
-                  showStatusFilter: true,
-                  showFeaturedFilter: false,
-                  showDeletedFilter: true
-                }}
-                extraTabs={[
-                  {
-                    key: 'low-stock',
-                    label: (
-                      <span className="flex items-center gap-1.5">
-                        <WarningOutlined className="text-amber-500" />
-                        Sắp hết hàng
-                      </span>
-                    ),
-                    content: <LowStockTab onOpenRestock={openRestockModal} />,
-                    badge: lowStockRecordsCount,
-                  },
-                  {
-                    key: 'inventory-transactions',
-                    label: (
-                      <span className="flex items-center gap-1.5">
-                        <HistoryOutlined className="text-blue-500" />
-                        Lịch sử nhập/xuất
-                      </span>
-                    ),
-                    content: <TransactionHistoryTab />,
-                  }
-                ]}
-              />
-            )
-          },
-          {
-            key: 'toppings',
-            label: (
-              <span className="flex items-center gap-2 font-bold uppercase text-xs tracking-wider">
-                <TagsOutlined className="text-amber-500" />
-                Tồn kho Topping
-                {toppingLowStockCount > 0 && (
-                  <Badge
-                    count={toppingLowStockCount}
-                    color="#f59e0b"
-                    className="scale-90 ml-1"
-                  />
-                )}
-              </span>
-            ),
-            children: (
-              <ToppingStockTab 
-                onOpenRestock={openRestockModal} 
-                onOpenThreshold={openThresholdModal} 
-              />
-            )
-          },
-          {
-            key: 'recipes',
-            label: (
-              <span className="flex items-center gap-2 font-bold uppercase text-xs tracking-wider">
-                <ExperimentOutlined className="text-amber-500" />
-                Công thức pha chế
-              </span>
-            ),
-            children: <RecipeListTab />
-          }
-        ]}
-      />
+              return {
+                data: Array.isArray(finalData) ? finalData : [],
+                totalElements: totalElements,
+                totalPages: totalPages,
+                size: realPageSize,
+                number: currentPage + 1
+              };
+            },
+            getById: ingredientService.getIngredientById,
+            create: ingredientService.createIngredient,
+            update: ingredientService.updateIngredient,
+            delete: ingredientService.deleteIngredient,
+            restore: ingredientService.restoreIngredient,
+          }}
+          columns={columns}
+          ModalComponent={IngredientModal}
+          renderDetail={renderDetail}
+          formatSaveValues={(values) => ({
+            name: values.name,
+            sku: values.sku,
+            unit: values.unit,
+            currentStock: Number(values.currentStock || 0),
+            lowStockThreshold: Number(values.lowStockThreshold || 0),
+            costPerUnit: Number(values.costPerUnit || 0),
+            isActive: values.isActive
+          })}
+          extraFilters={{
+            showStatusFilter: true,
+            showFeaturedFilter: false,
+            showDeletedFilter: true
+          }}
+          extraTabs={[
+            {
+              key: 'low-stock',
+              label: (
+                <span className="flex items-center gap-1.5">
+                  <WarningOutlined className="text-amber-500" />
+                  Sắp hết hàng
+                </span>
+              ),
+              content: <LowStockTab onOpenRestock={openRestockModal} />,
+              badge: lowStockRecordsCount,
+            },
+            {
+              key: 'inventory-transactions',
+              label: (
+                <span className="flex items-center gap-1.5">
+                  <HistoryOutlined className="text-blue-500" />
+                  Lịch sử nhập/xuất
+                </span>
+              ),
+              content: <TransactionHistoryTab />,
+            }
+          ]}
+        />
+      )}
+
+      {location.pathname.startsWith('/admin/ingredients/toppings') && (
+        <ToppingStockTab
+          onOpenRestock={openRestockModal}
+          onOpenThreshold={openThresholdModal}
+        />
+      )}
+
+      {location.pathname.startsWith('/admin/ingredients/recipes') && (
+        <RecipeListTab />
+      )}
 
       {/* Modal Nhập kho */}
-      <RestockModal 
-        open={isRestockOpen} 
-        ingredient={selectedIngredient} 
-        onCancel={() => setIsRestockOpen(false)} 
-        onSuccess={() => setIsRestockOpen(false)} 
+      <RestockModal
+        open={isRestockOpen}
+        ingredient={selectedIngredient}
+        onCancel={() => setIsRestockOpen(false)}
+        onSuccess={() => setIsRestockOpen(false)}
       />
 
       {/* Modal Sửa ngưỡng cảnh báo topping */}
-      <ToppingThresholdModal 
-        open={isThresholdOpen} 
-        topping={selectedTopping} 
-        onCancel={() => setIsThresholdOpen(false)} 
-        onSuccess={() => setIsThresholdOpen(false)} 
+      <ToppingThresholdModal
+        open={isThresholdOpen}
+        topping={selectedTopping}
+        onCancel={() => setIsThresholdOpen(false)}
+        onSuccess={() => setIsThresholdOpen(false)}
       />
     </>
   );

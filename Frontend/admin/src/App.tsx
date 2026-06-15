@@ -62,10 +62,10 @@ function App() {
                       <AdminLayout>
                         <Routes>
                           <Route path="dashboard" element={<Dashboard />} />
-                          <Route path="products" element={<Products />} />
+                          <Route path="products/*" element={<Products />} />
                           <Route path="toppings" element={<Toppings />} />
                           <Route path="categories" element={<Categories />} />
-                          <Route path="ingredients" element={<Ingredients />} />
+                          <Route path="ingredients/*" element={<Ingredients />} />
                           <Route path="ingredients/alerts" element={<IngredientAlerts />} />
                           <Route path="users" element={<Users />} />
                           <Route path="orders" element={<Orders />} />

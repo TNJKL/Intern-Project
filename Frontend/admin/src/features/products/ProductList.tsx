@@ -1,16 +1,25 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ProductModal } from './components/ProductModal';
 import { ProductDetailView } from './components/ProductDetailView';
 import { productService, type Product } from '../../services/product.service';
 import { categoryService } from '../../services/category.service';
 import { BaseManagement } from '../common/BaseManagement';
 import { useQuery } from '@tanstack/react-query';
-import { OrderedListOutlined, ExperimentOutlined, AppstoreOutlined } from '@ant-design/icons';
-import { Button, Tag, Tabs } from 'antd';
+import { OrderedListOutlined } from '@ant-design/icons';
+import { Button, Tag } from 'antd';
 import { ProductVariantModal } from '@/features/products/components/ProductVariantModal';
 import { ProductStockEstimateTab } from './components/ProductStockEstimateTab';
 
 const ProductList: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (location.pathname === '/admin/products' || location.pathname === '/admin/products/') {
+      navigate('/admin/products/manage', { replace: true });
+    }
+  }, [location.pathname, navigate]);
   // Fetch Categories for display in table and modal
   const { data: categoriesData } = useQuery({
     queryKey: ['categories'],
@@ -132,87 +141,65 @@ const ProductList: React.FC = () => {
 
   return (
     <>
-      <Tabs
-        defaultActiveKey="management"
-        size="large"
-        className="custom-main-tabs"
-        items={[
-          {
-            key: 'management',
-            label: (
-              <span className="flex items-center gap-2 font-bold uppercase text-xs tracking-wider">
-                <AppstoreOutlined className="text-orange-500" />
-                Quản lý Sản phẩm
-              </span>
-            ),
-            children: (
-              <>
-                <BaseManagement<Product>
-                  title="Kho Hàng Sản Phẩm"
-                  description="Quản lý các món ăn, thức uống và cập nhật giá"
-                  addButtonText="Thêm sản phẩm mới"
-                  entityName="Sản phẩm"
-                  queryKey="products"
-                  service={{
-                    getAll: productService.getAllProducts,
-                    getById: productService.getProductById,
-                    create: productService.createProduct,
-                    update: productService.updateProduct,
-                    delete: productService.deleteProduct,
-                    restore: productService.restoreProduct
-                  }}
-                  extraFilters={{
-                    categories: (categories as any[]).map((c: any) => ({ id: c.id, name: c.name })),
-                    showStatusFilter: true,
-                    showFeaturedFilter: true,
-                    showDeletedFilter: true
-                  }}
-                  columns={columns}
-                  ModalComponent={ProductModal}
-                  renderDetail={renderDetail}
-                  formatSaveValues={(values) => {
-                    const formatted = {
-                      ...values,
-                      displayOrder: Number(values.displayOrder || 0),
-                      toppingIds: values.toppingIds || [],
-                    };
+      {location.pathname.startsWith('/admin/products/manage') && (
+        <>
+          <BaseManagement<Product>
+            title="Kho Hàng Sản Phẩm"
+            description="Quản lý các món ăn, thức uống và cập nhật giá"
+            addButtonText="Thêm sản phẩm mới"
+            entityName="Sản phẩm"
+            queryKey="products"
+            service={{
+              getAll: productService.getAllProducts,
+              getById: productService.getProductById,
+              create: productService.createProduct,
+              update: productService.updateProduct,
+              delete: productService.deleteProduct,
+              restore: productService.restoreProduct
+            }}
+            extraFilters={{
+              categories: (categories as any[]).map((c: any) => ({ id: c.id, name: c.name })),
+              showStatusFilter: true,
+              showFeaturedFilter: true,
+              showDeletedFilter: true
+            }}
+            columns={columns}
+            ModalComponent={ProductModal}
+            renderDetail={renderDetail}
+            formatSaveValues={(values) => {
+              const formatted = {
+                ...values,
+                displayOrder: Number(values.displayOrder || 0),
+                toppingIds: values.toppingIds || [],
+              };
 
-                    console.log('[DEBUG] Formatted Payload:', formatted);
+              console.log('[DEBUG] Formatted Payload:', formatted);
 
-                    // Khi cập nhật (có ID), loại bỏ variants để tránh lỗi trùng lặp
-                    if (values.id) {
-                      delete (formatted as any).variants;
-                    }
-                    return formatted;
-                  }}
-                  modalExtraProps={{ categories }}
-                />
+              // Khi cập nhật (có ID), loại bỏ variants để tránh lỗi trùng lặp
+              if (values.id) {
+                delete (formatted as any).variants;
+              }
+              return formatted;
+            }}
+            modalExtraProps={{ categories }}
+          />
 
-                {isVariantModalOpen && variantProduct && (
-                  <ProductVariantModal
-                    isOpen={isVariantModalOpen}
-                    onClose={() => {
-                      setIsVariantModalOpen(false);
-                      setVariantProduct(null);
-                    }}
-                    product={variantProduct}
-                  />
-                )}
-              </>
-            ),
-          },
-          {
-            key: 'stock-estimate',
-            label: (
-              <span className="flex items-center gap-2 font-bold uppercase text-xs tracking-wider">
-                <ExperimentOutlined className="text-amber-500" />
-                Ước tính Sản lượng
-              </span>
-            ),
-            children: <ProductStockEstimateTab />,
-          },
-        ]}
-      />
+          {isVariantModalOpen && variantProduct && (
+            <ProductVariantModal
+              isOpen={isVariantModalOpen}
+              onClose={() => {
+                setIsVariantModalOpen(false);
+                setVariantProduct(null);
+              }}
+              product={variantProduct}
+            />
+          )}
+        </>
+      )}
+
+      {location.pathname.startsWith('/admin/products/estimate') && (
+        <ProductStockEstimateTab />
+      )}
     </>
   );
 };

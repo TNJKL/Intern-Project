@@ -5,6 +5,7 @@ import { io, Socket } from "socket.io-client";
 import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import { apiClient } from "@/lib/api";
 
 interface SocketContextType {
   socket: Socket | null;
@@ -23,7 +24,7 @@ export const useSocket = () => useContext(SocketContext);
 export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const socketRef = useRef<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
   const accessToken = session?.accessToken || null;
   const isAuthChecked = status !== "loading";
   const [reconnectTrigger, setReconnectTrigger] = useState(0);
@@ -101,7 +102,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       // Đồng bộ hóa tức thì cho các Server Components (Dành cho luồng User)
       router.refresh();
 
-      // Đồng bộ hóa giao diện Client (Dành cho luồng Guest tra cứu)
+      // Đồng bộ hóa giao diện Client (Dành cho cả luồng Guest tra cứu và User đã đăng nhập)
       if (typeof window !== "undefined") {
         const innerData = notifData?.data || notifData;
         window.dispatchEvent(
@@ -116,9 +117,24 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     // ─── Sự kiện: exception (Lỗi phân quyền hệ thống) ───
-    socket.on("exception", (error: any) => {
+    socket.on("exception", async (error: any) => {
       if (error) {
-        console.error("[Socket.IO] WS Exception xuất hiện:", error?.message || error);
+        const errMsg = error?.message || error;
+        
+        if (errMsg === "Unauthorized: Invalid token" || errMsg.includes("Unauthorized")) {
+          console.warn("[Socket.IO] Token hết hạn/không hợp lệ. Đang tự động làm mới token và tái kết nối...");
+          try {
+            // Gọi thử một API qua apiClient để kích hoạt Axios interceptor làm mới token nếu cần
+            await apiClient.get("/auth/me").catch(() => {});
+            
+            // Cập nhật lại NextAuth session
+            if (typeof update === "function") {
+              await update();
+            }
+          } catch (syncErr) {
+            console.error("[Socket.IO] Lỗi khi đồng bộ token cho socket:", syncErr);
+          }
+        }
       }
     });
 
