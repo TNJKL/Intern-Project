@@ -73,46 +73,6 @@ export default function OrdersClient({ initialOrders, isServerError }: OrdersCli
     }
   }, [isServerError]);
 
-  // ⚡ REALTIME: Lắng nghe cập nhật trạng thái đơn hàng từ SocketProvider
-  useEffect(() => {
-    const handleRealtimeStatusUpdate = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      const notifData = customEvent.detail;
-      if (!notifData) return;
-
-      const incomingCode = notifData.orderCode;
-      const incomingStatus = notifData.status;
-
-      if (!incomingCode || !incomingStatus) return;
-
-      console.log("⚡ [Realtime User] Cập nhật trạng thái đơn hàng:", incomingCode, "->", incomingStatus);
-
-      // Cập nhật trạng thái trong danh sách orders
-      setOrders((prevOrders) =>
-        prevOrders.map((order) =>
-          order.orderCode === incomingCode
-            ? { ...order, status: incomingStatus.toUpperCase() }
-            : order
-        )
-      );
-
-      // Nếu modal chi tiết đang mở và đúng đơn hàng, cập nhật luôn
-      setOrderDetail((prevDetail) => {
-        if (!prevDetail) return null;
-        if (prevDetail.orderCode === incomingCode) {
-          console.log("⚡ [Realtime User] Cập nhật modal chi tiết:", incomingCode, "->", incomingStatus);
-          return { ...prevDetail, status: incomingStatus.toUpperCase() };
-        }
-        return prevDetail;
-      });
-    };
-
-    window.addEventListener("order-status-updated", handleRealtimeStatusUpdate);
-    return () => {
-      window.removeEventListener("order-status-updated", handleRealtimeStatusUpdate);
-    };
-  }, []);
-
   if (isLoading) {
     return (
       <div className="w-full min-h-screen bg-[#fdf3eb]/30 flex items-center justify-center">

@@ -36,12 +36,6 @@ export const useAuthStore = create<AuthState>()(
           sameSite: 'lax',
           secure: isSecure,
         });
-        Cookies.set('lastRefreshedToken', accessToken, {
-          expires: 7,
-          path: '/',
-          sameSite: 'lax',
-          secure: isSecure,
-        });
         set({ user, accessToken, isAuthenticated: true });
       },
 

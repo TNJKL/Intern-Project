@@ -123,13 +123,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             };
             cookieStore.set('accessToken', accessToken, cookieOptions);
             cookieStore.set('refreshToken', refreshToken, cookieOptions);
-            cookieStore.set('lastRefreshedToken', accessToken, {
-              path: '/',
-              httpOnly: false,
-              secure: process.env.NODE_ENV === 'production',
-              sameSite: 'lax' as const,
-              maxAge: 7 * 24 * 60 * 60,
-            });
           } catch (e) {
             console.warn('[NextAuth] authorize: Không thể set browser cookies:', e);
           }

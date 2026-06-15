@@ -13,8 +13,6 @@ import {
   MenuOutlined,
   BellOutlined,
   CreditCardOutlined,
-  CoffeeOutlined,
-  ExperimentOutlined,
 } from '@ant-design/icons';
 import { Layout, Menu, Button, theme, Avatar, Dropdown, Space, Drawer, Badge } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -31,54 +29,6 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
   const navigate = useNavigate();
   const location = useLocation();
   const { logout, user } = useAuthStore();
-  const [openKeys, setOpenKeys] = useState<string[]>([]);
-  const [siderWidth, setSiderWidth] = useState(() => {
-    const saved = localStorage.getItem('admin-sider-width');
-    return saved ? parseInt(saved, 10) : 240;
-  });
-  const [isResizing, setIsResizing] = useState(false);
-
-  const startResizing = (mouseDownEvent: React.MouseEvent) => {
-    mouseDownEvent.preventDefault();
-    setIsResizing(true);
-  };
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing) return;
-      const newWidth = e.clientX;
-      if (newWidth >= 180 && newWidth <= 450) {
-        setSiderWidth(newWidth);
-        localStorage.setItem('admin-sider-width', newWidth.toString());
-      }
-    };
-
-    const handleMouseUp = () => {
-      setIsResizing(false);
-    };
-
-    if (isResizing) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      document.body.style.userSelect = 'none';
-      document.body.style.cursor = 'col-resize';
-    }
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.body.style.userSelect = '';
-      document.body.style.cursor = '';
-    };
-  }, [isResizing]);
-
-  useEffect(() => {
-    if (location.pathname.startsWith('/admin/ingredients')) {
-      setOpenKeys(['ingredients-group']);
-    } else if (location.pathname.startsWith('/admin/products')) {
-      setOpenKeys(['products-group']);
-    }
-  }, [location.pathname]);
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
@@ -117,21 +67,9 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
       label: 'Thanh toán & Hoàn tiền',
     },
     {
-      key: 'products-group',
+      key: '/admin/products',
       icon: <ShoppingOutlined />,
       label: 'Sản phẩm',
-      children: [
-        {
-          key: '/admin/products/manage',
-          icon: <ShoppingOutlined />,
-          label: 'Quản lý sản phẩm',
-        },
-        {
-          key: '/admin/products/estimate',
-          icon: <ExperimentOutlined />,
-          label: 'Ước tính sản lượng',
-        },
-      ]
     },
     {
       key: '/admin/toppings',
@@ -144,26 +82,9 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
       label: 'Danh mục',
     },
     {
-      key: 'ingredients-group',
-      icon: <CoffeeOutlined />,
+      key: '/admin/ingredients',
+      icon: <TagsOutlined />,
       label: 'Nguyên liệu',
-      children: [
-        {
-          key: '/admin/ingredients/manage',
-          icon: <CoffeeOutlined />,
-          label: 'Quản lý nguyên liệu',
-        },
-        {
-          key: '/admin/ingredients/toppings',
-          icon: <TagsOutlined />,
-          label: 'Topping tồn kho',
-        },
-        {
-          key: '/admin/ingredients/recipes',
-          icon: <ExperimentOutlined />,
-          label: 'Công thức pha chế',
-        },
-      ]
     },
     {
       key: '/admin/users',
@@ -201,35 +122,17 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
   return (
     <Layout className="h-screen overflow-hidden">
       {!isMobile && (
-        <Sider
-          trigger={null}
-          collapsible
-          collapsed={collapsed}
-          width={siderWidth}
-          theme="light"
-          className="shadow-md overflow-y-auto relative"
-          style={isResizing ? { transition: 'none' } : undefined}
-        >
+        <Sider trigger={null} collapsible collapsed={collapsed} theme="light" className="shadow-md overflow-y-auto">
           <div className="h-16 flex items-center justify-center font-bold text-lg text-coffee-dark uppercase tracking-wider overflow-hidden px-2 whitespace-nowrap" style={{ fontFamily: "'Quicksand', sans-serif" }}>
             {collapsed ? 'B' : 'Brewtra Admin'}
           </div>
           <Menu
             theme="light"
             mode="inline"
-            selectedKeys={[location.pathname]}
-            openKeys={collapsed ? undefined : openKeys}
-            onOpenChange={setOpenKeys}
+            defaultSelectedKeys={[location.pathname]}
             items={menuItems}
             onClick={({ key }) => handleMenuClick(key)}
           />
-          {!collapsed && (
-            <div
-              onMouseDown={startResizing}
-              className={`absolute top-0 right-0 w-1.5 h-full cursor-col-resize z-50 hover:bg-orange-500/20 active:bg-orange-500/40 transition-colors ${
-                isResizing ? 'bg-orange-500/40' : 'bg-transparent'
-              }`}
-            />
-          )}
         </Sider>
       )}
 
@@ -245,9 +148,7 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
           <Menu
             theme="light"
             mode="inline"
-            selectedKeys={[location.pathname]}
-            openKeys={openKeys}
-            onOpenChange={setOpenKeys}
+            defaultSelectedKeys={[location.pathname]}
             items={menuItems}
             onClick={({ key }) => {
               handleMenuClick(key);

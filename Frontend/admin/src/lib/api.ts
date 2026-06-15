@@ -67,9 +67,6 @@ apiClient.interceptors.response.use(
     originalRequest._retry = true;
     isRefreshing = true;
 
-    // Lưu lại giá trị token trước khi thực hiện refresh để đối chiếu race condition đa tab
-    originalRequest._lastRefreshedBefore = Cookies.get('lastRefreshedToken') || '';
-
     try {
       // Gọi refresh qua proxy với body rỗng.
       // Trình duyệt tự đính kèm cookie refreshToken (HttpOnly) nhờ withCredentials: true.
@@ -92,20 +89,13 @@ apiClient.interceptors.response.use(
         throw new Error('No access token returned from refresh');
       }
 
-      // QUAN TRỌNG: Cập nhật token mới vào cookie dùng chung để đồng bộ đa tab (Client và Admin)
-      const isSecure = window.location.protocol === 'https:';
-      Cookies.set('lastRefreshedToken', newToken, {
-        expires: 7,
-        path: '/',
-        sameSite: 'lax',
-        secure: isSecure,
-      });
-
-      // Luôn cập nhật token mới vào cookie và store của Admin
+      // QUAN TRỌNG: Luôn cập nhật token mới vào cookie và store
+      // kể cả khi user chưa được fetch (currentUser = null)
       const currentUser = newUser || useAuthStore.getState().user;
       if (currentUser) {
         useAuthStore.getState().setAuth(currentUser, newToken);
       } else {
+        const isSecure = window.location.protocol === 'https:';
         Cookies.set('adminAccessToken', newToken, {
           expires: 7,
           path: '/',
@@ -122,13 +112,11 @@ apiClient.interceptors.response.use(
       processQueue(refreshError, null);
 
       // Lưu chi tiết lỗi vào localStorage trước khi chuyển hướng để tránh mất log
-      let status: number | null = null;
       try {
         const isAxiosErr = axios.isAxiosError(refreshError);
-        status = (isAxiosErr && refreshError.response) ? refreshError.response.status : null;
         const errDetail = {
           timestamp: new Date().toISOString(),
-          status: status || 'unknown',
+          status: isAxiosErr ? refreshError.response?.status : 'unknown',
           data: isAxiosErr ? refreshError.response?.data : null,
           message: refreshError instanceof Error ? refreshError.message : String(refreshError),
           url: isAxiosErr ? refreshError.config?.url : '',
@@ -139,29 +127,8 @@ apiClient.interceptors.response.use(
         console.error('[Admin API Client] Failed to save error details:', e);
       }
 
-      // ─── GIẢI QUYẾT RACE CONDITION MULTI-TAB (Client & Admin) ───
-      // Nếu có tab khác (Client hoặc Admin) đã refresh thành công trước và cập nhật cookie mới,
-      // ta đồng bộ token mới đó vào store của tab này và chạy tiếp mà không logout.
-      const lastRefreshedAfter = Cookies.get('lastRefreshedToken') || '';
-      const wasRefreshedByOther = lastRefreshedAfter && lastRefreshedAfter !== originalRequest._lastRefreshedBefore;
-
-      if (wasRefreshedByOther) {
-        console.log('[Admin API Client] Another tab (Client or Admin) has successfully refreshed the token. Syncing and retrying original request.');
-        useAuthStore.setState({ accessToken: lastRefreshedAfter, isAuthenticated: true });
-        originalRequest.headers.Authorization = `Bearer ${lastRefreshedAfter}`;
-        return apiClient(originalRequest);
-      }
-
-      // Chỉ đăng xuất khi lỗi xác thực thực sự (401 Unauthorized, 403 Forbidden, 400 Bad Request)
-      // và KHÔNG có tab nào khác đã cập nhật token mới.
-      // Nếu là lỗi mạng, timeout (status = null) hoặc lỗi server tạm thời (5xx) -> Giữ nguyên session
-      const isAuthFailure = status === 401 || status === 403 || status === 400;
-      if (isAuthFailure) {
-        useAuthStore.getState().logout();
-      } else {
-        console.warn('[Admin API Client] Temporary network or server error. Retaining session (no logout).');
-      }
-
+      // Refresh token hết hạn thật sự → đăng xuất
+      useAuthStore.getState().logout();
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;

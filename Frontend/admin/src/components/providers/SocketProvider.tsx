@@ -3,7 +3,6 @@ import { io, Socket } from "socket.io-client";
 import { useAuthStore } from "@/store/zustand/useAuthStore";
 import { useQueryClient } from "@tanstack/react-query";
 import { App } from "antd";
-import { apiClient } from "@/lib/api";
 
 interface SocketContextType {
   socket: Socket | null;
@@ -107,18 +106,8 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     // ─── exception ───
-    socket.on("exception", async (error: any) => {
-      const errMsg = error?.message ?? error;
-
-      if (errMsg === "Unauthorized: Invalid token" || errMsg.includes("Unauthorized")) {
-        console.warn("[Socket.IO] Token hết hạn/không hợp lệ. Đang tự động làm mới token và tái kết nối...");
-        try {
-          // Gọi thử một API qua apiClient để kích hoạt Axios interceptor làm mới token và cập nhật store
-          await apiClient.get("/auth/me").catch(() => {});
-        } catch (syncErr) {
-          console.error("[Socket.IO] Lỗi khi kích hoạt làm mới token:", syncErr);
-        }
-      }
+    socket.on("exception", (error: any) => {
+      console.error("[Socket.IO] Admin exception:", error?.message ?? error);
     });
 
     // ─── disconnect ───
@@ -137,7 +126,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ─── Khi accessToken thay đổi (login/logout/refresh) ───
+  // ─── Khi accessToken thay đổi (login/logout) ───
   useEffect(() => {
     const socket = socketRef.current;
     if (!socket) return;
@@ -146,9 +135,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
 
     if (socket.connected) {
       if (accessToken) {
-        // Disconnect và reconnect để áp dụng token mới vào handshake
-        console.log("[Socket.IO] Tái kết nối để cập nhật token mới...");
-        socket.disconnect().connect();
+        socket.emit("join", {});
       } else {
         socket.emit("leave", {});
       }
