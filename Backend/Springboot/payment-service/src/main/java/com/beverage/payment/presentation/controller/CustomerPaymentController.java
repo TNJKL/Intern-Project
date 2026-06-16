@@ -27,16 +27,13 @@ public class CustomerPaymentController {
     }
 
     @GetMapping("/{orderId}/url")
-    public ResponseEntity<ApiResponse<PaymentUrlResponse>> getPaymentUrl(@PathVariable UUID orderId) {
-        log.info("Customer fetching payment URL for orderId={}", orderId);
-        PaymentDetailResponse payment = paymentUseCase.getPaymentByOrderId(orderId);
-        
-        PaymentUrlResponse response = PaymentUrlResponse.builder()
-                .orderId(payment.getOrderId())
-                .orderCode(payment.getOrderCode())
-                .paymentUrl(payment.getPaymentUrl())
-                .build();
-                
+    public ResponseEntity<ApiResponse<PaymentUrlResponse>> getPaymentUrl(
+            @PathVariable UUID orderId,
+            jakarta.servlet.http.HttpServletRequest request
+    ) {
+        String ipAddress = request.getRemoteAddr();
+        log.info("Customer fetching or recreating payment URL for orderId={} from IP={}", orderId, ipAddress);
+        PaymentUrlResponse response = paymentUseCase.getOrRecreatePaymentUrl(orderId, ipAddress);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

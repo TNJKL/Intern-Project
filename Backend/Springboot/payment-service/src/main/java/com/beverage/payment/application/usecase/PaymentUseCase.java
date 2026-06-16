@@ -31,4 +31,5 @@ public interface PaymentUseCase {
             Pageable pageable
     );
     void updateOrderStatus(UUID orderId, String orderStatus);
+    PaymentUrlResponse getOrRecreatePaymentUrl(UUID orderId, String ipAddress);
 }

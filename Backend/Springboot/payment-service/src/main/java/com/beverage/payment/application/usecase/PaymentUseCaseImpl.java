@@ -346,4 +346,58 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
             log.warn("Payment not found for orderId={} to update orderStatus={}", orderId, orderStatus);
         }
     }
+
+    @Override
+    @Transactional
+    public PaymentUrlResponse getOrRecreatePaymentUrl(UUID orderId, String ipAddress) {
+        log.info("Fetching or recreating payment URL for orderId={}", orderId);
+        PaymentEntity payment = paymentRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new PaymentNotFoundException("Payment details not found for orderId: " + orderId));
+
+        if (payment.getStatus() == PaymentStatus.SUCCESS) {
+            throw new BusinessException("Giao dịch thanh toán đã thành công.");
+        }
+
+        if ("CANCELLED".equals(payment.getOrderStatus())) {
+            throw new BusinessException("Đơn hàng đã bị hủy, không thể tiếp tục thanh toán.");
+        }
+
+        // If PENDING and the URL has not expired yet, return it
+        Instant now = Instant.now();
+        if (payment.getStatus() == PaymentStatus.PENDING && payment.getExpiredAt() != null && payment.getExpiredAt().isAfter(now)) {
+            log.info("Payment URL is still valid and PENDING. Returning existing URL.");
+            return PaymentUrlResponse.builder()
+                    .orderId(payment.getOrderId())
+                    .orderCode(payment.getOrderCode())
+                    .paymentUrl(payment.getPaymentUrl())
+                    .build();
+        }
+
+        // Otherwise (status is FAILED, EXPIRED, or PENDING but URL expired), recreate a new VNPay URL
+        log.info("Payment URL is expired or status is failed/expired. Re-initiating payment URL.");
+        String newUrl = vnpayUseCase.generatePaymentUrl(payment.getOrderCode(), payment.getAmount(), ipAddress);
+        
+        payment.setPaymentUrl(newUrl);
+        payment.setStatus(PaymentStatus.PENDING);
+        payment.setExpiredAt(now.plusSeconds(15 * 60)); // Reset 15 minutes countdown
+        paymentRepository.save(payment);
+
+        // Publish event back to Kafka to extend order deadline
+        PaymentUrlCreatedEvent urlCreatedEvent = PaymentUrlCreatedEvent.builder()
+                .orderId(payment.getOrderId())
+                .orderCode(payment.getOrderCode())
+                .userId(payment.getUserId())
+                .amount(payment.getAmount())
+                .paymentUrl(newUrl)
+                .occurredAt(now)
+                .build();
+        eventPublisher.publishPaymentUrlCreated(urlCreatedEvent);
+        log.info("Successfully recreated payment URL and published event for orderId={}", orderId);
+
+        return PaymentUrlResponse.builder()
+                .orderId(payment.getOrderId())
+                .orderCode(payment.getOrderCode())
+                .paymentUrl(newUrl)
+                .build();
+    }
 }

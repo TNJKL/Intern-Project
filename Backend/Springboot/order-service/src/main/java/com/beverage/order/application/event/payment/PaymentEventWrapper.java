@@ -19,7 +19,8 @@ import java.util.UUID;
 @JsonSubTypes({
         @JsonSubTypes.Type(value = PaymentCompletedEvent.class, name = "PAYMENT_COMPLETED"),
         @JsonSubTypes.Type(value = PaymentExpiredEvent.class, name = "PAYMENT_EXPIRED"),
-        @JsonSubTypes.Type(value = PaymentFailedEvent.class, name = "PAYMENT_FAILED")
+        @JsonSubTypes.Type(value = PaymentFailedEvent.class, name = "PAYMENT_FAILED"),
+        @JsonSubTypes.Type(value = PaymentUrlCreatedEvent.class, name = "PAYMENT_URL_CREATED")
 })
 @NoArgsConstructor
 @Getter

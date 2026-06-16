@@ -4,6 +4,7 @@ import com.beverage.order.application.event.payment.PaymentCompletedEvent;
 import com.beverage.order.application.event.payment.PaymentEventWrapper;
 import com.beverage.order.application.event.payment.PaymentExpiredEvent;
 import com.beverage.order.application.event.payment.PaymentFailedEvent;
+import com.beverage.order.application.event.payment.PaymentUrlCreatedEvent;
 import com.beverage.order.application.usecase.OrderUseCase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,7 +39,10 @@ public class PaymentEventConsumer {
             } else if (event instanceof PaymentExpiredEvent expiredEvent) {
                 orderUseCase.cancelOrderFromInventory(expiredEvent.getOrderId(), "Đơn hàng bị hủy do hết hạn thanh toán (quá 15 phút)");
             } else if (event instanceof PaymentFailedEvent failedEvent) {
-                orderUseCase.cancelOrderFromInventory(failedEvent.getOrderId(), "Thanh toán thất bại: " + failedEvent.getReason());
+                log.info("Payment failed for orderId={}, keeping it pending to allow retry. Reason: {}", failedEvent.getOrderId(), failedEvent.getReason());
+            } else if (event instanceof PaymentUrlCreatedEvent urlCreatedEvent) {
+                log.info("Payment URL recreated for orderId={}, extending payment deadline by 15 minutes", urlCreatedEvent.getOrderId());
+                orderUseCase.extendOrderPaymentDeadline(urlCreatedEvent.getOrderId(), 15);
             }
         } catch (Exception e) {
             log.error("Failed to process payment event type={} orderId={}: {}", event.getEventType(), event.getOrderId(), e.getMessage(), e);

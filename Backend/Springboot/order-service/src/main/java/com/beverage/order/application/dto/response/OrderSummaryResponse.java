@@ -15,5 +15,6 @@ public class OrderSummaryResponse {
     private String orderCode;
     private OrderStatus status;
     private BigDecimal totalAmount;
+    private String paymentMethod;
     private Instant createdAt;
 }

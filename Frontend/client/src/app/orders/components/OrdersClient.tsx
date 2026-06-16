@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { orderService, OrderDetail } from "@/services/order.service";
 import { OrderDetailModal } from "./OrderDetailModal";
 import { apiClient } from "@/lib/api";
+import { paymentService } from "@/services/payment.service";
 
 interface OrderSummary {
   id: string;
@@ -15,6 +16,7 @@ interface OrderSummary {
   status: string;
   totalAmount: number;
   createdAt: string;
+  paymentMethod?: string;
 }
 
 interface OrdersClientProps {
@@ -53,6 +55,25 @@ export default function OrdersClient({ initialOrders, isServerError }: OrdersCli
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
+  const [repayingOrderId, setRepayingOrderId] = useState<string | null>(null);
+
+  const handleRepay = async (orderId: string) => {
+    setRepayingOrderId(orderId);
+    try {
+      const res = await paymentService.getPaymentUrl(orderId);
+      if (res?.success && res?.data?.paymentUrl) {
+        window.location.href = res.data.paymentUrl;
+      } else {
+        alert(res?.message || "Không thể lấy link thanh toán. Vui lòng thử lại sau.");
+      }
+    } catch (error: any) {
+      console.error("Failed to recreate payment URL:", error);
+      const errorMsg = error?.response?.data?.message || "Đã xảy ra lỗi khi tái tạo URL thanh toán.";
+      alert(errorMsg);
+    } finally {
+      setRepayingOrderId(null);
+    }
+  };
 
   useEffect(() => {
     if (isServerError) {
@@ -283,6 +304,16 @@ export default function OrdersClient({ initialOrders, isServerError }: OrdersCli
                         {order.status?.toLowerCase() === "completed" && (
                           <button className="px-4 py-2.5 bg-[#5c3d2e]/5 text-[#5c3d2e] rounded-xl font-extrabold hover:bg-[#5c3d2e]/10 transition-colors text-xs uppercase tracking-wider">
                             Đánh giá
+                          </button>
+                        )}
+                        {order.status?.toUpperCase() === "PENDING" && order.paymentMethod?.toUpperCase() === "VNPAY" && (
+                          <button
+                            onClick={() => handleRepay(order.id)}
+                            disabled={repayingOrderId !== null}
+                            className="px-4 py-2.5 bg-amber-500 text-white rounded-xl font-extrabold hover:bg-amber-600 transition-colors text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+                          >
+                            {repayingOrderId === order.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                            Thanh toán ngay
                           </button>
                         )}
                         <button onClick={() => handleViewDetail(order.id)} className="w-full sm:w-auto justify-center px-5 py-2.5 bg-[#5c3d2e] text-white rounded-xl font-extrabold hover:bg-[#5c3d2e]/90 transition-colors text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-sm">

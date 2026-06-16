@@ -4,6 +4,7 @@ import React from "react";
 import { X, MapPin, Coffee, CreditCard, Loader2, Clock, CheckCircle2, Package, Truck, User, Phone, DollarSign, FileText } from "lucide-react";
 import { motion } from "framer-motion";
 import { OrderDetail } from "@/services/order.service";
+import { paymentService } from "@/services/payment.service";
 
 interface OrderDetailModalProps {
     isOpen: boolean;
@@ -37,6 +38,27 @@ export function OrderDetailModal({
     onCancelOrder,
 }: OrderDetailModalProps) {
     if (!isOpen) return null;
+
+    const [isRepaying, setIsRepaying] = React.useState(false);
+
+    const handleRepay = async () => {
+        if (!orderDetail) return;
+        setIsRepaying(true);
+        try {
+            const res = await paymentService.getPaymentUrl(orderDetail.id);
+            if (res?.success && res?.data?.paymentUrl) {
+                window.location.href = res.data.paymentUrl;
+            } else {
+                alert(res?.message || "Không thể lấy link thanh toán. Vui lòng thử lại sau.");
+            }
+        } catch (error: any) {
+            console.error("Failed to recreate payment URL:", error);
+            const errorMsg = error?.response?.data?.message || "Đã xảy ra lỗi khi tái tạo URL thanh toán.";
+            alert(errorMsg);
+        } finally {
+            setIsRepaying(false);
+        }
+    };
 
     const canCancel = ["PENDING", "CONFIRMED"].includes(orderDetail?.status?.toUpperCase() || "");
 
@@ -92,6 +114,24 @@ export function OrderDetailModal({
                         </div>
                     ) : orderDetail ? (
                         <>
+                            {/* Banner cảnh báo VNPay chưa thanh toán xong */}
+                            {orderDetail.status?.toUpperCase() === 'PENDING' && orderDetail.paymentMethod?.toUpperCase() === 'VNPAY' && (
+                                <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-2xl flex items-center justify-between gap-3 shadow-xs">
+                                    <div>
+                                        <p className="font-bold text-sm">Đơn hàng chưa thanh toán xong!</p>
+                                        <p className="text-xs text-amber-700 font-medium">Vui lòng thanh toán trong vòng 15 phút để tránh đơn hàng bị tự động hủy.</p>
+                                    </div>
+                                    <button
+                                        onClick={handleRepay}
+                                        disabled={isRepaying}
+                                        className="bg-[#5c3d2e] text-white text-xs font-black uppercase px-4 py-2.5 rounded-xl hover:bg-[#4a3125] transition-all flex items-center gap-1.5 shrink-0 shadow-sm disabled:opacity-50"
+                                    >
+                                        {isRepaying && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                                        Thanh toán ngay
+                                    </button>
+                                </div>
+                            )}
+
                             {/* Khối hiển thị Tổng quan 2 Cột */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="flex flex-col justify-center bg-[#5c3d2e]/5 p-4 rounded-2xl border border-[#5c3d2e]/15">

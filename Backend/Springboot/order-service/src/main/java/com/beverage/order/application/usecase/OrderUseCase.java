@@ -356,6 +356,21 @@ public class OrderUseCase {
         log.info("Successfully confirmed order id={} automatically due to successful payment", orderId);
     }
 
+    @Transactional
+    public void extendOrderPaymentDeadline(UUID orderId, int durationMinutes) {
+        OrderEntity order = orderJpaRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Đơn hàng", "id", orderId));
+        if (order.getStatus() != OrderStatus.PENDING) {
+            log.warn("Cannot extend deadline for order {} because its status is {}", orderId, order.getStatus());
+            return;
+        }
+        Instant newDeadline = Instant.now().plusSeconds(durationMinutes * 60L);
+        order.setPaymentDeadline(newDeadline);
+        orderJpaRepository.save(order);
+        orderDetailCacheService.evict(orderId);
+        log.info("Order id={} paymentDeadline extended to {}", orderId, newDeadline);
+    }
+
     @Transactional(readOnly = true)
     public Page<OrderSummaryResponse> listAllOrders(
             OrderStatus status,

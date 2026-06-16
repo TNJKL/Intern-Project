@@ -10,6 +10,7 @@ import {
 import { motion } from "framer-motion";
 import { orderService, OrderDetail } from "@/services/order.service";
 import { useSocket } from "@/components/providers/SocketProvider";
+import { paymentService } from "@/services/payment.service";
 
 const getStatusDisplay = (status: string) => {
   const s = status?.toUpperCase();
@@ -86,6 +87,26 @@ function TrackOrderContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [orderDetail, setOrderDetail] = useState<OrderDetail | null>(null);
+  const [isRepaying, setIsRepaying] = useState(false);
+
+  const handleRepay = async () => {
+    if (!orderDetail) return;
+    setIsRepaying(true);
+    try {
+      const res = await paymentService.getPaymentUrl(orderDetail.id);
+      if (res?.success && res?.data?.paymentUrl) {
+        window.location.href = res.data.paymentUrl;
+      } else {
+        alert(res?.message || "Không thể lấy link thanh toán. Vui lòng thử lại sau.");
+      }
+    } catch (error: any) {
+      console.error("Failed to recreate payment URL:", error);
+      const errorMsg = error?.response?.data?.message || "Đã xảy ra lỗi khi tái tạo URL thanh toán.";
+      alert(errorMsg);
+    } finally {
+      setIsRepaying(false);
+    }
+  };
 
   // 1. Tự động tra cứu khi phát hiện Query Params trên thanh URL điều hướng
   useEffect(() => {
@@ -225,6 +246,23 @@ function TrackOrderContent() {
             </div>
 
             <div className="space-y-8">
+              {orderDetail.status?.toUpperCase() === 'PENDING' && orderDetail.paymentMethod?.toUpperCase() === 'VNPAY' && (
+                <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-2xl flex items-center justify-between gap-3 shadow-xs">
+                  <div>
+                    <p className="font-bold text-sm">Đơn hàng chưa thanh toán xong!</p>
+                    <p className="text-xs text-amber-700 font-medium">Vui lòng thanh toán trong vòng 15 phút để tránh đơn hàng bị tự động hủy.</p>
+                  </div>
+                  <button
+                    onClick={handleRepay}
+                    disabled={isRepaying}
+                    className="bg-[#4d362b] text-white text-xs font-black uppercase px-4 py-2.5 rounded-xl hover:bg-[#3d2b22] transition-all flex items-center gap-1.5 shrink-0 shadow-sm disabled:opacity-50"
+                  >
+                    {isRepaying && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    Thanh toán ngay
+                  </button>
+                </div>
+              )}
+
               {orderDetail.status?.toUpperCase() !== "CANCELLED" && (
                 <div className="border-t pt-6">
                   <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Trạng thái giao hàng</p>

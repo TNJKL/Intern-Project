@@ -30,6 +30,7 @@ public class OrderDtoMapper {
                 .orderCode(entity.getOrderCode())
                 .status(entity.getStatus())
                 .totalAmount(entity.getTotalAmount())
+                .paymentMethod(entity.getPaymentMethod())
                 .createdAt(entity.getCreatedAt())
                 .build();
     }
