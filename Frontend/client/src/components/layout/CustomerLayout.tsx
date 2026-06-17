@@ -12,6 +12,7 @@ import { setCredentials, clearCredentials } from "@/store/redux/authSlice";
 import toast from "react-hot-toast";
 import { useSession, signOut } from "next-auth/react";
 import { SocketProvider } from "@/components/providers/SocketProvider";
+import Cookies from "js-cookie";
 
 import { User } from "@/types/user";
 
@@ -35,6 +36,9 @@ export function CustomerLayout({ children, initialUser }: CustomerLayoutProps) {
       const customUser = session.user as any;
       dispatch(setCredentials({ user: customUser, accessToken: session.accessToken }));
       setUser(customUser);
+      if (session.accessToken) {
+        Cookies.set('lastRefreshedToken', session.accessToken, { path: '/' });
+      }
     } else if (status === "unauthenticated") {
       dispatch(clearCredentials());
       clearUser();
@@ -74,6 +78,14 @@ export function CustomerLayout({ children, initialUser }: CustomerLayoutProps) {
       dispatch(clearCredentials());
       clearUser();
       clearCart();
+      
+      // Xóa sạch cookies trên mọi path trước khi gọi signOut
+      Cookies.remove('adminAccessToken', { path: '/' });
+      Cookies.remove('lastRefreshedToken', { path: '/' });
+      document.cookie = "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+      document.cookie = "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+      document.cookie = "refreshToken=; path=/api/v1/auth; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+
       signOut({ redirect: false });
       toast.success('Đã đăng xuất khỏi hệ thống');
       // Xóa tham số logout trên URL để tránh loop khi F5

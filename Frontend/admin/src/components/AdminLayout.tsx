@@ -26,6 +26,8 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [siderWidth, setSiderWidth] = useState(250);
+  const [isResizing, setIsResizing] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { logout, user } = useAuthStore();
@@ -49,6 +51,35 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  const startResizing = (mouseDownEvent: React.MouseEvent) => {
+    setIsResizing(true);
+    mouseDownEvent.preventDefault();
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (mouseMoveEvent: MouseEvent) => {
+      if (!isResizing) return;
+      const newWidth = mouseMoveEvent.clientX;
+      if (newWidth > 180 && newWidth < 450) {
+        setSiderWidth(newWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
 
   const menuItems = [
     {
@@ -122,17 +153,26 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
   return (
     <Layout className="h-screen overflow-hidden">
       {!isMobile && (
-        <Sider trigger={null} collapsible collapsed={collapsed} theme="light" className="shadow-md overflow-y-auto">
-          <div className="h-16 flex items-center justify-center font-bold text-lg text-coffee-dark uppercase tracking-wider overflow-hidden px-2 whitespace-nowrap" style={{ fontFamily: "'Quicksand', sans-serif" }}>
+        <Sider trigger={null} collapsible collapsed={collapsed} theme="light" className="relative shadow-md flex flex-col h-full" width={siderWidth}>
+          <div className="h-16 flex items-center justify-center font-bold text-lg text-coffee-dark uppercase tracking-wider overflow-hidden px-2 whitespace-nowrap shrink-0" style={{ fontFamily: "'Quicksand', sans-serif" }}>
             {collapsed ? 'B' : 'Brewtra Admin'}
           </div>
-          <Menu
-            theme="light"
-            mode="inline"
-            defaultSelectedKeys={[location.pathname]}
-            items={menuItems}
-            onClick={({ key }) => handleMenuClick(key)}
-          />
+          <div className="flex-1 overflow-y-auto">
+            <Menu
+              theme="light"
+              mode="inline"
+              defaultSelectedKeys={[location.pathname]}
+              items={menuItems}
+              onClick={({ key }) => handleMenuClick(key)}
+            />
+          </div>
+          {!collapsed && (
+            <div
+              onMouseDown={startResizing}
+              className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize z-50 transition-colors hover:bg-orange-400 active:bg-orange-500"
+              style={{ right: 0 }}
+            />
+          )}
         </Sider>
       )}
 

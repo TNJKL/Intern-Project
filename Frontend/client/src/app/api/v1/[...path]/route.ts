@@ -28,7 +28,7 @@ function getCorsHeaders(origin: string | null) {
   };
 }
 
-/** Đảm bảo cookie accessToken/refreshToken luôn có Max-Age=7 ngày và được lưu ở Path=/ */
+/** Đảm bảo cookie accessToken (Path=/) / refreshToken (Path=/api/v1/auth) luôn có Max-Age=7 ngày */
 function ensurePersistentCookie(cookieStr: string): string {
   if (!cookieStr.includes('accessToken') && !cookieStr.includes('refreshToken')) {
     return cookieStr;
@@ -36,6 +36,7 @@ function ensurePersistentCookie(cookieStr: string): string {
   
   // Kiểm tra xem đây có phải là cookie xóa (Max-Age=0 hoặc giá trị trống/đã hết hạn)
   const isDelete = /Max-Age=0/i.test(cookieStr) || /expires=Thu, 01 Jan 1970/i.test(cookieStr);
+  const isRefresh = cookieStr.includes('refreshToken');
   
   // Xóa sạch các thuộc tính cũ để tránh trùng lặp
   let c = cookieStr
@@ -44,10 +45,12 @@ function ensurePersistentCookie(cookieStr: string): string {
     .replace(/;\s*Path=[^;]*/gi, '')
     .replace(/;\s*HttpOnly/gi, '');
   
+  const pathStr = isRefresh ? '/api/v1/auth' : '/';
+  
   if (isDelete) {
-    c += '; Path=/; HttpOnly; Max-Age=0';
+    c += `; Path=${pathStr}; HttpOnly; Max-Age=0`;
   } else {
-    c += '; Path=/; HttpOnly; Max-Age=604800'; // 7 ngày
+    c += `; Path=${pathStr}; HttpOnly; Max-Age=604800`; // 7 ngày
   }
   
   if (!/;\s*SameSite=/i.test(c)) c += '; SameSite=Lax';
@@ -139,7 +142,7 @@ async function proxyRequest(request: NextRequest, { params }: { params: Promise<
           if (newRefreshToken) {
             responseHeaders.append(
               'Set-Cookie',
-              `refreshToken=${newRefreshToken}; Path=/; HttpOnly; Max-Age=604800; SameSite=Lax${secureFlag}`
+              `refreshToken=${newRefreshToken}; Path=/api/v1/auth; HttpOnly; Max-Age=604800; SameSite=Lax${secureFlag}`
             );
           }
         }

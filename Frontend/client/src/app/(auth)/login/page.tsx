@@ -14,6 +14,7 @@ import { signIn, getSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { AlertCircle, Coffee } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
+import Cookies from "js-cookie";
 
 const loginSchema = z.object({
     email: z.string().email("Email không hợp lệ"),
@@ -81,6 +82,10 @@ export default function LoginPage() {
 
                 dispatch(setCredentials({ user, accessToken }));
                 setUser(user);
+
+                if (accessToken) {
+                    Cookies.set('lastRefreshedToken', accessToken, { path: '/' });
+                }
 
                 const role = user.role?.toUpperCase();
                 if (role === 'ADMIN') {

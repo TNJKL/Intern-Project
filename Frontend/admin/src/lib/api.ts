@@ -24,12 +24,34 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
+// Hàm dừng đồng bộ (sleep)
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Hàm kiểm tra thời hạn JWT
+function isTokenExpired(token: string | null | undefined): boolean {
+  if (!token) return true;
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return true;
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = atob(base64);
+    const payload = JSON.parse(jsonPayload);
+    if (typeof payload.exp !== 'number') return true;
+    // Hết hạn hoặc sẽ hết hạn trong vòng 5 giây tới
+    return payload.exp * 1000 < Date.now() + 5000;
+  } catch (e) {
+    return true;
+  }
+}
+
 // ─── Request interceptor: gắn accessToken vào Authorization header ───
 apiClient.interceptors.request.use((config) => {
   // Đọc token từ store (luôn mới nhất sau refresh) hoặc cookie dự phòng
   const token =
     useAuthStore.getState().accessToken ||
     Cookies.get('adminAccessToken') ||
+    Cookies.get('lastRefreshedToken') ||
     Cookies.get('accessToken');
 
   if (token) {
@@ -43,10 +65,27 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-
-    // Chỉ bắt 401 Unauthorized (token hết hạn) — KHÔNG bắt 403 Forbidden (thiếu quyền)
+    const status = error.response?.status;
     const isExpired = error.response?.data?.errorCode === 'TOKEN_EXPIRED';
-    const isAuthError = isExpired || error.response?.status === 401;
+
+    // Chỉ coi 403 là lỗi Auth (cần refresh) nếu token thực sự hết hạn hoặc không có token.
+    // Nếu token vẫn còn hạn mà bị 403 -> lỗi phân quyền (Forbidden) thông thường, không refresh/logout.
+    let isAuthError = false;
+    if (status === 401) {
+      isAuthError = true;
+    } else if (status === 403) {
+      const token =
+        useAuthStore.getState().accessToken ||
+        Cookies.get('adminAccessToken') ||
+        Cookies.get('lastRefreshedToken') ||
+        Cookies.get('accessToken');
+      
+      if (isExpired || !token || isTokenExpired(token)) {
+        isAuthError = true;
+      } else {
+        console.warn('[Admin API Client] Legitimate 403 Forbidden (Permission denied). Bypassing refresh/logout.');
+      }
+    }
 
     if (!isAuthError || originalRequest._retry) {
       return Promise.reject(error);
@@ -66,6 +105,9 @@ apiClient.interceptors.response.use(
 
     originalRequest._retry = true;
     isRefreshing = true;
+
+    // Lưu lại giá trị token trước khi thực hiện refresh để đối chiếu race condition đa tab
+    originalRequest._lastRefreshedBefore = Cookies.get('lastRefreshedToken') || '';
 
     try {
       // Gọi refresh qua proxy với body rỗng.
@@ -89,13 +131,21 @@ apiClient.interceptors.response.use(
         throw new Error('No access token returned from refresh');
       }
 
-      // QUAN TRỌNG: Luôn cập nhật token mới vào cookie và store
+      // QUAN TRỌNG: Cập nhật token mới vào cookie dùng chung để đồng bộ đa tab
+      const isSecure = window.location.protocol === 'https:';
+      Cookies.set('lastRefreshedToken', newToken, {
+        expires: 7,
+        path: '/',
+        sameSite: 'lax',
+        secure: isSecure,
+      });
+
+      // Luôn cập nhật token mới vào cookie và store
       // kể cả khi user chưa được fetch (currentUser = null)
       const currentUser = newUser || useAuthStore.getState().user;
       if (currentUser) {
         useAuthStore.getState().setAuth(currentUser, newToken);
       } else {
-        const isSecure = window.location.protocol === 'https:';
         Cookies.set('adminAccessToken', newToken, {
           expires: 7,
           path: '/',
@@ -112,11 +162,13 @@ apiClient.interceptors.response.use(
       processQueue(refreshError, null);
 
       // Lưu chi tiết lỗi vào localStorage trước khi chuyển hướng để tránh mất log
+      let status: number | null = null;
       try {
         const isAxiosErr = axios.isAxiosError(refreshError);
+        status = (isAxiosErr && refreshError.response) ? refreshError.response.status : null;
         const errDetail = {
           timestamp: new Date().toISOString(),
-          status: isAxiosErr ? refreshError.response?.status : 'unknown',
+          status: status || 'unknown',
           data: isAxiosErr ? refreshError.response?.data : null,
           message: refreshError instanceof Error ? refreshError.message : String(refreshError),
           url: isAxiosErr ? refreshError.config?.url : '',
@@ -127,8 +179,31 @@ apiClient.interceptors.response.use(
         console.error('[Admin API Client] Failed to save error details:', e);
       }
 
-      // Refresh token hết hạn thật sự → đăng xuất
-      useAuthStore.getState().logout();
+      // ─── GIẢI QUYẾT RACE CONDITION MULTI-TAB (Client & Admin) ───
+      // Chờ 1000ms để nếu có tab khác đang refresh song song và thành công, 
+      // tab đó có đủ thời gian ghi cookie mới. Sau đó kiểm tra lại.
+      await sleep(1000);
+
+      const lastRefreshedAfter = Cookies.get('lastRefreshedToken') || '';
+      const wasRefreshedByOther = lastRefreshedAfter && lastRefreshedAfter !== originalRequest._lastRefreshedBefore;
+
+      if (wasRefreshedByOther) {
+        console.log('[Admin API Client] Another tab has successfully refreshed the token. Syncing and retrying.');
+        useAuthStore.setState({ accessToken: lastRefreshedAfter, isAuthenticated: true });
+        originalRequest.headers.Authorization = `Bearer ${lastRefreshedAfter}`;
+        return apiClient(originalRequest);
+      }
+
+      // Chỉ đăng xuất khi lỗi xác thực thực sự (401 Unauthorized, 403 Forbidden, 400 Bad Request)
+      // và KHÔNG có tab nào khác đã cập nhật token mới.
+      // Nếu là lỗi mạng, timeout (status = null) hoặc lỗi server tạm thời (5xx) -> Giữ nguyên session
+      const isAuthFailure = status === 401 || status === 403 || status === 400;
+      if (isAuthFailure) {
+        useAuthStore.getState().logout();
+      } else {
+        console.warn('[Admin API Client] Temporary network or server error. Retaining session (no logout).');
+      }
+
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;
