@@ -25,6 +25,8 @@ CREATE TABLE IF NOT EXISTS payments (
     idempotency_key     VARCHAR(100) UNIQUE,
     expired_at          TIMESTAMP WITH TIME ZONE,
     order_status        VARCHAR(30) DEFAULT 'PENDING',
+    retry_count         INTEGER NOT NULL DEFAULT 0,
+    max_retry           INTEGER NOT NULL DEFAULT 2,
     created_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
@@ -60,6 +62,7 @@ CREATE TABLE IF NOT EXISTS processed_events (
 -- INDEXES
 -- ============================================================
 CREATE INDEX idx_payments_order ON payments(order_id);
+CREATE INDEX idx_payments_order_code ON payments(order_code);
 CREATE INDEX idx_payments_user ON payments(user_id);
 CREATE INDEX idx_payments_status ON payments(status);
 CREATE INDEX idx_payments_created ON payments(created_at DESC);

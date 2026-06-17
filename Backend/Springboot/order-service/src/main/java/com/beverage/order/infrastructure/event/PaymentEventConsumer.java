@@ -39,7 +39,12 @@ public class PaymentEventConsumer {
             } else if (event instanceof PaymentExpiredEvent expiredEvent) {
                 orderUseCase.cancelOrderFromInventory(expiredEvent.getOrderId(), "Đơn hàng bị hủy do hết hạn thanh toán (quá 15 phút)");
             } else if (event instanceof PaymentFailedEvent failedEvent) {
-                log.info("Payment failed for orderId={}, keeping it pending to allow retry. Reason: {}", failedEvent.getOrderId(), failedEvent.getReason());
+                if (failedEvent.isTerminal()) {
+                    log.info("Payment failed terminally for orderId={}, canceling order. Reason: {}", failedEvent.getOrderId(), failedEvent.getReason());
+                    orderUseCase.cancelOrderFromInventory(failedEvent.getOrderId(), failedEvent.getReason());
+                } else {
+                    log.info("Payment failed for orderId={}, keeping it pending to allow retry. Reason: {}", failedEvent.getOrderId(), failedEvent.getReason());
+                }
             } else if (event instanceof PaymentUrlCreatedEvent urlCreatedEvent) {
                 log.info("Payment URL recreated for orderId={}, extending payment deadline by 15 minutes", urlCreatedEvent.getOrderId());
                 orderUseCase.extendOrderPaymentDeadline(urlCreatedEvent.getOrderId(), 15);

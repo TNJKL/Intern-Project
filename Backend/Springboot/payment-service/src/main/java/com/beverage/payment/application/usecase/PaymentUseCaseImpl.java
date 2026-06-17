@@ -34,6 +34,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -94,6 +95,7 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
             existingPayment.setPaymentMethod(method);
             existingPayment.setAmount(request.getAmount());
             existingPayment.setExpiredAt(expiredAt);
+            existingPayment.setOrderStatus("PENDING");
             paymentEntity = paymentRepository.save(existingPayment);
         } else {
             // Create new payment entity
@@ -107,6 +109,7 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
                     .paymentUrl(paymentUrl)
                     .idempotencyKey(idempotencyKey)
                     .expiredAt(expiredAt)
+                    .orderStatus("PENDING")
                     .build();
             paymentEntity = paymentRepository.save(paymentEntity);
         }
@@ -218,16 +221,23 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
                         .occurredAt(Instant.now())
                         .build());
             } else {
+                boolean isTerminal = payment.getRetryCount() >= payment.getMaxRetry();
                 payment.setStatus(PaymentStatus.FAILED);
+                if (isTerminal) {
+                    payment.setOrderStatus("CANCELLED");
+                }
                 paymentRepository.save(payment);
 
-                // Publish failed event
+                // Publish failed event (terminal = true if all retries exhausted)
                 eventPublisher.publishPaymentFailed(PaymentFailedEvent.builder()
                         .orderId(payment.getOrderId())
                         .orderCode(payment.getOrderCode())
                         .userId(payment.getUserId())
                         .amount(payment.getAmount())
-                        .reason("VNPay code: " + responseCode)
+                        .reason(isTerminal ? 
+                                "Bạn đã thử thanh toán quá số lần cho phép (" + payment.getMaxRetry() + " lần)." : 
+                                "VNPay code: " + responseCode)
+                        .terminal(isTerminal)
                         .occurredAt(Instant.now())
                         .build());
             }
@@ -375,11 +385,32 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
 
         // Otherwise (status is FAILED, EXPIRED, or PENDING but URL expired), recreate a new VNPay URL
         log.info("Payment URL is expired or status is failed/expired. Re-initiating payment URL.");
+        
+        if (payment.getRetryCount() >= payment.getMaxRetry()) {
+            payment.setOrderStatus("CANCELLED");
+            payment.setStatus(PaymentStatus.FAILED);
+            paymentRepository.save(payment);
+
+            // Publish failed event to Kafka with terminal = true to cancel order
+            eventPublisher.publishPaymentFailed(PaymentFailedEvent.builder()
+                    .orderId(payment.getOrderId())
+                    .orderCode(payment.getOrderCode())
+                    .userId(payment.getUserId())
+                    .amount(payment.getAmount())
+                    .reason("Bạn đã thử thanh toán quá số lần cho phép (" + payment.getMaxRetry() + " lần).")
+                    .terminal(true)
+                    .occurredAt(now)
+                    .build());
+
+            throw new BusinessException("Bạn đã thử thanh toán quá nhiều lần (" + payment.getMaxRetry() + " lần). Vui lòng đặt đơn hàng mới.");
+        }
+
         String newUrl = vnpayUseCase.generatePaymentUrl(payment.getOrderCode(), payment.getAmount(), ipAddress);
         
         payment.setPaymentUrl(newUrl);
         payment.setStatus(PaymentStatus.PENDING);
         payment.setExpiredAt(now.plusSeconds(15 * 60)); // Reset 15 minutes countdown
+        payment.setRetryCount(payment.getRetryCount() + 1); // retry_count + 1
         paymentRepository.save(payment);
 
         // Publish event back to Kafka to extend order deadline
@@ -399,5 +430,37 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
                 .orderCode(payment.getOrderCode())
                 .paymentUrl(newUrl)
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaymentDetailResponse getPendingRepayment(UUID userId, String orderCode) {
+        if (userId == null && (orderCode == null || orderCode.isBlank())) {
+            return null;
+        }
+
+        Optional<PaymentEntity> paymentOpt;
+        List<PaymentStatus> activeStatuses = List.of(PaymentStatus.PENDING, PaymentStatus.FAILED, PaymentStatus.EXPIRED);
+
+        long pendingCount = 0;
+        if (userId != null) {
+            paymentOpt = paymentRepository.findActivePaymentByUserId(userId, activeStatuses);
+            pendingCount = paymentOpt.isPresent() ? paymentRepository.countActivePaymentsByUserId(userId, activeStatuses) : 0;
+        } else {
+            paymentOpt = paymentRepository.findActivePaymentByOrderCode(orderCode, activeStatuses);
+            pendingCount = paymentOpt.isPresent() ? paymentRepository.countActivePaymentsByOrderCode(orderCode, activeStatuses) : 0;
+        }
+
+        if (paymentOpt.isPresent()) {
+            PaymentEntity payment = paymentOpt.get();
+            if (payment.getRetryCount() < payment.getMaxRetry()) {
+                PaymentDetailResponse response = mapToDetailResponse(payment);
+                if (response != null) {
+                    response.setTotalPendingCount((int) pendingCount);
+                }
+                return response;
+            }
+        }
+        return null;
     }
 }

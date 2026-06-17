@@ -17,6 +17,7 @@ public class PaymentFailedEvent extends PaymentEventWrapper {
     private UUID userId;
     private BigDecimal amount;
     private String reason;
+    private boolean terminal;
 
     @Override
     public String getEventType() {

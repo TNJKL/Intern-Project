@@ -26,9 +26,12 @@ public class PaymentDetailResponse {
     private String paymentUrl;
     private Instant paidAt;
     private String orderStatus;
+    private int retryCount;
+    private int maxRetry;
     private BigDecimal refundedAmount;
     private Instant createdAt;
     private Instant updatedAt;
+    private Integer totalPendingCount;
 
     public static PaymentDetailResponse fromDomain(Payment payment) {
         if (payment == null) return null;
@@ -44,6 +47,8 @@ public class PaymentDetailResponse {
                 .paymentUrl(payment.getPaymentUrl())
                 .paidAt(payment.getPaidAt())
                 .orderStatus(payment.getOrderStatus())
+                .retryCount(payment.getRetryCount())
+                .maxRetry(payment.getMaxRetry())
                 .refundedAmount(payment.getRefundedAmount())
                 .createdAt(payment.getCreatedAt())
                 .updatedAt(payment.getUpdatedAt())

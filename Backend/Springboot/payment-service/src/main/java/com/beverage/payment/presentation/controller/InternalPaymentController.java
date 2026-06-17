@@ -34,4 +34,14 @@ public class InternalPaymentController {
         PaymentDetailResponse response = paymentUseCase.getPaymentByOrderId(orderId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
+
+    @GetMapping("/pending-repayment")
+    public ResponseEntity<ApiResponse<PaymentDetailResponse>> getPendingRepayment(
+            @RequestParam(required = false) UUID userId,
+            @RequestParam(required = false) String orderCode
+    ) {
+        log.info("Internal request to fetch pending repayment: userId={}, orderCode={}", userId, orderCode);
+        PaymentDetailResponse response = paymentUseCase.getPendingRepayment(userId, orderCode);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
 }

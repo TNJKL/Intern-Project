@@ -67,6 +67,14 @@ public class PaymentEntity {
     @Column(name = "order_status", length = 30)
     private String orderStatus;
 
+    @Column(name = "retry_count", nullable = false)
+    @Builder.Default
+    private int retryCount = 0;
+
+    @Column(name = "max_retry", nullable = false)
+    @Builder.Default
+    private int maxRetry = 2;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -108,6 +116,8 @@ public class PaymentEntity {
                 .idempotencyKey(idempotencyKey)
                 .expiredAt(expiredAt)
                 .orderStatus(orderStatus)
+                .retryCount(retryCount)
+                .maxRetry(maxRetry)
                 .createdAt(createdAt)
                 .updatedAt(updatedAt)
                 .build();
@@ -130,6 +140,8 @@ public class PaymentEntity {
                 .idempotencyKey(domain.getIdempotencyKey())
                 .expiredAt(domain.getExpiredAt())
                 .orderStatus(domain.getOrderStatus())
+                .retryCount(domain.getRetryCount())
+                .maxRetry(domain.getMaxRetry())
                 .createdAt(domain.getCreatedAt())
                 .updatedAt(domain.getUpdatedAt())
                 .build();

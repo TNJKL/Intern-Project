@@ -7,13 +7,17 @@ import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { useSocket } from "@/components/providers/SocketProvider";
+
 
 export function FloatingNav() {
   const pathname = usePathname();
   const { user } = useAuthStore();
   const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
+  const { pendingPayment } = useSocket();
   const [isMounted, setIsMounted] = useState(false);
   const [activeId, setActiveId] = useState("home");
+
 
   useEffect(() => {
     setIsMounted(true);
@@ -63,12 +67,20 @@ export function FloatingNav() {
             >
               {/* Box chứa Icon */}
               <div className={cn(
-                "p-2 rounded-xl transition-all duration-300",
+                "p-2 rounded-xl transition-all duration-300 relative",
                 isActive
                   ? "bg-[#855823] text-white shadow-md shadow-[#855823]/20 scale-105" // Active sẽ đổi sang màu nâu đậm signature của quán
                   : "text-amber-900/40 group-hover:text-[#855823]/80 group-active:scale-95" // Chưa active sẽ là màu nâu xám nhạt thanh lịch
               )}>
                 <item.icon className="w-5 h-5" />
+                {item.id === "orders" && pendingPayment && (
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-amber-500 text-[8px] font-black text-white items-center justify-center border border-white">
+                      {pendingPayment.totalPendingCount}
+                    </span>
+                  </span>
+                )}
               </div>
 
               {/* Nhãn chữ */}

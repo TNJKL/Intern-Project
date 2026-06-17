@@ -21,5 +21,6 @@ public class PaymentFailedEvent {
     private UUID userId;
     private BigDecimal amount;
     private String reason;
+    private boolean terminal;
     private Instant occurredAt;
 }

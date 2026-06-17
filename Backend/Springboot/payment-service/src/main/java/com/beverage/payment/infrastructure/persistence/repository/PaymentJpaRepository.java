@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 import org.springframework.stereotype.Repository;
 
@@ -28,4 +29,36 @@ public interface PaymentJpaRepository extends JpaRepository<PaymentEntity, UUID>
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from PaymentEntity p where p.orderCode = :orderCode")
     Optional<PaymentEntity> findByOrderCodeWithLock(String orderCode);
+
+    @Query("SELECT p FROM PaymentEntity p WHERE p.userId = :userId " +
+           "AND p.paymentMethod = 'VNPAY' AND p.orderStatus = 'PENDING' " +
+           "AND p.status IN :statuses ORDER BY p.createdAt DESC LIMIT 1")
+    Optional<PaymentEntity> findActivePaymentByUserId(
+            @Param("userId") UUID userId,
+            @Param("statuses") List<PaymentStatus> statuses
+    );
+
+    @Query("SELECT p FROM PaymentEntity p WHERE p.orderCode = :orderCode " +
+           "AND p.paymentMethod = 'VNPAY' AND p.orderStatus = 'PENDING' " +
+           "AND p.status IN :statuses ORDER BY p.createdAt DESC LIMIT 1")
+    Optional<PaymentEntity> findActivePaymentByOrderCode(
+            @Param("orderCode") String orderCode,
+            @Param("statuses") List<PaymentStatus> statuses
+    );
+
+    @Query("SELECT COUNT(p) FROM PaymentEntity p WHERE p.userId = :userId " +
+           "AND p.paymentMethod = 'VNPAY' AND p.orderStatus = 'PENDING' " +
+           "AND p.status IN :statuses AND p.retryCount < p.maxRetry")
+    long countActivePaymentsByUserId(
+            @Param("userId") UUID userId,
+            @Param("statuses") List<PaymentStatus> statuses
+    );
+
+    @Query("SELECT COUNT(p) FROM PaymentEntity p WHERE p.orderCode = :orderCode " +
+           "AND p.paymentMethod = 'VNPAY' AND p.orderStatus = 'PENDING' " +
+           "AND p.status IN :statuses AND p.retryCount < p.maxRetry")
+    long countActivePaymentsByOrderCode(
+            @Param("orderCode") String orderCode,
+            @Param("statuses") List<PaymentStatus> statuses
+    );
 }

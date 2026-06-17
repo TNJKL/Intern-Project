@@ -28,6 +28,8 @@ public class Payment {
     private String idempotencyKey;
     private Instant expiredAt;
     private String orderStatus;
+    private int retryCount;
+    private int maxRetry;
     private BigDecimal refundedAmount;
     private Instant createdAt;
     private Instant updatedAt;

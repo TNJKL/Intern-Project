@@ -14,6 +14,7 @@ import { WsJwtGuard } from '../common/guards/ws-jwt.guard';
 import { NotificationEmitterService, NotificationPayload } from '../notification/notification-emitter.service';
 import { GuestSessionService } from './guest-session.service';
 import { WsRateLimiterService } from './ws-rate-limiter.service';
+import { ConfigService } from '@nestjs/config';
 
 // Rate limit config cho WebSocket events
 const WS_RATE_LIMIT = {
@@ -46,6 +47,7 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
     private notificationEmitter: NotificationEmitterService,
     private guestSessionService: GuestSessionService,
     private wsRateLimiter: WsRateLimiterService,
+    private configService: ConfigService,
   ) {}
 
   afterInit() {
@@ -134,6 +136,7 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
       this.logger.log(`User ${userId} joined room user:${userId}`);
       // Phát trực tiếp sự kiện về client để hiển thị trên Postman (không cần Ack)
       client.emit('joined', { room: `user:${userId}`, success: true });
+      this.checkAndEmitPendingRepayment(client, { userId });
       return { event: 'joined', room: `user:${userId}`, success: true };
     }
     client.emit('error', { message: 'User not authenticated', success: false });
@@ -156,6 +159,32 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
     }
     client.emit('error', { message: 'User not authenticated', success: false });
     return { event: 'error', message: 'User not authenticated', success: false };
+  }
+
+  @SubscribeMessage('check-pending-repayment')
+  async handleCheckPendingRepayment(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { guestSessionId?: string },
+  ) {
+    const userId = (client as any).user?.userId;
+    if (userId) {
+      this.logger.log(`Checking pending repayment for Member ${userId} on client request`);
+      this.checkAndEmitPendingRepayment(client, { userId });
+      return { success: true };
+    }
+
+    const { guestSessionId } = payload || {};
+    if (guestSessionId) {
+      const orderCode = await this.guestSessionService.getOrderCode(guestSessionId);
+      if (orderCode) {
+        this.logger.log(`Checking pending repayment for Guest via guestSessionId ${guestSessionId} on client request`);
+        this.checkAndEmitPendingRepayment(client, { orderCode });
+        return { success: true };
+      }
+    }
+
+    this.logger.warn(`Check pending repayment requested by client ${client.id} but no userId or valid guestSessionId found`);
+    return { success: false, message: 'No authenticated user or valid guestSessionId' };
   }
 
   // ─── Guest (Redis guestSessionId) ────────────────────────────────────────
@@ -211,6 +240,7 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
     client.join(room);
     this.logger.log(`Guest joined room ${room} via session ${guestSessionId}`);
     client.emit('joined-guest', { room, orderCode, success: true });
+    this.checkAndEmitPendingRepayment(client, { orderCode });
     return { event: 'joined-guest', room, orderCode, success: true };
   }
 
@@ -260,5 +290,53 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
       timestamp: notification.createdAt || new Date().toISOString(),
     });
     this.logger.debug(`Emitted notification to admin:alerts: ${notification.title}`);
+  }
+
+  private async checkAndEmitPendingRepayment(
+    client: Socket,
+    params: { userId?: string; orderCode?: string },
+  ) {
+    const paymentServiceUrl = this.configService.get<string>('PAYMENT_SERVICE_URL') || 'http://localhost:8085';
+    const internalSecret = this.configService.get<string>('INTERNAL_SECRET') || 'internal-beverage-secret-2024';
+
+    try {
+      const url = new URL(`${paymentServiceUrl}/api/v1/internal/payments/pending-repayment`);
+      if (params.userId) url.searchParams.append('userId', params.userId);
+      if (params.orderCode) url.searchParams.append('orderCode', params.orderCode);
+
+      this.logger.debug(`Checking pending repayment at: ${url.toString()}`);
+
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+          'X-Internal-Secret': internalSecret,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        this.logger.warn(`Failed to fetch pending repayment from payment-service. Status: ${response.status}`);
+        return;
+      }
+
+      const resBody = await response.json();
+      if (resBody?.success && resBody?.data) {
+        const paymentData = resBody.data;
+        this.logger.log(
+          `Found pending repayment for orderCode=${paymentData.orderCode}. Emitting alert to socket ${client.id}`,
+        );
+        client.emit('pending-payment-alert', {
+          orderId: paymentData.orderId,
+          orderCode: paymentData.orderCode,
+          amount: paymentData.amount,
+          totalPendingCount: paymentData.totalPendingCount,
+        });
+      } else {
+        this.logger.log(`No pending repayment found for client ${client.id}. Emitting null.`);
+        client.emit('pending-payment-alert', null);
+      }
+    } catch (error) {
+      this.logger.error(`Error checking pending repayment: ${error.message}`);
+    }
   }
 }

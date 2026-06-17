@@ -15,6 +15,8 @@ import { cn } from "@/lib/utils";
 
 import { User as UserType } from "@/types/user";
 import { createPortal } from "react-dom";
+import { useSocket } from "@/components/providers/SocketProvider";
+
 
 interface NavbarProps {
   initialUser?: UserType | null;
@@ -25,12 +27,14 @@ export function Navbar({ initialUser }: NavbarProps) {
   const { clearCart } = useCartStore();
   const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
   const dispatch = useAppDispatch();
+  const { pendingPayment } = useSocket();
   const [isMounted, setIsMounted] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [activeId, setActiveId] = useState("home");
   const router = useRouter();
   const pathname = usePathname();
   const cartItemsCount = useCartStore((state) => state.items.reduce((total, item) => total + item.quantity, 0));
+
 
   const [preset, setPreset] = useState<"espresso" | "matcha" | "berry">("espresso");
   const [steamEffect, setSteamEffect] = useState(false);
@@ -111,7 +115,7 @@ export function Navbar({ initialUser }: NavbarProps) {
               href={item.href}
               onClick={() => setActiveId(item.id)}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all duration-200",
+                "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all duration-200 relative",
                 isActive
                   ? "bg-primary text-white shadow-md shadow-primary/20"
                   : "text-gray-500 hover:text-coffee-dark hover:bg-gray-100"
@@ -119,6 +123,14 @@ export function Navbar({ initialUser }: NavbarProps) {
             >
               <item.icon className="w-4 h-4" />
               {item.label}
+              {item.id === "orders" && pendingPayment && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-amber-500 text-[8px] font-black text-white items-center justify-center border border-white">
+                    {pendingPayment.totalPendingCount}
+                  </span>
+                </span>
+              )}
             </Link>
           );
         })}
