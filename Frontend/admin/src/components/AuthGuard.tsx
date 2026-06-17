@@ -36,33 +36,36 @@ export const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children })
         }
       }
 
-      // 2. Kiểm tra có adminAccessToken cookie không (non-HttpOnly, js-cookie đọc được)
-      //    Nếu có → đã login, chỉ cần fetchUser để lấy thông tin user mới nhất
-      //    Axios interceptor sẽ tự refresh khi token hết hạn (trả về 401)
+      // 2. Kiểm tra có adminAccessToken cookie không
       const adminToken = Cookies.get('adminAccessToken');
       if (adminToken) {
         try {
           await fetchUser();
+          const currentUser = useAuthStore.getState().user;
+          if (currentUser && currentUser.role?.toUpperCase() === 'ADMIN') {
+            setIsCheckingAuth(false);
+            return;
+          }
         } catch (err) {
           console.error('[AuthGuard] fetchUser thất bại:', err);
-          // fetchUser thất bại với 401 → interceptor sẽ tự xử lý refresh
-          // Không cần redirect ở đây, để interceptor làm việc
         }
-        setIsCheckingAuth(false);
-        return;
       }
 
-      // 3. Không có token → thử silent refresh qua cookie HttpOnly (refreshToken)
-      //    Trường hợp này: tab mới mở hoặc adminAccessToken đã hết hạn trong cookie
-      console.log('[AuthGuard] Không có adminAccessToken, thử silent refresh...');
+      // 3. Không có token hoặc fetchUser thất bại/không có quyền ADMIN → thử silent refresh
+      console.log('[AuthGuard] Thử silent refresh...');
       const success = await silentRefresh();
       if (success) {
-        setIsCheckingAuth(false);
-        return;
+        const currentUser = useAuthStore.getState().user;
+        if (currentUser && currentUser.role?.toUpperCase() === 'ADMIN') {
+          setIsCheckingAuth(false);
+          return;
+        }
       }
 
-      // 4. Thất bại → về trang login
-      console.log('[AuthGuard] Silent refresh thất bại, chuyển về login');
+      // 4. Thất bại hoặc không đủ quyền ADMIN → về trang login
+      console.log('[AuthGuard] Xác thực thất bại hoặc không đủ quyền Admin, chuyển về login');
+      Cookies.remove('adminAccessToken', { path: '/' });
+      useAuthStore.setState({ user: null, accessToken: null, isAuthenticated: false });
       window.location.href = 'http://localhost:3000/login?logout=true';
     };
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Table, Tabs, Input, Select, DatePicker, Tag, Button, Space, Tooltip } from 'antd';
+import { Card, Table, Tabs, Input, Select, DatePicker, Tag, Button, Tooltip } from 'antd';
 import { CreditCardOutlined, HistoryOutlined, RedoOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { paymentService } from '@/services/payment.service';
@@ -242,7 +242,7 @@ const PaymentsRefunds: React.FC = () => {
         const isDisputed = isSuccess && record.orderStatus === 'CANCELLED' && !hasRefunded;
 
         return (
-          <Space direction="vertical" size={2} className="w-full">
+          <div className="flex flex-col gap-0.5 w-full">
             {isFullyRefunded && (
               <Tag className="font-extrabold text-[10px] rounded-lg px-2.5 py-0.5 border-none bg-gray-100 text-gray-400">
                 ĐÃ HOÀN TIỀN
@@ -276,7 +276,7 @@ const PaymentsRefunds: React.FC = () => {
             {!canRefund && !hasRefunded && (
               <span className="text-gray-300 text-xs">-</span>
             )}
-          </Space>
+          </div>
         );
       },
     },
@@ -435,7 +435,7 @@ const PaymentsRefunds: React.FC = () => {
               placeholder="Trạng thái thanh toán"
               allowClear
               className="w-full sm:w-48"
-              popupClassName="rounded-xl"
+              dropdownStyle={{ borderRadius: '12px' }}
               onChange={(val) => {
                 setPayStatus(val);
                 setPayPage(1);
@@ -451,7 +451,7 @@ const PaymentsRefunds: React.FC = () => {
               placeholder="Phương thức"
               allowClear
               className="w-full sm:w-40"
-              popupClassName="rounded-xl"
+              dropdownStyle={{ borderRadius: '12px' }}
               onChange={(val) => {
                 setPayMethod(val);
                 setPayPage(1);
@@ -560,7 +560,7 @@ const PaymentsRefunds: React.FC = () => {
               placeholder="Trạng thái hoàn tiền"
               allowClear
               className="w-full"
-              popupClassName="rounded-xl"
+              dropdownStyle={{ borderRadius: '12px' }}
               onChange={(val) => {
                 setRefStatus(val);
                 setRefPage(1);

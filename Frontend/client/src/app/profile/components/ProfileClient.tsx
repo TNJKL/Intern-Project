@@ -58,7 +58,7 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
 
   return (
     <div className="min-h-screen bg-[#fdfaf5] pt-24 sm:pt-28 md:pt-32 pb-16 px-4 sm:px-6 font-sans">
-      <div className="max-w-3xl mx-auto"> {/* ✅ Tối ưu lại từ max-w-5xl xuống max-w-3xl để form 1 cột trên iPad không bị bè ngang quá rộng */}
+      <div className="max-w-3xl lg:max-w-5xl xl:max-w-6xl mx-auto"> {/* ✅ Tăng giới hạn chiều rộng trên Laptop/PC */}
 
         {/* Tiêu đề trang ẩn gọn gàng */}
         <div className="mb-6 flex items-center gap-2 text-amber-900/40 text-[11px] font-black uppercase tracking-widest">
@@ -67,15 +67,15 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
           <span className="text-amber-900">Hồ sơ cá nhân</span>
         </div>
 
-        {/* ✅ SỬA TẠI ĐÂY: Thay đổi từ `lg:grid-cols-3` thành `xl:grid-cols-3` và điều chỉnh flex/grid dọc */}
-        <div className="flex flex-col xl:grid xl:grid-cols-3 gap-8 items-stretch xl:items-start">
+        {/* ✅ Bố cục 2 cột cho màn hình từ lg (1024px) trở lên thay vì xl */}
+        <div className="flex flex-col lg:grid lg:grid-cols-3 gap-8 items-stretch lg:items-start">
 
           {/* CỘT TRÁI: THẺ TÓM TẮT & HÀNH ĐỘNG */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            // ✅ SỬA TẠI ĐÂY: Bỏ `sticky` khi ở dạng 1 cột trên iPad, chỉ bật lại khi lên Desktop thực sự (xl:)
-            className="bg-white rounded-[32px] p-8 shadow-sm border border-amber-100/40 flex flex-col items-center text-center xl:sticky xl:top-28"
+            // ✅ Sticky cột trái từ màn hình lg trở lên
+            className="bg-white rounded-[32px] p-8 shadow-sm border border-amber-100/40 flex flex-col items-center text-center lg:sticky lg:top-28"
           >
             {/* Khung Avatar Brand */}
             <div className="relative group mb-5">
@@ -112,8 +112,8 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
             <div className="w-full border-t border-gray-100 my-2" />
 
             {/* Nhóm nút bấm hành động */}
-            {/* ✅ SỬA TẠI ĐÂY: Trên iPad, hai nút bấm "Sửa" và "Đổi mật khẩu" sẽ dàn hàng ngang (flex-row) cho đẹp thay vì xếp dọc nuốt hết diện tích */}
-            <div className="flex flex-col sm:flex-row xl:flex-col gap-3 w-full mt-4">
+            {/* ✅ Xếp dọc nút bấm trên màn hình lg trở lên, các màn hình nhỏ hơn dàn hàng ngang */}
+            <div className="flex flex-col sm:flex-row lg:flex-col gap-3 w-full mt-4">
               <button
                 onClick={() => setIsEditModalOpen(true)}
                 className="flex-1 py-3.5 px-6 rounded-2xl bg-white border border-gray-200 text-gray-700 font-bold text-sm hover:bg-gray-50 hover:border-gray-300 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
@@ -136,8 +136,8 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            // ✅ SỬA TẠI ĐÂY: Đổi `lg:col-span-2` thành `xl:col-span-2`
-            className="xl:col-span-2 bg-white rounded-[32px] p-8 md:p-10 shadow-sm border border-amber-100/40"
+            // ✅ Cột phải chiếm 2 phần chiều rộng trên màn hình lg trở lên
+            className="lg:col-span-2 bg-white rounded-[32px] p-8 md:p-10 shadow-sm border border-amber-100/40"
           >
             <div className="flex items-center gap-3 mb-8">
               <div className="w-1.5 h-5 bg-amber-800 rounded-full" />

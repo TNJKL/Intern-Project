@@ -73,6 +73,33 @@ export default function OrdersClient({ initialOrders, isServerError }: OrdersCli
     }
   }, [isServerError]);
 
+  // Đồng bộ props từ Server Component (sau khi router.refresh() hoàn tất)
+  useEffect(() => {
+    setOrders(initialOrders);
+  }, [initialOrders]);
+
+  // Lắng nghe sự kiện WebSocket cập nhật trạng thái đơn hàng real-time
+  useEffect(() => {
+    const handleStatusUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const { orderCode, status } = customEvent.detail || {};
+      if (orderCode && status) {
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.orderCode === orderCode || o.id === orderCode
+              ? { ...o, status: status }
+              : o
+          )
+        );
+      }
+    };
+
+    window.addEventListener("order-status-updated", handleStatusUpdate);
+    return () => {
+      window.removeEventListener("order-status-updated", handleStatusUpdate);
+    };
+  }, []);
+
   if (isLoading) {
     return (
       <div className="w-full min-h-screen bg-[#fdf3eb]/30 flex items-center justify-center">
@@ -128,6 +155,10 @@ export default function OrdersClient({ initialOrders, isServerError }: OrdersCli
     try {
       const res = await orderService.cancelOrder(cancelConfirmId);
       if (res.success) {
+        // Cập nhật trạng thái local state ngay lập tức sang CANCELLED
+        setOrders((prev) =>
+          prev.map((o) => (o.id === cancelConfirmId ? { ...o, status: "CANCELLED" } : o))
+        );
         if (isModalOpen && orderDetail?.id === cancelConfirmId) {
           const detailRes = await fetch(`/api/v1/orders/${cancelConfirmId}`);
           const detailData = await detailRes.json();
@@ -279,13 +310,28 @@ export default function OrdersClient({ initialOrders, isServerError }: OrdersCli
                       )}
 
                       {/* Action buttons */}
-                      <div className="flex justify-end gap-2 mt-2">
+                      <div className="flex justify-end gap-2 mt-2 w-full sm:w-auto">
+                        {["pending", "confirmed"].includes(order.status?.toLowerCase()) && (
+                          <button
+                            onClick={() => handleCancelOrder(order.id)}
+                            className="flex-1 sm:flex-initial px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl font-extrabold transition-colors text-xs uppercase tracking-wider border border-red-200 text-center"
+                          >
+                            Hủy đơn
+                          </button>
+                        )}
                         {order.status?.toLowerCase() === "completed" && (
-                          <button className="px-4 py-2.5 bg-[#5c3d2e]/5 text-[#5c3d2e] rounded-xl font-extrabold hover:bg-[#5c3d2e]/10 transition-colors text-xs uppercase tracking-wider">
+                          <button className="flex-1 sm:flex-initial px-4 py-2.5 bg-[#5c3d2e]/5 text-[#5c3d2e] rounded-xl font-extrabold hover:bg-[#5c3d2e]/10 transition-colors text-xs uppercase tracking-wider">
                             Đánh giá
                           </button>
                         )}
-                        <button onClick={() => handleViewDetail(order.id)} className="w-full sm:w-auto justify-center px-5 py-2.5 bg-[#5c3d2e] text-white rounded-xl font-extrabold hover:bg-[#5c3d2e]/90 transition-colors text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
+                        <button
+                          onClick={() => handleViewDetail(order.id)}
+                          className={`${
+                            ["pending", "confirmed", "completed"].includes(order.status?.toLowerCase())
+                              ? "flex-1 sm:flex-initial"
+                              : "w-full"
+                          } sm:w-auto justify-center px-5 py-2.5 bg-[#5c3d2e] text-white rounded-xl font-extrabold hover:bg-[#5c3d2e]/90 transition-colors text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-sm`}
+                        >
                           {order.status?.toLowerCase() === "completed" || order.status?.toLowerCase() === "cancelled" ? "Mua lại đơn này" : "Xem chi tiết"}
                           <ArrowRight className="w-3.5 h-3.5" />
                         </button>
