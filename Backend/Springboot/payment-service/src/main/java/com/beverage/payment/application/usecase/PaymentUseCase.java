@@ -33,4 +33,5 @@ public interface PaymentUseCase {
     void updateOrderStatus(UUID orderId, String orderStatus);
     PaymentUrlResponse getOrRecreatePaymentUrl(UUID orderId, String ipAddress);
     PaymentDetailResponse getPendingRepayment(UUID userId, String orderCode);
+    Page<PaymentDetailResponse> getPaymentHistory(UUID userId, Pageable pageable);
 }

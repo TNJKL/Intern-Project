@@ -58,6 +58,19 @@ CREATE TABLE IF NOT EXISTS processed_events (
     processed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS outbox_events (
+    id UUID PRIMARY KEY,
+    aggregate_type VARCHAR(100) NOT NULL,
+    aggregate_id VARCHAR(100) NOT NULL,
+    event_type VARCHAR(200) NOT NULL,
+    payload TEXT NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    sent_at TIMESTAMP WITH TIME ZONE
+);
+
+
+
 -- ============================================================
 -- INDEXES
 -- ============================================================
@@ -66,7 +79,7 @@ CREATE INDEX idx_payments_order_code ON payments(order_code);
 CREATE INDEX idx_payments_user ON payments(user_id);
 CREATE INDEX idx_payments_status ON payments(status);
 CREATE INDEX idx_payments_created ON payments(created_at DESC);
-
+CREATE INDEX IF NOT EXISTS idx_outbox_events_status_created ON outbox_events (status, created_at);
 CREATE INDEX idx_refunds_payment ON refunds(payment_id);
 CREATE INDEX idx_refunds_order ON refunds(order_id);
 CREATE INDEX idx_refunds_user ON refunds(user_id);

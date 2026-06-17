@@ -10,6 +10,8 @@ import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 import org.springframework.stereotype.Repository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -17,7 +19,14 @@ import java.util.UUID;
 
 @Repository
 public interface PaymentJpaRepository extends JpaRepository<PaymentEntity, UUID>, JpaSpecificationExecutor<PaymentEntity> {
-    Optional<PaymentEntity> findByOrderId(UUID orderId);
+    
+    @Query("SELECT p FROM PaymentEntity p WHERE p.orderId = :orderId ORDER BY p.createdAt DESC LIMIT 1")
+    Optional<PaymentEntity> findByOrderId(@Param("orderId") UUID orderId);
+
+    List<PaymentEntity> findAllByOrderId(UUID orderId);
+
+    Page<PaymentEntity> findByUserIdOrderByCreatedAtDesc(UUID userId, Pageable pageable);
+
     Optional<PaymentEntity> findByOrderCode(String orderCode);
     Optional<PaymentEntity> findByIdempotencyKey(String idempotencyKey);
     List<PaymentEntity> findAllByStatusAndExpiredAtBefore(PaymentStatus status, Instant now);

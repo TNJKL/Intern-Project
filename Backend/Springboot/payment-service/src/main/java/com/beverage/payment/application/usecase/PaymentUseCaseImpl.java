@@ -17,9 +17,12 @@ import com.beverage.payment.infrastructure.event.producer.PaymentEventPublisher;
 import com.beverage.payment.infrastructure.persistence.entity.PaymentEntity;
 import com.beverage.payment.infrastructure.persistence.repository.PaymentJpaRepository;
 import com.beverage.payment.infrastructure.persistence.repository.RefundJpaRepository;
+import com.beverage.payment.infrastructure.persistence.entity.OutboxEventEntity;
+import com.beverage.payment.infrastructure.persistence.repository.OutboxEventRepository;
 import com.beverage.payment.infrastructure.persistence.entity.RefundEntity;
 import com.beverage.payment.domain.model.RefundStatus;
 import com.beverage.payment.infrastructure.persistence.spec.PaymentSpecifications;
+import com.beverage.payment.infrastructure.config.PaymentConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,6 +50,8 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
     private final VNPayUseCase vnpayUseCase;
     private final PaymentEventPublisher eventPublisher;
     private final ObjectMapper objectMapper;
+    private final PaymentConfig paymentConfig;
+    private final OutboxEventRepository outboxEventRepository;
 
     @Override
     @Transactional
@@ -82,7 +87,7 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
 
         // Generate payment URL if method is VNPAY
         String paymentUrl = "";
-        Instant expiredAt = Instant.now().plusSeconds(15 * 60); // Default 15 minutes expiration
+        Instant expiredAt = Instant.now().plusSeconds(paymentConfig.getExpirationMinutes() * 60L); // Default from config
 
         if (method == PaymentMethod.VNPAY) {
             paymentUrl = vnpayUseCase.generatePaymentUrl(request.getOrderCode(), request.getAmount(), request.getIpAddress());
@@ -96,6 +101,7 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
             existingPayment.setAmount(request.getAmount());
             existingPayment.setExpiredAt(expiredAt);
             existingPayment.setOrderStatus("PENDING");
+            existingPayment.setMaxRetry(paymentConfig.getMaxRetry());
             paymentEntity = paymentRepository.save(existingPayment);
         } else {
             // Create new payment entity
@@ -110,6 +116,7 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
                     .idempotencyKey(idempotencyKey)
                     .expiredAt(expiredAt)
                     .orderStatus("PENDING")
+                    .maxRetry(paymentConfig.getMaxRetry())
                     .build();
             paymentEntity = paymentRepository.save(paymentEntity);
         }
@@ -146,7 +153,7 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
                 .occurredAt(Instant.now())
                 .build();
 
-        eventPublisher.publishPaymentUrlCreated(urlCreatedEvent);
+        saveOutboxEvent(response.getOrderId(), "PaymentUrlCreatedEvent", urlCreatedEvent);
     }
 
     @Override
@@ -209,8 +216,8 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
                 payment.setPaidAt(Instant.now());
                 paymentRepository.save(payment);
 
-                // Publish completed event
-                eventPublisher.publishPaymentCompleted(PaymentCompletedEvent.builder()
+                 // Publish completed event
+                PaymentCompletedEvent completedEvent = PaymentCompletedEvent.builder()
                         .orderId(payment.getOrderId())
                         .orderCode(payment.getOrderCode())
                         .userId(payment.getUserId())
@@ -219,7 +226,8 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
                         .transactionId(transactionNo)
                         .paidAt(payment.getPaidAt())
                         .occurredAt(Instant.now())
-                        .build());
+                        .build();
+                saveOutboxEvent(payment.getOrderId(), "PaymentCompletedEvent", completedEvent);
             } else {
                 boolean isTerminal = payment.getRetryCount() >= payment.getMaxRetry();
                 payment.setStatus(PaymentStatus.FAILED);
@@ -229,7 +237,7 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
                 paymentRepository.save(payment);
 
                 // Publish failed event (terminal = true if all retries exhausted)
-                eventPublisher.publishPaymentFailed(PaymentFailedEvent.builder()
+                PaymentFailedEvent failedEvent = PaymentFailedEvent.builder()
                         .orderId(payment.getOrderId())
                         .orderCode(payment.getOrderCode())
                         .userId(payment.getUserId())
@@ -239,7 +247,8 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
                                 "VNPay code: " + responseCode)
                         .terminal(isTerminal)
                         .occurredAt(Instant.now())
-                        .build());
+                        .build();
+                saveOutboxEvent(payment.getOrderId(), "PaymentFailedEvent", failedEvent);
             }
 
             response.put("RspCode", "00");
@@ -288,13 +297,14 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
             paymentRepository.save(payment);
 
             // Publish expired event to Kafka
-            eventPublisher.publishPaymentExpired(PaymentExpiredEvent.builder()
+            PaymentExpiredEvent expiredEvent = PaymentExpiredEvent.builder()
                     .orderId(payment.getOrderId())
                     .orderCode(payment.getOrderCode())
                     .userId(payment.getUserId())
                     .amount(payment.getAmount())
                     .occurredAt(Instant.now())
-                    .build());
+                    .build();
+            saveOutboxEvent(payment.getOrderId(), "PaymentExpiredEvent", expiredEvent);
 
             log.info("Payment for orderCode={} marked as EXPIRED", payment.getOrderCode());
         }
@@ -392,7 +402,7 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
             paymentRepository.save(payment);
 
             // Publish failed event to Kafka with terminal = true to cancel order
-            eventPublisher.publishPaymentFailed(PaymentFailedEvent.builder()
+            PaymentFailedEvent failedEvent = PaymentFailedEvent.builder()
                     .orderId(payment.getOrderId())
                     .orderCode(payment.getOrderCode())
                     .userId(payment.getUserId())
@@ -400,7 +410,8 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
                     .reason("Bạn đã thử thanh toán quá số lần cho phép (" + payment.getMaxRetry() + " lần).")
                     .terminal(true)
                     .occurredAt(now)
-                    .build());
+                    .build();
+            saveOutboxEvent(payment.getOrderId(), "PaymentFailedEvent", failedEvent);
 
             throw new BusinessException("Bạn đã thử thanh toán quá nhiều lần (" + payment.getMaxRetry() + " lần). Vui lòng đặt đơn hàng mới.");
         }
@@ -409,7 +420,7 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
         
         payment.setPaymentUrl(newUrl);
         payment.setStatus(PaymentStatus.PENDING);
-        payment.setExpiredAt(now.plusSeconds(15 * 60)); // Reset 15 minutes countdown
+        payment.setExpiredAt(now.plusSeconds(paymentConfig.getExpirationMinutes() * 60L)); // Reset countdown from config
         payment.setRetryCount(payment.getRetryCount() + 1); // retry_count + 1
         paymentRepository.save(payment);
 
@@ -422,7 +433,7 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
                 .paymentUrl(newUrl)
                 .occurredAt(now)
                 .build();
-        eventPublisher.publishPaymentUrlCreated(urlCreatedEvent);
+        saveOutboxEvent(payment.getOrderId(), "PaymentUrlCreatedEvent", urlCreatedEvent);
         log.info("Successfully recreated payment URL and published event for orderId={}", orderId);
 
         return PaymentUrlResponse.builder()
@@ -462,5 +473,31 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
             }
         }
         return null;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<PaymentDetailResponse> getPaymentHistory(UUID userId, Pageable pageable) {
+        log.info("Fetching payment history for userId={}", userId);
+        return paymentRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
+                .map(this::mapToDetailResponse);
+    }
+
+    private void saveOutboxEvent(UUID orderId, String eventType, Object eventPayload) {
+        try {
+            String payloadJson = objectMapper.writeValueAsString(eventPayload);
+            OutboxEventEntity outboxEvent = OutboxEventEntity.builder()
+                    .aggregateType("payment")
+                    .aggregateId(orderId.toString())
+                    .eventType(eventType)
+                    .payload(payloadJson)
+                    .status("PENDING")
+                    .build();
+            outboxEventRepository.save(outboxEvent);
+            log.info("Saved outbox event: type={}, orderId={}", eventType, orderId);
+        } catch (Exception e) {
+            log.error("Failed to save outbox event for orderId={}", orderId, e);
+            throw new BusinessException("Không thể ghi nhận sự kiện thanh toán: " + e.getMessage());
+        }
     }
 }

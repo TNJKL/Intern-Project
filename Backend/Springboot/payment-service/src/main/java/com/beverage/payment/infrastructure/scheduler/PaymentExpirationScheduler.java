@@ -16,7 +16,7 @@ public class PaymentExpirationScheduler {
     /**
      * Chạy định kỳ mỗi 1 phút (60000ms) để quét và đánh dấu hết hạn
      */
-    @Scheduled(fixedDelay = 60000)
+    @Scheduled(fixedDelayString = "${app.payment.expire-check-interval-ms:60000}")
     public void checkExpiredPayments() {
         log.debug("Scheduler running: Scanning for expired pending payments...");
         try {

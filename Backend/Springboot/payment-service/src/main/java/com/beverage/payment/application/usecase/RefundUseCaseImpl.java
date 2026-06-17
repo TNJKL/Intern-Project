@@ -73,6 +73,8 @@ public class RefundUseCaseImpl implements RefundUseCase {
                 .build();
 
         refundRepository.save(refund);
+        payment.setStatus(PaymentStatus.REFUNDED);
+        paymentRepository.save(payment);
         log.info("Refund created successfully with ID: {}", refund.getId());
         return PaymentDetailResponse.fromDomain(payment.toDomain());
     }
