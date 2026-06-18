@@ -11,6 +11,8 @@ import com.beverage.payment.infrastructure.config.PaymentConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,7 +33,8 @@ public class OutboxScheduler {
     @Scheduled(fixedDelayString = "${app.payment.outbox-check-interval-ms:5000}")
     @Transactional
     public void processOutboxEvents() {
-        List<OutboxEventEntity> pendingEvents = outboxEventRepository.findByStatusOrderByCreatedAtAsc("PENDING");
+        Pageable limit = PageRequest.of(0, paymentConfig.getOutboxBatchSize());
+        List<OutboxEventEntity> pendingEvents = outboxEventRepository.findByStatusOrderByCreatedAtAsc("PENDING", limit);
         if (pendingEvents.isEmpty()) {
             return;
         }
@@ -87,7 +90,8 @@ public class OutboxScheduler {
     @Scheduled(fixedDelayString = "${app.payment.outbox-retry-interval-ms:60000}")
     @Transactional
     public void retryFailedEvents() {
-        List<OutboxEventEntity> failedEvents = outboxEventRepository.findByStatus("FAILED");
+        Pageable limit = PageRequest.of(0, paymentConfig.getOutboxBatchSize());
+        List<OutboxEventEntity> failedEvents = outboxEventRepository.findByStatus("FAILED", limit);
         if (failedEvents.isEmpty()) {
             return;
         }

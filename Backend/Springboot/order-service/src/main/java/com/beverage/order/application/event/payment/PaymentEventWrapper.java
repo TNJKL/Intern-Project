@@ -29,6 +29,9 @@ public abstract class PaymentEventWrapper {
     public abstract String getEventType();
     public abstract UUID getOrderId();
 
+    @JsonProperty("eventId")
+    private UUID eventId;
+
     @JsonProperty("occurredAt")
     private Instant occurredAt;
 }

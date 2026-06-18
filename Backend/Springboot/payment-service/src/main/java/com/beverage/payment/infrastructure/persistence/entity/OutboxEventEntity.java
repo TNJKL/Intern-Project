@@ -3,6 +3,8 @@ package com.beverage.payment.infrastructure.persistence.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import org.springframework.data.domain.Persistable;
+
 import java.time.Instant;
 import java.util.UUID;
 
@@ -13,10 +15,9 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class OutboxEventEntity {
+public class OutboxEventEntity implements Persistable<UUID> {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(name = "aggregate_type", nullable = false, length = 100)
@@ -59,5 +60,10 @@ public class OutboxEventEntity {
         if (status == null) {
             status = "PENDING";
         }
+    }
+
+    @Override
+    public boolean isNew() {
+        return createdAt == null;
     }
 }

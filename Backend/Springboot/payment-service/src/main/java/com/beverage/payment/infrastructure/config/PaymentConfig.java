@@ -15,5 +15,6 @@ public class PaymentConfig {
     private long expireCheckIntervalMs = 60000;
     private long outboxCheckIntervalMs = 5000;
     private long outboxRetryIntervalMs = 60000;
+    private int outboxBatchSize = 10;
     private boolean simulateOutboxError = false;
 }

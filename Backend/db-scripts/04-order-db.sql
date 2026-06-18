@@ -116,6 +116,14 @@ CREATE TABLE IF NOT EXISTS voucher_usages (
         CHECK (user_id IS NOT NULL OR user_email IS NOT NULL)
 );
 
+-- ============================================================
+-- PROCESSED EVENTS (for idempotency)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS processed_events (
+    event_id          VARCHAR(200) PRIMARY KEY,
+    processed_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
 CREATE INDEX idx_voucher_usages_user
 ON voucher_usages(voucher_id, user_id) WHERE user_id IS NOT NULL;
 

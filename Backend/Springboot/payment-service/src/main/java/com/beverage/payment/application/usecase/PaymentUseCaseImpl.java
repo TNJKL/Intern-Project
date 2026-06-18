@@ -10,6 +10,7 @@ import com.beverage.payment.domain.model.PaymentMethod;
 import com.beverage.payment.domain.model.PaymentStatus;
 import com.beverage.payment.infrastructure.event.dto.OrderCreatedEvent;
 import com.beverage.payment.infrastructure.event.dto.PaymentCompletedEvent;
+import com.beverage.payment.infrastructure.event.dto.PaymentEvent;
 import com.beverage.payment.infrastructure.event.dto.PaymentExpiredEvent;
 import com.beverage.payment.infrastructure.event.dto.PaymentFailedEvent;
 import com.beverage.payment.infrastructure.event.dto.PaymentUrlCreatedEvent;
@@ -483,10 +484,14 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
                 .map(this::mapToDetailResponse);
     }
 
-    private void saveOutboxEvent(UUID orderId, String eventType, Object eventPayload) {
+    private void saveOutboxEvent(UUID orderId, String eventType, PaymentEvent eventPayload) {
         try {
+            UUID eventId = UUID.randomUUID();
+            eventPayload.setEventId(eventId);
+            
             String payloadJson = objectMapper.writeValueAsString(eventPayload);
             OutboxEventEntity outboxEvent = OutboxEventEntity.builder()
+                    .id(eventId)
                     .aggregateType("payment")
                     .aggregateId(orderId.toString())
                     .eventType(eventType)
@@ -494,7 +499,7 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
                     .status("PENDING")
                     .build();
             outboxEventRepository.save(outboxEvent);
-            log.info("Saved outbox event: type={}, orderId={}", eventType, orderId);
+            log.info("Saved outbox event: type={}, id={}, orderId={}", eventType, eventId, orderId);
         } catch (Exception e) {
             log.error("Failed to save outbox event for orderId={}", orderId, e);
             throw new BusinessException("Không thể ghi nhận sự kiện thanh toán: " + e.getMessage());

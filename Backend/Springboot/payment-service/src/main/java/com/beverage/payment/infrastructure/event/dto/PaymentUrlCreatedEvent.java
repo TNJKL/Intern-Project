@@ -13,7 +13,8 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PaymentUrlCreatedEvent {
+public class PaymentUrlCreatedEvent implements PaymentEvent {
+    private UUID eventId;
     @Builder.Default
     private String eventType = "PAYMENT_URL_CREATED";
     private UUID orderId;

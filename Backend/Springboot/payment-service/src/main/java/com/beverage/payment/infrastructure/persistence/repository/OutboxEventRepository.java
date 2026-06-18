@@ -1,6 +1,7 @@
 package com.beverage.payment.infrastructure.persistence.repository;
 
 import com.beverage.payment.infrastructure.persistence.entity.OutboxEventEntity;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -10,7 +11,7 @@ import java.util.UUID;
 
 @Repository
 public interface OutboxEventRepository extends JpaRepository<OutboxEventEntity, UUID> {
-    List<OutboxEventEntity> findByStatusOrderByCreatedAtAsc(String status);
-    List<OutboxEventEntity> findByStatus(String status);
+    List<OutboxEventEntity> findByStatusOrderByCreatedAtAsc(String status, Pageable pageable);
+    List<OutboxEventEntity> findByStatus(String status, Pageable pageable);
     void deleteByStatusAndCreatedAtBefore(String status, Instant timestamp);
 }

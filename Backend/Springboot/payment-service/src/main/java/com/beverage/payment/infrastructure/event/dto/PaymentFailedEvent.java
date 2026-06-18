@@ -13,7 +13,8 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PaymentFailedEvent {
+public class PaymentFailedEvent implements PaymentEvent {
+    private UUID eventId;
     @Builder.Default
     private String eventType = "PAYMENT_FAILED";
     private UUID orderId;
