@@ -7,6 +7,7 @@ import com.beverage.payment.infrastructure.event.dto.PaymentUrlCreatedEvent;
 import com.beverage.payment.infrastructure.event.producer.PaymentEventPublisher;
 import com.beverage.payment.infrastructure.persistence.entity.OutboxEventEntity;
 import com.beverage.payment.infrastructure.persistence.repository.OutboxEventRepository;
+import com.beverage.payment.infrastructure.config.PaymentConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +26,7 @@ public class OutboxScheduler {
     private final OutboxEventRepository outboxEventRepository;
     private final PaymentEventPublisher eventPublisher;
     private final ObjectMapper objectMapper;
+    private final PaymentConfig paymentConfig;
 
     @Scheduled(fixedDelayString = "${app.payment.outbox-check-interval-ms:5000}")
     @Transactional
@@ -42,16 +44,20 @@ public class OutboxScheduler {
                 outboxEvent.setStatus("SENT");
                 outboxEvent.setSentAt(Instant.now());
                 outboxEventRepository.save(outboxEvent);
-                log.info("Outbox event processed successfully: id={}, type={}", outboxEvent.getId(), outboxEvent.getEventType());
+                log.info("Job 1 - Gui thanh cong su kien: id={}, kieu={}", outboxEvent.getId(), outboxEvent.getEventType());
             } catch (Exception e) {
-                log.error("Failed to process outbox event with id={}", outboxEvent.getId(), e);
+                log.warn("Job 1 - Gui su kien that bai! Chuyen trang thai sang FAILED. Id={}, Loi: {}", outboxEvent.getId(), e.getMessage());
                 outboxEvent.setStatus("FAILED");
+                outboxEvent.setErrorMessage(e.getMessage());
                 outboxEventRepository.save(outboxEvent);
             }
         }
     }
 
     private void publishEvent(OutboxEventEntity outboxEvent) throws Exception {
+        if (paymentConfig.isSimulateOutboxError()) {
+            throw new RuntimeException("MOCK ERROR: Gia lap loi ket noi mang phuc vu kiem thu outbox!");
+        }
         String eventType = outboxEvent.getEventType();
         String payload = outboxEvent.getPayload();
 
@@ -75,6 +81,33 @@ public class OutboxScheduler {
             default:
                 log.warn("Unknown event type for outbox event: {}", eventType);
                 throw new IllegalArgumentException("Unknown event type: " + eventType);
+        }
+    }
+
+    @Scheduled(fixedDelayString = "${app.payment.outbox-retry-interval-ms:60000}")
+    @Transactional
+    public void retryFailedEvents() {
+        List<OutboxEventEntity> failedEvents = outboxEventRepository.findByStatus("FAILED");
+        if (failedEvents.isEmpty()) {
+            return;
+        }
+
+        log.info("Job 2 - Phat hien {} su kien loi can thu lai", failedEvents.size());
+
+        for (OutboxEventEntity event : failedEvents) {
+            if (event.getRetryCount() < event.getMaxRetry()) {
+                // Chuyen lai PENDING va tang retry count de Job 1 quet lai
+                event.setStatus("PENDING");
+                event.setRetryCount(event.getRetryCount() + 1);
+                outboxEventRepository.save(event);
+                log.info("Job 2 - Thu lai su kien loi: Chuyen Event {} ve PENDING. Lan thu lai thu {}/{}", event.getId(), event.getRetryCount(), event.getMaxRetry());
+            } else {
+                // Chuyen sang DEAD_LETTER vi da qua so lan thu lai (Loi nang vinh vien)
+                event.setStatus("DEAD_LETTER");
+                outboxEventRepository.save(event);
+                log.error("Job 2 - CRITICAL: Su kien outbox {} dat gioi han {} lan thu lai. Chuyen sang trang thai DEAD_LETTER! Loi cuoi cung: {}", 
+                          event.getId(), event.getMaxRetry(), event.getErrorMessage());
+            }
         }
     }
 

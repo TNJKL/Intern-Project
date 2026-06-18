@@ -11,5 +11,6 @@ import java.util.UUID;
 @Repository
 public interface OutboxEventRepository extends JpaRepository<OutboxEventEntity, UUID> {
     List<OutboxEventEntity> findByStatusOrderByCreatedAtAsc(String status);
+    List<OutboxEventEntity> findByStatus(String status);
     void deleteByStatusAndCreatedAtBefore(String status, Instant timestamp);
 }

@@ -40,6 +40,17 @@ public class OutboxEventEntity {
     @Column(name = "sent_at")
     private Instant sentAt;
 
+    @Column(name = "retry_count", nullable = false)
+    @Builder.Default
+    private int retryCount = 0;
+
+    @Column(name = "max_retry", nullable = false)
+    @Builder.Default
+    private int maxRetry = 3;
+
+    @Column(name = "error_message", columnDefinition = "TEXT")
+    private String errorMessage;
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {

@@ -82,6 +82,8 @@ app:
     max-retry: ${APP_PAYMENT_MAX_RETRY:2}
     expire-check-interval-ms: ${APP_PAYMENT_EXPIRE_CHECK_INTERVAL_MS:60000}
     outbox-check-interval-ms: ${APP_PAYMENT_OUTBOX_CHECK_INTERVAL_MS:5000}
+    outbox-retry-interval-ms: ${APP_PAYMENT_OUTBOX_RETRY_INTERVAL_MS:60000}
+    simulate-outbox-error: ${APP_PAYMENT_SIMULATE_OUTBOX_ERROR:false}
     vnpay:
       tmn-code: ${VNPAY_TMN_CODE}
       hash-secret: ${VNPAY_HASH_SECRET}

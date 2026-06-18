@@ -66,7 +66,10 @@ CREATE TABLE IF NOT EXISTS outbox_events (
     payload TEXT NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    sent_at TIMESTAMP WITH TIME ZONE
+    sent_at TIMESTAMP WITH TIME ZONE,
+    retry_count INTEGER NOT NULL DEFAULT 0,
+    max_retry INTEGER NOT NULL DEFAULT 3,
+    error_message TEXT
 );
 
 
