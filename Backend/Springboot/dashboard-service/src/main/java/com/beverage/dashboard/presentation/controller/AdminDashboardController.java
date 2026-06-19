@@ -20,10 +20,9 @@ public class AdminDashboardController {
     private final DashboardService dashboardService;
 
     @GetMapping("/stats")
-    public ResponseEntity<ApiResponse<DashboardStatsResponse>> getStats(
-            @RequestParam(name = "forceRefresh", defaultValue = "false") boolean forceRefresh) {
-        log.info("Admin request to get dashboard stats: forceRefresh={}", forceRefresh);
-        DashboardStatsResponse stats = dashboardService.getDashboardStats(forceRefresh);
+    public ResponseEntity<ApiResponse<DashboardStatsResponse>> getStats() {
+        log.info("Admin request to get dashboard stats");
+        DashboardStatsResponse stats = dashboardService.getDashboardStats();
         return ResponseEntity.ok(ApiResponse.success(stats, "Lấy số liệu thống kê dashboard thành công"));
     }
 }

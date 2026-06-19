@@ -1,8 +1,6 @@
 package com.beverage.dashboard.application.service;
 
-import com.beverage.dashboard.infrastructure.client.InventoryClient;
-import com.beverage.dashboard.infrastructure.client.OrderClient;
-import com.beverage.dashboard.infrastructure.client.PaymentClient;
+import com.beverage.dashboard.infrastructure.client.StatsClientWrapper;
 import com.beverage.dashboard.infrastructure.client.dto.InventoryInternalStatsResponse;
 import com.beverage.dashboard.infrastructure.client.dto.OrderInternalStatsResponse;
 import com.beverage.dashboard.infrastructure.client.dto.PaymentInternalStatsResponse;
@@ -10,78 +8,70 @@ import com.beverage.dashboard.infrastructure.client.dto.TopProductDTO;
 import com.beverage.dashboard.infrastructure.client.dto.shared.ApiResponse;
 import com.beverage.dashboard.presentation.dto.DashboardStatsResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class DashboardService {
 
-    private final OrderClient orderClient;
-    private final PaymentClient paymentClient;
-    private final InventoryClient inventoryClient;
+    private final StatsClientWrapper statsClientWrapper;
     private final RedisTemplate<String, Object> redisTemplate;
     private final ObjectMapper objectMapper;
+    private final Executor dashboardExecutor;
 
     private static final String CACHE_KEY = "dashboard:stats:admin";
 
-    @Value("${app.cache.dashboard-ttl-seconds:600}")
+    @Value("${app.cache.dashboard-ttl-seconds:30}")
     private long cacheTtlSeconds;
 
-    public DashboardStatsResponse getDashboardStats(boolean forceRefresh) {
-        if (!forceRefresh) {
-            try {
-                Object cached = redisTemplate.opsForValue().get(CACHE_KEY);
-                if (cached != null) {
-                    DashboardStatsResponse cachedData = objectMapper.convertValue(cached, DashboardStatsResponse.class);
-                    log.info("Dashboard stats fetched from Redis Cache (HIT)");
-                    return cachedData;
-                }
-            } catch (Exception e) {
-                log.warn("Failed to read dashboard stats from Redis cache: {}", e.getMessage());
+    public DashboardService(
+            StatsClientWrapper statsClientWrapper,
+            RedisTemplate<String, Object> redisTemplate,
+            ObjectMapper objectMapper,
+            @Qualifier("dashboardExecutor") Executor dashboardExecutor) {
+        this.statsClientWrapper = statsClientWrapper;
+        this.redisTemplate = redisTemplate;
+        this.objectMapper = objectMapper;
+        this.dashboardExecutor = dashboardExecutor;
+    }
+
+    public DashboardStatsResponse getDashboardStats() {
+        try {
+            Object cached = redisTemplate.opsForValue().get(CACHE_KEY);
+            if (cached != null) {
+                DashboardStatsResponse cachedData = objectMapper.convertValue(cached, DashboardStatsResponse.class);
+                log.info("Dashboard stats fetched from Redis Cache (HIT)");
+                return cachedData;
             }
+        } catch (Exception e) {
+            log.warn("Failed to read dashboard stats from Redis cache: {}", e.getMessage());
         }
 
-        log.info("Fetching fresh dashboard stats from microservices (MISS or forceRefresh=true)");
+        log.info("Fetching fresh dashboard stats from microservices (MISS)");
 
-        // Gọi song song 3 Feign Clients để tăng hiệu năng
+        // Gọi song song sử dụng custom thread pool (dashboardExecutor) và Circuit Breaker wrapper
         CompletableFuture<ApiResponse<OrderInternalStatsResponse>> orderFuture = CompletableFuture.supplyAsync(() -> {
-            try {
-                return orderClient.getStats();
-            } catch (Exception e) {
-                log.error("Failed to fetch stats from order-service: {}", e.getMessage());
-                return ApiResponse.<OrderInternalStatsResponse>builder().success(false).build();
-            }
-        });
+            return statsClientWrapper.getOrderStats();
+        }, dashboardExecutor);
 
         CompletableFuture<ApiResponse<PaymentInternalStatsResponse>> paymentFuture = CompletableFuture.supplyAsync(() -> {
-            try {
-                return paymentClient.getStats();
-            } catch (Exception e) {
-                log.error("Failed to fetch stats from payment-service: {}", e.getMessage());
-                return ApiResponse.<PaymentInternalStatsResponse>builder().success(false).build();
-            }
-        });
+            return statsClientWrapper.getPaymentStats();
+        }, dashboardExecutor);
 
         CompletableFuture<ApiResponse<InventoryInternalStatsResponse>> inventoryFuture = CompletableFuture.supplyAsync(() -> {
-            try {
-                return inventoryClient.getStats();
-            } catch (Exception e) {
-                log.error("Failed to fetch stats from inventory-service: {}", e.getMessage());
-                return ApiResponse.<InventoryInternalStatsResponse>builder().success(false).build();
-            }
-        });
+            return statsClientWrapper.getInventoryStats();
+        }, dashboardExecutor);
 
         // Đợi tất cả hoàn thành
         CompletableFuture.allOf(orderFuture, paymentFuture, inventoryFuture).join();
@@ -93,7 +83,7 @@ public class DashboardService {
 
         try {
             ApiResponse<OrderInternalStatsResponse> orderRes = orderFuture.get();
-            if (orderRes != null && orderRes.isSuccess() && orderRes.getData() != null) {
+            if (orderRes != null && orderRes.getData() != null) {
                 orderData = orderRes.getData();
                 if (orderData.getTopProducts() != null) {
                     topProducts = orderData.getTopProducts();
@@ -105,7 +95,7 @@ public class DashboardService {
 
         try {
             ApiResponse<PaymentInternalStatsResponse> paymentRes = paymentFuture.get();
-            if (paymentRes != null && paymentRes.isSuccess() && paymentRes.getData() != null) {
+            if (paymentRes != null && paymentRes.getData() != null) {
                 paymentData = paymentRes.getData();
             }
         } catch (Exception e) {
@@ -114,7 +104,7 @@ public class DashboardService {
 
         try {
             ApiResponse<InventoryInternalStatsResponse> inventoryRes = inventoryFuture.get();
-            if (inventoryRes != null && inventoryRes.isSuccess() && inventoryRes.getData() != null) {
+            if (inventoryRes != null && inventoryRes.getData() != null) {
                 inventoryData = inventoryRes.getData();
             }
         } catch (Exception e) {
