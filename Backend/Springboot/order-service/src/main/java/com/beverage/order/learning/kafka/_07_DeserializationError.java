@@ -1,4 +1,4 @@
-package com.beverage.order.learning.kafka._07_deserialization_error;
+package com.beverage.order.learning.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -26,18 +26,19 @@ import org.springframework.stereotype.Component;
  *
  * Cách test:
  * 1. Gửi message đúng format:
- *    > {"orderId": "123", "status": "CONFIRMED"}
- *    → Log: "Valid message: ..."
+ * > {"orderId": "123", "status": "CONFIRMED"}
+ * → Log: "Valid message: ..."
  *
  * 2. Gửi message SAI format (bằng Kafka CLI):
- *    kafka-console-producer --bootstrap-server localhost:9092 --topic learn.kafka.deserialize
- *    > THIS IS NOT JSON!!!
- *    → Log: "DESERIALIZATION ERROR - cannot parse message: THIS IS NOT JSON!!!"
- *    → Message bị skip, consumer KHÔNG CRASH
+ * kafka-console-producer --bootstrap-server localhost:9092 --topic
+ * learn.kafka.deserialize
+ * > THIS IS NOT JSON!!!
+ * → Log: "DESERIALIZATION ERROR - cannot parse message: THIS IS NOT JSON!!!"
+ * → Message bị skip, consumer KHÔNG CRASH
  *
  * 3. Gửi tiếp message đúng:
- *    > {"orderId": "456", "status": "PREPARING"}
- *    → Vẫn xử lý được bình thường!
+ * > {"orderId": "456", "status": "PREPARING"}
+ * → Vẫn xử lý được bình thường!
  *
  * Khác với Lesson 5 (Retry):
  * - Lesson 5: Xử lý được nhưng logic lỗi → retry rồi DLQ
@@ -50,10 +51,7 @@ public class _07_DeserializationError {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @KafkaListener(
-            topics = "learn.kafka.deserialize",
-            groupId = "learn-group-07-deserialize"
-    )
+    @KafkaListener(topics = "learn.kafka.deserialize", groupId = "learn-group-07-deserialize")
     public void consume(ConsumerRecord<String, String> record) {
         String rawValue = record.value();
 

@@ -1,10 +1,9 @@
-package com.beverage.order.infrastructure.config;
+package com.beverage.dashboard.infrastructure.config;
 
-import com.beverage.order.infrastructure.security.JwtAuthenticationFilter;
+import com.beverage.dashboard.infrastructure.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -19,7 +18,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final com.beverage.order.infrastructure.security.InternalRequestFilter internalRequestFilter;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -27,25 +25,16 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .addFilterBefore(internalRequestFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/order/swagger-ui/**",
-                                "/order/swagger-ui.html",
-                                "/order/v3/api-docs",
-                                "/order/v3/api-docs/**",
-                                "/actuator/**",
-                                "/api/v1/vouchers/validate/**",
-                                "/api/v1/orders/track",
-                                "/api/v1/internal/**"
+                                "/dashboard/swagger-ui/**",
+                                "/dashboard/swagger-ui.html",
+                                "/dashboard/v3/api-docs",
+                                "/dashboard/v3/api-docs/**",
+                                "/actuator/**"
                         ).permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/orders").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/orders", "/api/v1/orders/**").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/orders/*/cancel").authenticated()
-                        .requestMatchers(HttpMethod.PATCH, "/api/v1/orders/*/status").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/orders", "/api/v1/admin/orders/**")
-                        .hasRole("ADMIN")
+                        .requestMatchers("/api/v1/admin/dashboard/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 );
         return http.build();

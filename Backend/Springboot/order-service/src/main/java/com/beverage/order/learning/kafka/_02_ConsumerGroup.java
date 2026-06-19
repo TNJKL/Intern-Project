@@ -1,4 +1,4 @@
-package com.beverage.order.learning.kafka._02_consumer_group;
+package com.beverage.order.learning.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -12,13 +12,10 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class _02_ConsumerGroup {
 
-    @KafkaListener(
-            topics = "learn.kafka.group",
-            groupId = "learn-group-02",         // CÙNG group với instance khác
+    @KafkaListener(topics = "learn.kafka.group", groupId = "learn-group-02", // CÙNG group với instance khác
             properties = {
-                    "spring.kafka.listener.concurrency=1"  // mỗi consumer chỉ đọc 1 partition
-            }
-    )
+                    "spring.kafka.listener.concurrency=1" // mỗi consumer chỉ đọc 1 partition
+            })
     public void consume(ConsumerRecord<String, String> record) {
         // Lấy tên instance để phân biệt
         String instanceId = System.getProperty("spring.application.name", "unknown");

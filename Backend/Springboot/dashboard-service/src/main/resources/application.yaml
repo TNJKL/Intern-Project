@@ -1,0 +1,42 @@
+spring:
+  application:
+    name: dashboard-service
+  config:
+    import: optional:file:.env[.properties],optional:file:./.env[.properties],optional:file:../.env[.properties],optional:file:../../.env[.properties]
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 5000ms
+
+server:
+  port: 8086
+  max-http-request-header-size: 16384
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+    enabled: true
+
+jwt:
+  secret-key: ${JWT_SECRET_KEY:dGhpc2lzYXZlcnlsb25nc2VjcmV0a2V5Zm9yand0dG9rZW5nZW5lcmF0aW9uYW5kZGVjcnlwdGlvbg==}
+  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:60000}
+  refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:604800000}
+
+auth:
+  access-cookie:
+    name: ${AUTH_ACCESS_COOKIE_NAME:accessToken}
+
+app:
+  internal:
+    secret: ${INTERNAL_SERVICE_SECRET:internal-beverage-secret-2024}
+  # Fallback URLs if Eureka is disabled/not resolving
+  order-service:
+    url: ${ORDER_SERVICE_URL:http://localhost:8083}
+  payment-service:
+    url: ${PAYMENT_SERVICE_URL:http://localhost:8085}
+  inventory-service:
+    url: ${INVENTORY_SERVICE_URL:http://localhost:8084}
+  cache:
+    dashboard-ttl-seconds: 600 # Cache dashboard data in Redis for 10 minutes

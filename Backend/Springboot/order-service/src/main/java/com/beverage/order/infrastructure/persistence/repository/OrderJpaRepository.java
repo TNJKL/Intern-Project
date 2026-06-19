@@ -29,4 +29,9 @@ public interface OrderJpaRepository extends JpaRepository<OrderEntity, UUID>, Jp
     default List<OrderEntity> findExpiredPendingOrders(Instant now) {
         return findExpiredOrdersByStatus(OrderStatus.PENDING, now);
     }
+
+    long countByCreatedAtAfter(Instant start);
+
+    @Query("SELECT o.status, COUNT(o) FROM OrderEntity o GROUP BY o.status")
+    List<Object[]> countOrdersByStatus();
 }

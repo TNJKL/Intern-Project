@@ -1,4 +1,4 @@
-package com.beverage.order.learning.kafka._04_multiple_group_ids;
+package com.beverage.order.learning.kafka;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -12,10 +12,7 @@ import org.springframework.stereotype.Component;
 public class _04_MultipleGroupIds {
 
     // Notification service - nhận tất cả message
-    @KafkaListener(
-            topics = "learn.kafka.multi-group",
-            groupId = "notification-service-group"
-    )
+    @KafkaListener(topics = "learn.kafka.multi-group", groupId = "notification-service-group")
     public void notificationService(ConsumerRecord<String, String> record) {
         log.info("=================================================");
         log.info("  [NOTIFICATION SERVICE]  ");
@@ -28,10 +25,7 @@ public class _04_MultipleGroupIds {
     }
 
     // Inventory service - cũng nhận tất cả message
-    @KafkaListener(
-            topics = "learn.kafka.multi-group",
-            groupId = "inventory-service-group"
-    )
+    @KafkaListener(topics = "learn.kafka.multi-group", groupId = "inventory-service-group")
     public void inventoryService(ConsumerRecord<String, String> record) {
         log.info("=================================================");
         log.info("  [INVENTORY SERVICE]  ");

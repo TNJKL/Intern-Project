@@ -70,4 +70,10 @@ public interface PaymentJpaRepository extends JpaRepository<PaymentEntity, UUID>
             @Param("orderCode") String orderCode,
             @Param("statuses") List<PaymentStatus> statuses
     );
+
+    @Query("SELECT SUM(p.amount) FROM PaymentEntity p WHERE p.status = 'SUCCESS' OR p.status = 'REFUNDED'")
+    java.math.BigDecimal sumTotalRevenue();
+
+    @Query("SELECT SUM(p.amount) FROM PaymentEntity p WHERE (p.status = 'SUCCESS' OR p.status = 'REFUNDED') AND p.createdAt >= :start")
+    java.math.BigDecimal sumRevenueAfter(@Param("start") Instant start);
 }

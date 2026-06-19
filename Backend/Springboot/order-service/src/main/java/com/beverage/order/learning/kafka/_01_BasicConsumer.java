@@ -1,4 +1,4 @@
-package com.beverage.order.learning.kafka._01_basic;
+package com.beverage.order.learning.kafka;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -17,18 +17,16 @@ public class _01_BasicConsumer {
      *
      * @param record chứa key, value, partition, offset...
      */
-    @KafkaListener(
-        topics = "learn.kafka.basic", //order-event topic
-        groupId = "learn-group-01"          // consumer group id - các instance cùng group chia nhau message
+    @KafkaListener(topics = "learn.kafka.basic", // order-event topic
+            groupId = "learn-group-01" // consumer group id - các instance cùng group chia nhau message
     )
-    
-     
+
     public void consume(ConsumerRecord<String, String> record) {
         log.info("=== LESSON 1: BASIC CONSUMER ===");
         log.info("Topic    : {}", record.topic());
         log.info("Partition: {}", record.partition());
         log.info("Offset   : {}", record.offset());
-        log.info("Key      : {}", record.key());                                        
+        log.info("Key      : {}", record.key());
         log.info("Value    : {}", record.value());
         log.info("Timestamp: {}", record.timestamp());
         log.info("================================");

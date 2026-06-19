@@ -40,7 +40,8 @@ public class SecurityConfig {
                                 "/api/v1/inventory/test/public",
                                 // check-availability vẫn permitAll ở Spring Security layer
                                 // nhưng InternalRequestFilter đã kiểm tra X-Internal-Secret trước
-                                "/api/v1/inventory/check-availability"
+                                "/api/v1/inventory/check-availability",
+                                "/api/v1/internal/**"
                         ).permitAll()
                         .requestMatchers("/api/v1/inventory/test/private").authenticated()
                         .requestMatchers("/api/v1/inventory/test/admin").hasRole("ADMIN")

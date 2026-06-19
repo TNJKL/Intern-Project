@@ -1,4 +1,4 @@
-package com.beverage.inventory.infrastructure.security;
+package com.beverage.order.infrastructure.security;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -13,27 +13,11 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-/**
- * SEC-01: Bảo vệ endpoint /check-availability khỏi gọi từ bên ngoài.
- *
- * <p>Endpoint này chỉ được phép gọi từ internal service (order-service),
- * không được expose qua API Gateway. Filter kiểm tra header
- * {@code X-Internal-Secret} phải khớp với giá trị cấu hình.</p>
- *
- * <p>Cách hoạt động:
- * <ul>
- *   <li>Chỉ áp dụng với path {@code /api/v1/inventory/check-availability}</li>
- *   <li>Nếu header {@code X-Internal-Secret} đúng → tiếp tục xử lý</li>
- *   <li>Nếu sai hoặc thiếu → trả về 403 Forbidden</li>
- * </ul>
- * </p>
- */
 @Component
 @Slf4j
 public class InternalRequestFilter extends OncePerRequestFilter {
 
     private static final String INTERNAL_SECRET_HEADER = "X-Internal-Secret";
-    private static final String CHECK_AVAILABILITY_PATH = "/api/v1/inventory/check-availability";
     private static final String INTERNAL_PATH_PREFIX = "/api/v1/internal/";
 
     @Value("${app.internal.secret:internal-beverage-secret-2024}")
@@ -48,24 +32,23 @@ public class InternalRequestFilter extends OncePerRequestFilter {
 
         String requestPath = request.getRequestURI();
 
-        if (requestPath.startsWith(INTERNAL_PATH_PREFIX) || CHECK_AVAILABILITY_PATH.equals(requestPath)) {
+        if (requestPath.startsWith(INTERNAL_PATH_PREFIX)) {
             String providedSecret = request.getHeader(INTERNAL_SECRET_HEADER);
 
             if (providedSecret == null || !providedSecret.equals(internalSecret)) {
-                log.warn("SEC-01: Blocked unauthorized access to {} from IP={} — missing or invalid {}",
+                log.warn("Blocked unauthorized access to {} from IP={} — missing or invalid {}",
                         requestPath,
                         request.getRemoteAddr(),
                         INTERNAL_SECRET_HEADER);
                 response.setStatus(HttpStatus.FORBIDDEN.value());
                 response.setContentType("application/json;charset=UTF-8");
                 response.getWriter().write(
-                        "{\"success\":false,\"message\":\"Truy cập bị từ chối: endpoint nội bộ\"}"
+                        "{\"success\":false,\"message\":\"Truy cập bị từ chối : endpoint nội bộ\"}"
                 );
                 return;
             }
 
-            log.debug("SEC-01: Internal request to {} authorized from IP={}",
-                    requestPath, request.getRemoteAddr());
+            log.debug("Internal request to {} authorized from IP={}", requestPath, request.getRemoteAddr());
         }
 
         filterChain.doFilter(request, response);
