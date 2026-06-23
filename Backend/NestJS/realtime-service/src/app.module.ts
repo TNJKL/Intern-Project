@@ -11,6 +11,8 @@ import { GatewayModule } from './gateway/gateway.module';
 import { Notification } from './notification/entities/notification.entity';
 import { NotificationTemplate } from './notification/entities/notification-template.entity';
 import { ProcessedEvent } from './events/entities/processed-event.entity';
+import { FirebaseModule } from './firebase/firebase.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -33,8 +35,11 @@ import { ProcessedEvent } from './events/entities/processed-event.entity';
     EventsModule,
     NotificationModule,
     GatewayModule,
+    FirebaseModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}
+
