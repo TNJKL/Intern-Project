@@ -8,6 +8,13 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       timeout: 5000ms
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            connectTimeout: 2000
+            readTimeout: 5000
 
 server:
   port: 8086
@@ -40,6 +47,8 @@ app:
     url: ${INVENTORY_SERVICE_URL:http://localhost:8084}
   cache:
     dashboard-ttl-seconds: 30
+  swagger:
+    enabled: ${SWAGGER_ENABLED:true}
 
 resilience4j:
   circuitbreaker:

@@ -249,6 +249,31 @@ services:
   #     - beverage_net
 
   # ============================================================
+  # DASHBOARD SERVICE (Chạy local dev ngoài Docker hoặc uncomment để chạy container)
+  # ============================================================
+  # dashboard-service:
+  #   build:
+  #     context: ./Springboot
+  #     dockerfile: dashboard-service/Dockerfile
+  #   container_name: beverage_dashboard_service
+  #   ports:
+  #     - "8086:8086"
+  #   environment:
+  #     - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
+  #     - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+  #     - JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=65.0 -XX:+ExitOnOutOfMemoryError
+  #   mem_limit: 256m
+  #   cpus: "0.50"
+  #   depends_on:
+  #     - eureka-server
+  #     - redis
+  #   restart: always
+  #   networks:
+  #     - beverage_net
+
+  # ============================================================
   # NOTIFICATION SERVICE
   # ============================================================
   # notification-service:

@@ -75,7 +75,12 @@ public class DashboardService {
                 return cachedData;
             }
         } catch (Exception e) {
-            log.warn("Failed to read dashboard stats from Redis cache: {}", e.getMessage());
+            log.warn("Failed to read dashboard stats from Redis cache or deserialize. Evicting corrupt key={}: {}", cacheKey, e.getMessage());
+            try {
+                redisTemplate.delete(cacheKey);
+            } catch (Exception ex) {
+                log.error("Failed to delete corrupt cache key={}", cacheKey, ex);
+            }
         }
 
         log.info("Fetching fresh dashboard stats from microservices (MISS) for date={}", targetDate);
@@ -94,7 +99,9 @@ public class DashboardService {
         }, dashboardExecutor);
 
         // Đợi tất cả hoàn thành
-        CompletableFuture.allOf(orderFuture, paymentFuture, inventoryFuture).join();
+        CompletableFuture.allOf(orderFuture, paymentFuture, inventoryFuture)
+                .orTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                .join();
 
         OrderInternalStatsResponse orderData = null;
         PaymentInternalStatsResponse paymentData = null;
