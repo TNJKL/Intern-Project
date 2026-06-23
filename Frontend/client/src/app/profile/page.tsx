@@ -14,7 +14,9 @@ export default async function ProfilePage() {
   let isServerError = false;
 
   const cookieStore = await cookies();
-  const hasRefreshToken = cookieStore.has("refreshToken");
+  // LƯU Ý: refreshToken có Path=/api/v1/auth nên KHÔNG đọc được tại path /profile.
+  // Dùng accessToken (Path=/) hoặc lastRefreshedToken (Path=/) thay thế.
+  const hasSession = cookieStore.has("accessToken") || cookieStore.has("lastRefreshedToken");
 
   try {
     const response = await getServerApi("/api/v1/auth/me");
@@ -28,9 +30,9 @@ export default async function ProfilePage() {
     isServerError = true;
   }
 
-  // Nếu không tải được thông tin VÀ không có cả refreshToken (chưa đăng nhập) -> redirect ngay lập tức.
-  // Nếu có refreshToken nhưng API lỗi (hết hạn accessToken), Client Component sẽ tự phục hồi ngầm.
-  if (!user && !hasRefreshToken) {
+  // Nếu không tải được thông tin VÀ không có session (chưa đăng nhập) -> redirect ngay lập tức.
+  // Nếu có session nhưng API lỗi (hết hạn accessToken), Client Component sẽ tự phục hồi ngầm.
+  if (!user && !hasSession) {
     redirect("/login");
   }
 

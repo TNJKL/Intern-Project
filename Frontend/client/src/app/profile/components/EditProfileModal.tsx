@@ -82,32 +82,32 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ open, onClose, user
             
             <form onSubmit={handleUpdate} className="space-y-5">
               <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-coffee-medium mb-2 block">Họ và tên</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-primary/60 mb-2 block">Họ và tên</label>
                 <input
                   type="text"
                   value={form.fullName}
                   onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                  className="w-full bg-coffee-light/5 border border-coffee-light/10 rounded-2xl px-6 py-4 outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all font-bold text-coffee-dark"
+                  className="w-full bg-primary/5 border border-primary/10 rounded-2xl px-6 py-4 outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all font-bold text-coffee-dark"
                   required
                 />
               </div>
               <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-coffee-medium mb-2 block">Email</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-primary/60 mb-2 block">Email</label>
                 <input
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className="w-full bg-coffee-light/5 border border-coffee-light/10 rounded-2xl px-6 py-4 outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all font-bold text-coffee-dark"
+                  className="w-full bg-primary/5 border border-primary/10 rounded-2xl px-6 py-4 outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all font-bold text-coffee-dark"
                   required
                 />
               </div>
               <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-coffee-medium mb-2 block">Số điện thoại</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-primary/60 mb-2 block">Số điện thoại</label>
                 <input
                   type="text"
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  className="w-full bg-coffee-light/5 border border-coffee-light/10 rounded-2xl px-6 py-4 outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all font-bold text-coffee-dark"
+                  className="w-full bg-primary/5 border border-primary/10 rounded-2xl px-6 py-4 outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all font-bold text-coffee-dark"
                 />
               </div>
               
@@ -122,7 +122,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ open, onClose, user
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="flex-2 py-4 px-8 bg-coffee-dark text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-primary transition-all shadow-xl shadow-coffee-dark/20 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="flex-2 py-4 px-8 bg-primary text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-primary/90 transition-all shadow-xl shadow-primary/20 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
                 </button>

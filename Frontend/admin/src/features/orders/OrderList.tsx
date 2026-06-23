@@ -136,9 +136,8 @@ const OrderList: React.FC = () => {
             value={s}
             onChange={(value) => handleUpdateStatus(record.id, value)}
             loading={updateStatusMutation.isPending}
-            style={{ width: 145, fontWeight: 'bold' }}
-            className="font-bold text-xs"
-            size="small"
+            style={{ width: 170, fontWeight: 'bold' }}
+            className="font-bold text-sm"
             popupClassName="rounded-xl font-semibold"
             options={[
               { value: 'PENDING', label: 'ĐÃ NHẬN ĐƠN' },

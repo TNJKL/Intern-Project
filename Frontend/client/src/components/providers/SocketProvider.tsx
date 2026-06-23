@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { paymentService } from "../../services/payment.service";
+import { apiClient } from "@/lib/api";
 
 interface SocketContextType {
   socket: Socket | null;
@@ -28,7 +29,7 @@ export const useSocket = () => useContext(SocketContext);
 export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const socketRef = useRef<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
   const accessToken = session?.accessToken || null;
   const isAuthChecked = status !== "loading";
   const [reconnectTrigger, setReconnectTrigger] = useState(0);
@@ -147,9 +148,24 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     // ─── Sự kiện: exception (Lỗi phân quyền hệ thống) ───
-    socket.on("exception", (error: any) => {
+    socket.on("exception", async (error: any) => {
       if (error) {
-        console.error("[Socket.IO] WS Exception xuất hiện:", error?.message || error);
+        const errMsg = error?.message || error;
+        
+        if (errMsg === "Unauthorized: Invalid token" || errMsg.includes("Unauthorized")) {
+          console.warn("[Socket.IO] Token hết hạn/không hợp lệ. Đang tự động làm mới token và tái kết nối...");
+          try {
+            // Gọi thử một API qua apiClient để kích hoạt Axios interceptor làm mới token nếu cần
+            await apiClient.get("/auth/me").catch(() => {});
+            
+            // Cập nhật lại NextAuth session
+            if (typeof update === "function") {
+              await update();
+            }
+          } catch (syncErr) {
+            console.error("[Socket.IO] Lỗi khi đồng bộ token cho socket:", syncErr);
+          }
+        }
       }
     });
 

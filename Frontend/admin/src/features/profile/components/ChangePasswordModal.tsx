@@ -40,7 +40,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ open, onCance
   // Logout khi countdown về 0 (tách riêng để tránh setState-in-render)
   useEffect(() => {
     if (isSuccess && countdown === 0) {
-      logout();
+      logout(true);
     }
   }, [isSuccess, countdown]);
 

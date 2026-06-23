@@ -189,7 +189,7 @@ function TrackOrderContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#fcf9f2] pt-8 pb-32 px-6">
+    <div className="min-h-screen bg-secondary/30 pt-8 pb-32 px-6">
       <div className="max-w-4xl mx-auto space-y-8">
         <div className="flex items-center gap-4">
           <Link href="/" className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm hover:bg-gray-50 transition-colors">
@@ -215,7 +215,7 @@ function TrackOrderContent() {
               />
               <button
                 onClick={() => handleTrackByCode(orderCode, undefined, false)}
-                className="w-full py-4 bg-[#4d362b] text-white rounded-2xl font-black uppercase shadow-lg disabled:opacity-50"
+                className="w-full py-4 bg-primary text-white rounded-2xl font-black uppercase shadow-lg hover:bg-primary/90 active:scale-98 transition-all disabled:opacity-50"
               >
                 {isLoading ? "Đang truy vấn dữ liệu..." : "Bắt đầu tra cứu"}
               </button>
@@ -255,7 +255,7 @@ function TrackOrderContent() {
                   <button
                     onClick={handleRepay}
                     disabled={isRepaying}
-                    className="bg-[#4d362b] text-white text-xs font-black uppercase px-4 py-2.5 rounded-xl hover:bg-[#3d2b22] transition-all flex items-center gap-1.5 shrink-0 shadow-sm disabled:opacity-50"
+                    className="bg-primary text-white text-xs font-black uppercase px-4 py-2.5 rounded-xl hover:bg-primary/90 transition-all flex items-center gap-1.5 shrink-0 shadow-sm disabled:opacity-50"
                   >
                     {isRepaying && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                     Thanh toán ngay
@@ -311,7 +311,7 @@ function TrackOrderContent() {
 export default function TrackOrderPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#fcf9f2] flex items-center justify-center">
+      <div className="min-h-screen bg-secondary/30 flex items-center justify-center">
         <Loader2 className="w-6 h-6 animate-spin text-primary" />
       </div>
     }>

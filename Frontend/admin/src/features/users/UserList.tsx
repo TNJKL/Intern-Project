@@ -124,8 +124,9 @@ const UserList: React.FC = () => {
       title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">VAI TRÒ</span>,
       dataIndex: 'role',
       key: 'role',
+      width: 130,
       render: (role: string) => (
-        <span className={`px-3 py-1 rounded-full text-xs font-bold border ${role === 'ADMIN' ? 'bg-purple-50 text-purple-600 border-purple-200' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>
+        <span className={`px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap ${role === 'ADMIN' ? 'bg-purple-50 text-purple-600 border-purple-200' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>
           {role || 'USER'}
         </span>
       )
@@ -134,8 +135,9 @@ const UserList: React.FC = () => {
       title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">TRẠNG THÁI</span>,
       dataIndex: 'isActive',
       key: 'isActive',
+      width: 150,
       render: (isActive: boolean) => (
-        <span className={`px-3 py-1 rounded-full text-xs font-bold border ${isActive ? 'bg-green-50 text-green-600 border-green-200' : 'bg-red-50 text-red-600 border-red-200'}`}>
+        <span className={`px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap ${isActive ? 'bg-green-50 text-green-600 border-green-200' : 'bg-red-50 text-red-600 border-red-200'}`}>
           {isActive ? 'HOẠT ĐỘNG' : 'BỊ KHÓA'}
         </span>
       )

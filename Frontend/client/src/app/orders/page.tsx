@@ -10,12 +10,14 @@ export const metadata: Metadata = {
 };
 
 export default async function OrdersPage() {
-  // Server-side auth check: kiểm tra sự tồn tại của refreshToken cookie
+  // Server-side auth check: kiểm tra sự tồn tại của token cookie
+  // LƯU Ý: refreshToken có Path=/api/v1/auth nên KHÔNG đọc được tại path /orders.
+  // Dùng accessToken (Path=/) hoặc lastRefreshedToken (Path=/) thay thế.
   const cookieStore = await cookies();
-  const hasRefreshToken = cookieStore.has('refreshToken');
+  const hasSession = cookieStore.has('accessToken') || cookieStore.has('lastRefreshedToken');
 
-  // Nếu không có refreshToken, redirect sang trang tra cứu đơn hàng vãng lai
-  if (!hasRefreshToken) {
+  // Nếu không có session token, redirect sang trang tra cứu đơn hàng vãng lai
+  if (!hasSession) {
     redirect("/orders/track");
   }
 

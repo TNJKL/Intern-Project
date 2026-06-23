@@ -4,11 +4,11 @@ import { Search, Menu, User, Coffee, ShoppingCart, LogOut, LayoutDashboard, X, H
 import Link from "next/link";
 import { useAuthStore } from "@/store/zustand/useAuthStore";
 import { useCartStore } from "@/store/zustand/useCartStore";
-import { useAppDispatch, useAppSelector } from "@/store/redux/hooks";
+import { useAppDispatch } from "@/store/redux/hooks";
 import { clearCredentials } from "@/store/redux/authSlice";
 import { useEffect, useState, useMemo } from "react";
 import axios from "axios";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -25,7 +25,9 @@ interface NavbarProps {
 export function Navbar({ initialUser }: NavbarProps) {
   const { user, clearUser } = useAuthStore();
   const { clearCart } = useCartStore();
-  const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
+  // Dùng useSession trực tiếp để tránh race condition với Redux store
+  const { status } = useSession();
+  const isAuthenticated = status === "authenticated";
   const dispatch = useAppDispatch();
   const { pendingPayment } = useSocket();
   const [isMounted, setIsMounted] = useState(false);

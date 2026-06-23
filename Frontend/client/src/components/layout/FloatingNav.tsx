@@ -1,19 +1,22 @@
 "use client";
 
 import { useAuthStore } from "@/store/zustand/useAuthStore";
-import { useAppSelector } from "@/store/redux/hooks";
 import { Home, Tag, User, Coffee, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useSocket } from "@/components/providers/SocketProvider";
+import { useSession } from "next-auth/react";
 
 
 export function FloatingNav() {
   const pathname = usePathname();
   const { user } = useAuthStore();
-  const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
+  // Dùng useSession trực tiếp để tránh race condition với Redux store
+  // (Redux chỉ được sync sau khi useSession resolve, nên không dùng Redux ở đây)
+  const { status } = useSession();
+  const isAuthenticated = status === "authenticated";
   const { pendingPayment } = useSocket();
   const [isMounted, setIsMounted] = useState(false);
   const [activeId, setActiveId] = useState("home");
@@ -27,7 +30,12 @@ export function FloatingNav() {
     return [
       { id: "home", icon: Home, label: "Trang chủ", href: "/" },
       { id: "menu", icon: Coffee, label: "Thực đơn", href: "/menu" },
-      { id: "orders", icon: Package, label: "Đơn hàng", href: "/orders" },
+      {
+        id: "orders",
+        icon: Package,
+        label: "Đơn hàng",
+        href: isMounted && isAuthenticated ? "/orders" : "/orders/track",
+      },
       { id: "promo", icon: Tag, label: "Ưu đãi", href: "/offers" },
       {
         id: "account",
@@ -54,7 +62,7 @@ export function FloatingNav() {
   return (
     /* Chỉ hiển thị trên thiết bị di động (< lg) */
     <div className="lg:hidden fixed bottom-5 left-1/2 -translate-x-1/2 w-[94%] sm:w-[85%] max-w-[440px] z-50">
-      <div className="bg-[#fcf9f2]/95 backdrop-blur-xl border border-[#855823]/10 shadow-[0_12px_35px_rgba(133,88,35,0.15)] flex items-center justify-around px-3 py-2 rounded-full">
+      <div className="bg-secondary/95 backdrop-blur-xl border border-primary/10 shadow-lg flex items-center justify-around px-3 py-2 rounded-full">
         {navItems.map((item) => {
           const isActive = activeId === item.id;
 
@@ -69,8 +77,8 @@ export function FloatingNav() {
               <div className={cn(
                 "p-2 rounded-xl transition-all duration-300 relative",
                 isActive
-                  ? "bg-[#855823] text-white shadow-md shadow-[#855823]/20 scale-105" // Active sẽ đổi sang màu nâu đậm signature của quán
-                  : "text-amber-900/40 group-hover:text-[#855823]/80 group-active:scale-95" // Chưa active sẽ là màu nâu xám nhạt thanh lịch
+                  ? "bg-primary text-white shadow-md shadow-primary/20 scale-105" // Active sẽ đổi màu theo theme preset
+                  : "text-primary/40 group-hover:text-primary/80 group-active:scale-95" // Chưa active sẽ là màu theo theme
               )}>
                 <item.icon className="w-5 h-5" />
                 {item.id === "orders" && pendingPayment && (
@@ -86,7 +94,7 @@ export function FloatingNav() {
               {/* Nhãn chữ */}
               <span className={cn(
                 "text-[9px] font-bold uppercase tracking-wide transition-colors duration-300 leading-none text-center truncate w-full px-1",
-                isActive ? "text-[#855823] font-black" : "text-amber-900/50 group-hover:text-[#855823]/70"
+                isActive ? "text-primary font-black" : "text-primary/50 group-hover:text-primary/70"
               )}>
                 {item.label}
               </span>
