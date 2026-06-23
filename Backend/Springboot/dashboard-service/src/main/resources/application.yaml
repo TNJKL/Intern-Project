@@ -68,3 +68,10 @@ resilience4j:
         automaticTransitionFromOpenToHalfOpenEnabled: true
         waitDurationInOpenState: 15s
         failureRateThreshold: 50
+
+springdoc:
+  api-docs:
+    path: /dashboard/v3/api-docs
+  swagger-ui:
+    path: /dashboard/swagger-ui.html
+    enabled: true

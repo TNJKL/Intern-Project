@@ -361,6 +361,16 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
         PaymentEntity payment = paymentRepository.findByOrderId(orderId).orElse(null);
         if (payment != null) {
             payment.setOrderStatus(orderStatus);
+            
+            // Nếu đơn hàng COD chuyển sang COMPLETED và thanh toán đang PENDING -> cập nhật thành SUCCESS
+            if ("COMPLETED".equals(orderStatus) 
+                    && payment.getPaymentMethod() == PaymentMethod.COD 
+                    && payment.getStatus() == PaymentStatus.PENDING) {
+                payment.setStatus(PaymentStatus.SUCCESS);
+                payment.setPaidAt(Instant.now());
+                log.info("COD payment for orderId={} completed successfully. Status set to SUCCESS.", orderId);
+            }
+            
             paymentRepository.save(payment);
             log.info("Successfully updated orderStatus={} for payment id={}", orderStatus, payment.getId());
         } else {

@@ -17,4 +17,8 @@ public class PaymentInternalStatsResponse {
     private BigDecimal thisMonthRevenue;
     private BigDecimal refundedAmount;
     private Long refundCount;
+    private BigDecimal todayRefundedAmount;
+    private Long todayRefundCount;
+    private BigDecimal thisMonthRefundedAmount;
+    private Long thisMonthRefundCount;
 }

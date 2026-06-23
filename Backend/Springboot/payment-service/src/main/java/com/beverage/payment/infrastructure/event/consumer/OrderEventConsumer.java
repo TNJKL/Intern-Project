@@ -20,26 +20,24 @@ import java.time.Instant;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class OrderCreatedConsumer {
+public class OrderEventConsumer {
 
     private final PaymentUseCase paymentUseCase;
     private final ProcessedEventJpaRepository processedEventRepository;
 
-    @KafkaListener(
-            topics = "${app.kafka.topics.order-events:order-events}",
-            containerFactory = "kafkaListenerContainerFactory",
-            groupId = "payment-service-group"
-    )
+    @KafkaListener(topics = "${app.kafka.topics.order-events:order-events}", containerFactory = "kafkaListenerContainerFactory", groupId = "payment-service-group")
     @Transactional
     public void listen(OrderEventWrapper event,
-                       @Header(KafkaHeaders.RECEIVED_KEY) String key,
-                       @Header(KafkaHeaders.RECEIVED_PARTITION) int partition,
-                       @Header(KafkaHeaders.OFFSET) long offset) {
-        
-        log.info("Received Kafka event type={} key={} partition={} offset={}", event.getEventType(), key, partition, offset);
+            @Header(KafkaHeaders.RECEIVED_KEY) String key,
+            @Header(KafkaHeaders.RECEIVED_PARTITION) int partition,
+            @Header(KafkaHeaders.OFFSET) long offset) {
+
+        log.info("Received Kafka event type={} key={} partition={} offset={}", event.getEventType(), key, partition,
+                offset);
 
         // Chúng ta tạo eventId duy nhất từ key + offset hoặc dùng key chính là orderId
-        // Ở đây eventId có thể lấy từ key làm định danh duy nhất (ví dụ: orderId) hoặc eventId có sẵn
+        // Ở đây eventId có thể lấy từ key làm định danh duy nhất (ví dụ: orderId) hoặc
+        // eventId có sẵn
         String eventId = event.getEventType() + "_" + key;
 
         if (processedEventRepository.existsById(eventId)) {
@@ -53,7 +51,8 @@ public class OrderCreatedConsumer {
             } else if (event instanceof OrderCancelledEvent orderCancelledEvent) {
                 paymentUseCase.updateOrderStatus(orderCancelledEvent.getOrderId(), "CANCELLED");
             } else if (event instanceof OrderEventWrapper.StatusChangedStub statusChangedEvent) {
-                paymentUseCase.updateOrderStatus(statusChangedEvent.getOrderId(), statusChangedEvent.getCurrentStatus());
+                paymentUseCase.updateOrderStatus(statusChangedEvent.getOrderId(),
+                        statusChangedEvent.getCurrentStatus());
             } else if (event instanceof OrderEventWrapper.CompletedStub completedEvent) {
                 paymentUseCase.updateOrderStatus(completedEvent.getOrderId(), "COMPLETED");
             } else {

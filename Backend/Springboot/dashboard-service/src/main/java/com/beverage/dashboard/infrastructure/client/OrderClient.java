@@ -14,5 +14,5 @@ import org.springframework.web.bind.annotation.GetMapping;
 public interface OrderClient {
 
     @GetMapping("/api/v1/internal/orders/stats")
-    ApiResponse<OrderInternalStatsResponse> getStats();
+    ApiResponse<OrderInternalStatsResponse> getStats(@org.springframework.web.bind.annotation.RequestParam(value = "date", required = false) String date);
 }

@@ -20,9 +20,29 @@ public class AdminDashboardController {
     private final DashboardService dashboardService;
 
     @GetMapping("/stats")
-    public ResponseEntity<ApiResponse<DashboardStatsResponse>> getStats() {
-        log.info("Admin request to get dashboard stats");
-        DashboardStatsResponse stats = dashboardService.getDashboardStats();
+    public ResponseEntity<ApiResponse<DashboardStatsResponse>> getStats(
+            @RequestParam(value = "date", required = false) String date
+    ) {
+        log.info("Admin request to get dashboard stats for date={}", date);
+        if (date != null && !date.trim().isEmpty()) {
+            String trimmedDate = date.trim();
+            boolean isValid = false;
+            if (trimmedDate.length() == 7) {
+                try {
+                    java.time.YearMonth.parse(trimmedDate);
+                    isValid = true;
+                } catch (java.time.format.DateTimeParseException ignored) {}
+            } else if (trimmedDate.length() == 10) {
+                try {
+                    java.time.LocalDate.parse(trimmedDate);
+                    isValid = true;
+                } catch (java.time.format.DateTimeParseException ignored) {}
+            }
+            if (!isValid) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("Định dạng ngày không hợp lệ. Vui lòng sử dụng định dạng yyyy-MM-dd (cho ngày) hoặc yyyy-MM (cho tháng)."));
+            }
+        }
+        DashboardStatsResponse stats = dashboardService.getDashboardStats(date);
         return ResponseEntity.ok(ApiResponse.success(stats, "Lấy số liệu thống kê dashboard thành công"));
     }
 }

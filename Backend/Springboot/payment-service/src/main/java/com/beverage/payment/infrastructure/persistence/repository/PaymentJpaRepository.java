@@ -76,4 +76,7 @@ public interface PaymentJpaRepository extends JpaRepository<PaymentEntity, UUID>
 
     @Query("SELECT SUM(p.amount) FROM PaymentEntity p WHERE (p.status = 'SUCCESS' OR p.status = 'REFUNDED') AND p.createdAt >= :start")
     java.math.BigDecimal sumRevenueAfter(@Param("start") Instant start);
+
+    @Query("SELECT SUM(p.amount) FROM PaymentEntity p WHERE (p.status = 'SUCCESS' OR p.status = 'REFUNDED') AND p.createdAt >= :start AND p.createdAt <= :end")
+    java.math.BigDecimal sumRevenueBetween(@Param("start") Instant start, @Param("end") Instant end);
 }

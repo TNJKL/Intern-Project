@@ -31,20 +31,59 @@ public class InternalOrderController {
     private final OrderItemJpaRepository orderItemJpaRepository;
 
     @GetMapping("/stats")
-    public ResponseEntity<ApiResponse<OrderInternalStatsResponse>> getStats() {
-        log.info("Internal request to fetch order dashboard stats");
+    public ResponseEntity<ApiResponse<OrderInternalStatsResponse>> getStats(
+            @org.springframework.web.bind.annotation.RequestParam(value = "date", required = false) String dateString
+    ) {
+        log.info("Internal request to fetch order dashboard stats for date={}", dateString);
+
+        Instant start;
+        Instant end;
+
+        if (dateString == null || dateString.trim().isEmpty()) {
+            start = ZonedDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"))
+                    .truncatedTo(ChronoUnit.DAYS)
+                    .toInstant();
+            end = ZonedDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"))
+                    .withHour(23).withMinute(59).withSecond(59).withNano(999999999)
+                    .toInstant();
+        } else if (dateString.trim().length() == 7) {
+            try {
+                java.time.YearMonth yearMonth = java.time.YearMonth.parse(dateString.trim());
+                start = yearMonth.atDay(1).atStartOfDay(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant();
+                end = yearMonth.atEndOfMonth().atTime(23, 59, 59, 999999999).atZone(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant();
+            } catch (Exception e) {
+                log.error("Failed to parse month string: {}, fallback to today", dateString);
+                start = ZonedDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"))
+                        .truncatedTo(ChronoUnit.DAYS)
+                        .toInstant();
+                end = ZonedDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"))
+                        .withHour(23).withMinute(59).withSecond(59).withNano(999999999)
+                        .toInstant();
+            }
+        } else {
+            try {
+                java.time.LocalDate localDate = java.time.LocalDate.parse(dateString.trim());
+                start = localDate.atStartOfDay(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant();
+                end = localDate.atTime(23, 59, 59, 999999999).atZone(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant();
+            } catch (Exception e) {
+                log.error("Failed to parse date string: {}, fallback to today", dateString);
+                start = ZonedDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"))
+                        .truncatedTo(ChronoUnit.DAYS)
+                        .toInstant();
+                end = ZonedDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"))
+                        .withHour(23).withMinute(59).withSecond(59).withNano(999999999)
+                        .toInstant();
+            }
+        }
 
         // 1. Total orders
         long totalOrders = orderJpaRepository.count();
 
-        // 2. Today orders (since 00:00:00 Asia/Ho_Chi_Minh)
-        Instant todayStart = ZonedDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"))
-                .truncatedTo(ChronoUnit.DAYS)
-                .toInstant();
-        long todayOrders = orderJpaRepository.countByCreatedAtAfter(todayStart);
+        // 2. Today orders (in the target day) excluding CANCELLED
+        long todayOrders = orderJpaRepository.countActiveOrdersBetween(start, end);
 
-        // 3. Status counts
-        List<Object[]> statusCountsRaw = orderJpaRepository.countOrdersByStatus();
+        // 3. Status counts in the target day
+        List<Object[]> statusCountsRaw = orderJpaRepository.countOrdersByStatusBetween(start, end);
         Map<String, Long> statusCounts = new HashMap<>();
         for (Object[] row : statusCountsRaw) {
             if (row[0] != null) {
@@ -52,8 +91,8 @@ public class InternalOrderController {
             }
         }
 
-        // 4. Top selling products
-        List<TopProductDTO> topProducts = orderItemJpaRepository.findTopSellingProducts(PageRequest.of(0, 5));
+        // 4. Top selling products in the target day
+        List<TopProductDTO> topProducts = orderItemJpaRepository.findTopSellingProductsBetween(start, end, PageRequest.of(0, 5));
 
         OrderInternalStatsResponse responseData = OrderInternalStatsResponse.builder()
                 .totalOrders(totalOrders)

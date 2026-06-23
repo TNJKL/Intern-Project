@@ -22,11 +22,11 @@ public class StatsClientWrapper {
     private final InventoryClient inventoryClient;
 
     @CircuitBreaker(name = "orderServiceCB", fallbackMethod = "fallbackOrderStats")
-    public ApiResponse<OrderInternalStatsResponse> getOrderStats() {
-        return orderClient.getStats();
+    public ApiResponse<OrderInternalStatsResponse> getOrderStats(String date) {
+        return orderClient.getStats(date);
     }
 
-    public ApiResponse<OrderInternalStatsResponse> fallbackOrderStats(Throwable t) {
+    public ApiResponse<OrderInternalStatsResponse> fallbackOrderStats(String date, Throwable t) {
         log.warn("[Circuit Breaker] Dich vu order-service tam thoi dang khong hoat dong. Tra ve du lieu fallback trong. Chi tiet: {}", t.getMessage());
         
         OrderInternalStatsResponse fallbackData = new OrderInternalStatsResponse();
@@ -43,11 +43,11 @@ public class StatsClientWrapper {
     }
 
     @CircuitBreaker(name = "paymentServiceCB", fallbackMethod = "fallbackPaymentStats")
-    public ApiResponse<PaymentInternalStatsResponse> getPaymentStats() {
-        return paymentClient.getStats();
+    public ApiResponse<PaymentInternalStatsResponse> getPaymentStats(String date) {
+        return paymentClient.getStats(date);
     }
 
-    public ApiResponse<PaymentInternalStatsResponse> fallbackPaymentStats(Throwable t) {
+    public ApiResponse<PaymentInternalStatsResponse> fallbackPaymentStats(String date, Throwable t) {
         log.warn("[Circuit Breaker] Dich vu payment-service tam thoi dang khong hoat dong. Tra ve du lieu fallback trong. Chi tiet: {}", t.getMessage());
         
         PaymentInternalStatsResponse fallbackData = new PaymentInternalStatsResponse();

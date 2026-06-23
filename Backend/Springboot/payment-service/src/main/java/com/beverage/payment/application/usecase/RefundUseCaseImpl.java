@@ -22,6 +22,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import com.beverage.payment.infrastructure.persistence.repository.OutboxEventRepository;
+import com.beverage.payment.infrastructure.persistence.entity.OutboxEventEntity;
+import com.beverage.payment.infrastructure.event.dto.PaymentFailedEvent;
+import com.beverage.payment.infrastructure.event.dto.PaymentEvent;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.UUID;
 
@@ -32,6 +37,30 @@ public class RefundUseCaseImpl implements RefundUseCase {
 
     private final RefundJpaRepository refundRepository;
     private final PaymentJpaRepository paymentRepository;
+    private final OutboxEventRepository outboxEventRepository;
+    private final ObjectMapper objectMapper;
+
+    private void saveOutboxEvent(UUID orderId, String eventType, PaymentEvent eventPayload) {
+        try {
+            UUID eventId = UUID.randomUUID();
+            eventPayload.setEventId(eventId);
+            
+            String payloadJson = objectMapper.writeValueAsString(eventPayload);
+            OutboxEventEntity outboxEvent = OutboxEventEntity.builder()
+                    .id(eventId)
+                    .aggregateType("payment")
+                    .aggregateId(orderId.toString())
+                    .eventType(eventType)
+                    .payload(payloadJson)
+                    .status("PENDING")
+                    .build();
+            outboxEventRepository.save(outboxEvent);
+            log.info("Saved outbox event for refund: type={}, id={}, orderId={}", eventType, eventId, orderId);
+        } catch (Exception e) {
+            log.error("Failed to save outbox event for orderId={}", orderId, e);
+            throw new BusinessException("Không thể ghi nhận sự kiện thanh toán hoàn tiền: " + e.getMessage());
+        }
+    }
 
     @Override
     @Transactional
@@ -76,6 +105,22 @@ public class RefundUseCaseImpl implements RefundUseCase {
         payment.setStatus(PaymentStatus.REFUNDED);
         paymentRepository.save(payment);
         log.info("Refund created successfully with ID: {}", refund.getId());
+
+        // Nếu là hoàn tiền toàn phần (100%), gửi sự kiện hủy đơn hàng sang order-service
+        if (request.getAmount().compareTo(payment.getAmount()) == 0) {
+            PaymentFailedEvent failedEvent = PaymentFailedEvent.builder()
+                    .orderId(payment.getOrderId())
+                    .orderCode(payment.getOrderCode())
+                    .userId(payment.getUserId())
+                    .amount(payment.getAmount())
+                    .reason("Đơn hàng bị hoàn tiền toàn phần: " + request.getReason())
+                    .terminal(true)
+                    .occurredAt(Instant.now())
+                    .build();
+            saveOutboxEvent(payment.getOrderId(), "PaymentFailedEvent", failedEvent);
+            log.info("Published PaymentFailedEvent to cancel orderId={} due to 100% refund", payment.getOrderId());
+        }
+
         return PaymentDetailResponse.fromDomain(payment.toDomain());
     }
 

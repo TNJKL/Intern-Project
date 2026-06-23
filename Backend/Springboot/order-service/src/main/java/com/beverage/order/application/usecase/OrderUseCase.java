@@ -280,8 +280,8 @@ public class OrderUseCase {
         JwtUserPrincipal actor = orderActorResolver.requirePrincipal();
         OrderEntity order = findAccessibleOrder(orderId, actor);
 
-        if (order.getStatus() != OrderStatus.PENDING) {
-            throw new ConflictException("Chỉ có thể hủy đơn ở trạng thái PENDING");
+        if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.CONFIRMED) {
+            throw new ConflictException("Chỉ có thể hủy đơn ở trạng thái PENDING hoặc CONFIRMED");
         }
 
         order.setStatus(OrderStatus.CANCELLED);
@@ -306,7 +306,7 @@ public class OrderUseCase {
         OrderEntity order = orderJpaRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Đơn hàng", "id", orderId));
 
-        if (order.getStatus() != OrderStatus.PENDING) {
+        if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.CONFIRMED) {
             log.warn("Cannot cancel order {} because its status is {}", orderId, order.getStatus());
             return;
         }

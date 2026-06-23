@@ -32,6 +32,15 @@ public interface OrderJpaRepository extends JpaRepository<OrderEntity, UUID>, Jp
 
     long countByCreatedAtAfter(Instant start);
 
+    @Query("SELECT COUNT(o) FROM OrderEntity o WHERE o.createdAt >= :start AND o.status != com.beverage.order.domain.model.OrderStatus.CANCELLED")
+    long countActiveOrdersSince(@Param("start") Instant start);
+
+    @Query("SELECT COUNT(o) FROM OrderEntity o WHERE o.createdAt >= :start AND o.createdAt <= :end AND o.status != com.beverage.order.domain.model.OrderStatus.CANCELLED")
+    long countActiveOrdersBetween(@Param("start") Instant start, @Param("end") Instant end);
+
     @Query("SELECT o.status, COUNT(o) FROM OrderEntity o GROUP BY o.status")
     List<Object[]> countOrdersByStatus();
+
+    @Query("SELECT o.status, COUNT(o) FROM OrderEntity o WHERE o.createdAt >= :start AND o.createdAt <= :end GROUP BY o.status")
+    List<Object[]> countOrdersByStatusBetween(@Param("start") Instant start, @Param("end") Instant end);
 }

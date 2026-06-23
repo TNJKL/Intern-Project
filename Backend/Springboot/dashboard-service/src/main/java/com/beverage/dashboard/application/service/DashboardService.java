@@ -46,27 +46,47 @@ public class DashboardService {
         this.dashboardExecutor = dashboardExecutor;
     }
 
-    public DashboardStatsResponse getDashboardStats() {
+    public DashboardStatsResponse getDashboardStats(String date) {
+        java.time.LocalDate nowVn = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
+        String todayStr = nowVn.toString();
+        String currentMonthStr = todayStr.substring(0, 7);
+
+        String targetDate = (date == null || date.trim().isEmpty()) ? todayStr : date.trim();
+        String cacheKey = "dashboard:stats:admin:" + targetDate;
+
+        long ttl = cacheTtlSeconds; // default 30s
+        boolean isCurrent = false;
+
+        if (targetDate.length() == 7) {
+            isCurrent = targetDate.equals(currentMonthStr);
+        } else {
+            isCurrent = targetDate.equals(todayStr);
+        }
+
+        if (!isCurrent) {
+            ttl = 600; // 10 minutes for historical periods
+        }
+
         try {
-            Object cached = redisTemplate.opsForValue().get(CACHE_KEY);
+            Object cached = redisTemplate.opsForValue().get(cacheKey);
             if (cached != null) {
                 DashboardStatsResponse cachedData = objectMapper.convertValue(cached, DashboardStatsResponse.class);
-                log.info("Dashboard stats fetched from Redis Cache (HIT)");
+                log.info("Dashboard stats fetched from Redis Cache (HIT) for key={}", cacheKey);
                 return cachedData;
             }
         } catch (Exception e) {
             log.warn("Failed to read dashboard stats from Redis cache: {}", e.getMessage());
         }
 
-        log.info("Fetching fresh dashboard stats from microservices (MISS)");
+        log.info("Fetching fresh dashboard stats from microservices (MISS) for date={}", targetDate);
 
         // Gọi song song sử dụng custom thread pool (dashboardExecutor) và Circuit Breaker wrapper
         CompletableFuture<ApiResponse<OrderInternalStatsResponse>> orderFuture = CompletableFuture.supplyAsync(() -> {
-            return statsClientWrapper.getOrderStats();
+            return statsClientWrapper.getOrderStats(targetDate);
         }, dashboardExecutor);
 
         CompletableFuture<ApiResponse<PaymentInternalStatsResponse>> paymentFuture = CompletableFuture.supplyAsync(() -> {
-            return statsClientWrapper.getPaymentStats();
+            return statsClientWrapper.getPaymentStats(targetDate);
         }, dashboardExecutor);
 
         CompletableFuture<ApiResponse<InventoryInternalStatsResponse>> inventoryFuture = CompletableFuture.supplyAsync(() -> {
@@ -122,8 +142,8 @@ public class DashboardService {
 
         // Ghi cache vào Redis
         try {
-            redisTemplate.opsForValue().set(CACHE_KEY, dashboardStats, cacheTtlSeconds, TimeUnit.SECONDS);
-            log.info("Saved dashboard stats to Redis cache with TTL {} seconds", cacheTtlSeconds);
+            redisTemplate.opsForValue().set(cacheKey, dashboardStats, ttl, TimeUnit.SECONDS);
+            log.info("Saved dashboard stats to Redis cache key={} with TTL {} seconds", cacheKey, ttl);
         } catch (Exception e) {
             log.warn("Failed to save dashboard stats to Redis cache: {}", e.getMessage());
         }

@@ -14,5 +14,5 @@ import org.springframework.web.bind.annotation.GetMapping;
 public interface PaymentClient {
 
     @GetMapping("/api/v1/internal/payments/stats")
-    ApiResponse<PaymentInternalStatsResponse> getStats();
+    ApiResponse<PaymentInternalStatsResponse> getStats(@org.springframework.web.bind.annotation.RequestParam(value = "date", required = false) String date);
 }
