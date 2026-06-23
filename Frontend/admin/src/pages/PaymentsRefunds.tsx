@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Card, Table, Tabs, Input, Select, DatePicker, Tag, Button, Space, Tooltip } from 'antd';
-import { CreditCardOutlined, HistoryOutlined, RedoOutlined } from '@ant-design/icons';
+import { CreditCardOutlined, HistoryOutlined, RedoOutlined, SearchOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { paymentService } from '@/services/payment.service';
 import { UserResolver } from '@/components/payment/UserResolver';
@@ -416,20 +416,16 @@ const PaymentsRefunds: React.FC = () => {
         <div className="space-y-4">
           {/* Filters Payments */}
           <div className="flex flex-wrap items-center gap-3 bg-gray-50 p-4 rounded-2xl border border-gray-100">
-            <Input.Search
+            <Input
               placeholder="Tìm theo mã đơn hàng..."
               allowClear
-              className="w-full sm:w-64 rounded-xl"
-              onSearch={(val) => {
-                setPayOrderCode(val);
+              value={payOrderCode}
+              onChange={(e) => {
+                setPayOrderCode(e.target.value || undefined);
                 setPayPage(1);
               }}
-              onChange={(e) => {
-                if (!e.target.value) {
-                  setPayOrderCode(undefined);
-                  setPayPage(1);
-                }
-              }}
+              prefix={<SearchOutlined className="text-gray-400" />}
+              className="w-full sm:w-64 rounded-xl bg-gray-50 border-transparent hover:border-gray-200 focus:border-primary focus:bg-white transition-all"
             />
             <Select
               placeholder="Trạng thái thanh toán"
@@ -496,65 +492,49 @@ const PaymentsRefunds: React.FC = () => {
         <div className="space-y-4">
           {/* Filters Refunds */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 bg-gray-50 p-4 rounded-2xl border border-gray-100">
-            <Input.Search
+            <Input
               placeholder="Mã đơn hàng (Order ID)..."
               allowClear
-              className="w-full rounded-xl"
-              onSearch={(val) => {
-                setRefOrderId(val || undefined);
+              value={refOrderId}
+              onChange={(e) => {
+                setRefOrderId(e.target.value || undefined);
                 setRefPage(1);
               }}
-              onChange={(e) => {
-                if (!e.target.value) {
-                  setRefOrderId(undefined);
-                  setRefPage(1);
-                }
-              }}
+              prefix={<SearchOutlined className="text-gray-400" />}
+              className="w-full rounded-xl bg-gray-50 border-transparent hover:border-gray-200 focus:border-primary focus:bg-white transition-all"
             />
-            <Input.Search
+            <Input
               placeholder="Mã thanh toán (Payment ID)..."
               allowClear
-              className="w-full rounded-xl"
-              onSearch={(val) => {
-                setRefPaymentId(val || undefined);
+              value={refPaymentId}
+              onChange={(e) => {
+                setRefPaymentId(e.target.value || undefined);
                 setRefPage(1);
               }}
-              onChange={(e) => {
-                if (!e.target.value) {
-                  setRefPaymentId(undefined);
-                  setRefPage(1);
-                }
-              }}
+              prefix={<SearchOutlined className="text-gray-400" />}
+              className="w-full rounded-xl bg-gray-50 border-transparent hover:border-gray-200 focus:border-primary focus:bg-white transition-all"
             />
-            <Input.Search
+            <Input
               placeholder="Mã khách hàng (User ID)..."
               allowClear
-              className="w-full rounded-xl"
-              onSearch={(val) => {
-                setRefUserId(val || undefined);
+              value={refUserId}
+              onChange={(e) => {
+                setRefUserId(e.target.value || undefined);
                 setRefPage(1);
               }}
-              onChange={(e) => {
-                if (!e.target.value) {
-                  setRefUserId(undefined);
-                  setRefPage(1);
-                }
-              }}
+              prefix={<SearchOutlined className="text-gray-400" />}
+              className="w-full rounded-xl bg-gray-50 border-transparent hover:border-gray-200 focus:border-primary focus:bg-white transition-all"
             />
-            <Input.Search
+            <Input
               placeholder="Mã người duyệt (Admin ID)..."
               allowClear
-              className="w-full rounded-xl"
-              onSearch={(val) => {
-                setRefRequestedBy(val || undefined);
+              value={refRequestedBy}
+              onChange={(e) => {
+                setRefRequestedBy(e.target.value || undefined);
                 setRefPage(1);
               }}
-              onChange={(e) => {
-                if (!e.target.value) {
-                  setRefRequestedBy(undefined);
-                  setRefPage(1);
-                }
-              }}
+              prefix={<SearchOutlined className="text-gray-400" />}
+              className="w-full rounded-xl bg-gray-50 border-transparent hover:border-gray-200 focus:border-primary focus:bg-white transition-all"
             />
             <Select
               placeholder="Trạng thái hoàn tiền"

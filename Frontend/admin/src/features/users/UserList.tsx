@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, Table, Button, Input, Space } from 'antd';
 import { message, modal } from '@/lib/antd';
 import { PlusOutlined, SearchOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
@@ -17,13 +17,27 @@ const UserList: React.FC = () => {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchText, setSearchText] = useState('');
   const queryClient = useQueryClient();
 
-  // Lấy danh sách users có phân trang
+  // Lấy danh sách users (size 200) để tìm kiếm và phân trang phía Client
   const { data: usersData, isLoading } = useQuery({
-    queryKey: ['users', currentPage],
-    queryFn: () => userService.getUsers(currentPage - 1, PAGE_SIZE),
+    queryKey: ['users'],
+    queryFn: () => userService.getUsers(0, 200),
   });
+
+  const filteredUsers = useMemo(() => {
+    const allUsers = usersData?.data?.content || [];
+    if (!searchText) return allUsers;
+    const lowerSearch = searchText.toLowerCase().trim();
+    return allUsers.filter((user: User) => {
+      return (
+        user.fullName?.toLowerCase().includes(lowerSearch) ||
+        user.email?.toLowerCase().includes(lowerSearch) ||
+        user.phone?.toLowerCase().includes(lowerSearch)
+      );
+    });
+  }, [usersData?.data?.content, searchText]);
 
   // Mutation tạo user
   const createUserMutation = useMutation({
@@ -156,9 +170,9 @@ const UserList: React.FC = () => {
     }
   ];
 
-  // Xử lý dữ liệu trả về theo format API (response.data.data.content)
-  const dataSource: User[] = usersData?.data?.content || [];
-  const totalElements: number = usersData?.data?.totalElements ?? 0;
+  // Xử lý dữ liệu trả về theo client-side filter
+  const dataSource: User[] = filteredUsers;
+  const totalElements: number = filteredUsers.length;
 
   const handleTableChange = (pagination: TablePaginationConfig) => {
     setCurrentPage(pagination.current ?? 1);
@@ -189,6 +203,12 @@ const UserList: React.FC = () => {
             placeholder="Tìm kiếm người dùng..."
             prefix={<SearchOutlined className="text-gray-400" />}
             className="rounded-xl bg-gray-50 border-transparent hover:border-gray-200 focus:border-primary focus:bg-white transition-all"
+            value={searchText}
+            onChange={(e) => {
+              setSearchText(e.target.value);
+              setCurrentPage(1);
+            }}
+            allowClear
           />
         </div>
 

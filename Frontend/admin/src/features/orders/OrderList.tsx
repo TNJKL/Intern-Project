@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card, Table, Space, Button, Input, Select, Tag, Tooltip, Tabs, Badge, DatePicker } from 'antd';
-import { EyeOutlined, ClockCircleOutlined, HistoryOutlined } from '@ant-design/icons';
+import { EyeOutlined, ClockCircleOutlined, HistoryOutlined, SearchOutlined } from '@ant-design/icons';
 import { useOrders, useUpdateOrderStatus } from './hooks/useOrders';
 import { message } from '@/lib/antd';
 import { type Order } from '@/services/order.service';
@@ -233,18 +233,16 @@ const OrderList: React.FC = () => {
               setCurrentPage(1);
             }}
           />
-          <Input.Search
+          <Input
             placeholder="Tìm kiếm mã đơn..."
             allowClear
+            value={keyword}
             onChange={(e) => {
               setKeyword(e.target.value);
               setCurrentPage(1);
             }}
-            onSearch={(value) => {
-              setKeyword(value);
-              setCurrentPage(1);
-            }}
-            className="w-full sm:w-64 rounded-xl"
+            prefix={<SearchOutlined className="text-gray-400" />}
+            className="w-full sm:w-64 rounded-xl bg-gray-50 border-transparent hover:border-gray-200 focus:border-primary focus:bg-white transition-all"
             size="large"
           />
         </div>
