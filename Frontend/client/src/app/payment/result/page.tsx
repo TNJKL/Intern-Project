@@ -37,14 +37,14 @@ function PaymentResultContent() {
 
   if (isSuccess === null) {
     return (
-      <div className="min-h-screen bg-[#fdf3eb]/40 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#91461e]"></div>
+      <div className="min-h-screen bg-secondary/30 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#fdf3eb]/40 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-secondary/30 flex items-center justify-center p-4">
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -72,11 +72,11 @@ function PaymentResultContent() {
           </>
         )}
 
-        <div className="bg-[#91461e]/5 border border-[#91461e]/10 rounded-2xl p-4 my-6 text-left space-y-2">
+        <div className="bg-primary/5 border border-primary/10 rounded-2xl p-4 my-6 text-left space-y-2">
           {orderCode && (
             <div className="flex justify-between text-xs">
               <span className="text-gray-400 font-bold uppercase tracking-wider">Mã đơn hàng:</span>
-              <span className="font-black text-[#91461e] tracking-widest">{orderCode}</span>
+              <span className="font-black text-primary tracking-widest">{orderCode}</span>
             </div>
           )}
           {amount && (
@@ -96,7 +96,7 @@ function PaymentResultContent() {
         <div className="space-y-3">
           <Link
             href="/orders"
-            className="block w-full bg-[#91461e] text-white py-4 rounded-xl font-bold hover:bg-[#723314] transition-all text-sm text-center shadow-md shadow-[#91461e]/10"
+            className="block w-full bg-primary text-white py-4 rounded-xl font-bold hover:bg-primary/90 transition-all text-sm text-center shadow-md shadow-primary/10"
           >
             Lịch sử mua hàng
           </Link>
@@ -115,8 +115,8 @@ function PaymentResultContent() {
 export default function PaymentResultPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#fdf3eb]/40 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#91461e]"></div>
+      <div className="min-h-screen bg-secondary/30 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
       </div>
     }>
       <PaymentResultContent />

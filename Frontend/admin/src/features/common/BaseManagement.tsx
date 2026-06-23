@@ -64,9 +64,14 @@ export const BaseManagement = <T extends { id: string }>({
     }
   };
 
+  // Hàm kiểm tra bản ghi đã bị xóa mềm (thực sự nằm trong thùng rác)
+  const isSoftDeletedRecord = (r: any) => {
+    return !!(r.isDeleted || r.deleted || r.deletedAt || r.status === 'DELETED');
+  };
+
   // Hàm kiểm tra bản ghi thuộc diện Không hoạt động / Đã xóa
   const isDeletedRecord = (r: any) => {
-    const isDeleted = !!(r.isDeleted || r.deleted || r.deletedAt || r.status === 'DELETED');
+    const isDeleted = isSoftDeletedRecord(r);
     const isNotAvailable = r.isAvailable === false;
     const isNotActive = r.isActive === false;
     return isDeleted || isNotAvailable || isNotActive;
@@ -141,7 +146,7 @@ export const BaseManagement = <T extends { id: string }>({
     key: 'action',
     width: 150,
     render: (_: any, record: T) => {
-      const isDeleted = isDeletedRecord(record);
+      const isSoftDeleted = isSoftDeletedRecord(record);
 
       return (
         <Space size="middle">
@@ -154,7 +159,7 @@ export const BaseManagement = <T extends { id: string }>({
             }}
             className="text-blue-500 hover:text-blue-600"
           />
-          {!isDeleted ? (
+          {!isSoftDeleted ? (
             <>
               <Button
                 type="text"

@@ -170,34 +170,34 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ open, onClose
 
                   <form onSubmit={handleUpdatePassword} className="space-y-5">
                     <div>
-                      <label className="text-[10px] font-black uppercase tracking-widest text-coffee-medium mb-2 block">Mật khẩu hiện tại</label>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-primary/60 mb-2 block">Mật khẩu hiện tại</label>
                       <input
                         type="password"
                         value={form.oldPassword}
                         onChange={(e) => setForm({ ...form, oldPassword: e.target.value })}
-                        className="w-full bg-coffee-light/5 border border-coffee-light/10 rounded-2xl px-6 py-4 outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all font-bold text-coffee-dark"
+                        className="w-full bg-primary/5 border border-primary/10 rounded-2xl px-6 py-4 outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all font-bold text-coffee-dark"
                         required
                         placeholder="••••••••"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] font-black uppercase tracking-widest text-coffee-medium mb-2 block">Mật khẩu mới</label>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-primary/60 mb-2 block">Mật khẩu mới</label>
                       <input
                         type="password"
                         value={form.newPassword}
                         onChange={(e) => setForm({ ...form, newPassword: e.target.value })}
-                        className="w-full bg-coffee-light/5 border border-coffee-light/10 rounded-2xl px-6 py-4 outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all font-bold text-coffee-dark"
+                        className="w-full bg-primary/5 border border-primary/10 rounded-2xl px-6 py-4 outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all font-bold text-coffee-dark"
                         required
                         placeholder="••••••••"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] font-black uppercase tracking-widest text-coffee-medium mb-2 block">Xác nhận mật khẩu mới</label>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-primary/60 mb-2 block">Xác nhận mật khẩu mới</label>
                       <input
                         type="password"
                         value={form.confirmPassword}
                         onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-                        className="w-full bg-coffee-light/5 border border-coffee-light/10 rounded-2xl px-6 py-4 outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all font-bold text-coffee-dark"
+                        className="w-full bg-primary/5 border border-primary/10 rounded-2xl px-6 py-4 outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all font-bold text-coffee-dark"
                         required
                         placeholder="••••••••"
                       />
@@ -214,7 +214,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ open, onClose
                       <button
                         type="submit"
                         disabled={isSaving}
-                        className="flex-2 py-4 px-8 bg-coffee-dark text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-primary transition-all shadow-xl shadow-coffee-dark/20 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="flex-2 py-4 px-8 bg-primary text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-primary/90 transition-all shadow-xl shadow-primary/20 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
                       >
                         {isSaving ? 'Đang lưu...' : 'Cập nhật'}
                       </button>

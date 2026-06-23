@@ -27,7 +27,9 @@ export async function proxy(request: NextRequest) {
 
     // ── ROUTE GUARD: Chỉ gọi auth() khi vào route được bảo vệ ───────────────
     const isProtected = pathname.startsWith('/profile') || 
-                        (pathname.startsWith('/orders') && !pathname.startsWith('/orders/track'));
+                        (pathname.startsWith('/orders') && 
+                         !pathname.startsWith('/orders/track') &&
+                         pathname !== '/orders');
 
     if (isProtected) {
         // Gọi auth() không có wrapper → chỉ đọc JWT từ cookie, KHÔNG gọi backend

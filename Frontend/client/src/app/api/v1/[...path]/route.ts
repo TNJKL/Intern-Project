@@ -7,6 +7,7 @@
 //  - Khi auth/refresh hoặc auth/login thành công: tự tạo Set-Cookie bền vững (Max-Age=7 ngày)
 
 import { NextRequest, NextResponse } from 'next/server';
+import { getGuestAccessToken } from '@/lib/guest-auth';
 
 const BACKEND_URL = process.env.GLOBAL_BACKEND_IP || 'http://localhost:8080';
 
@@ -28,30 +29,85 @@ function getCorsHeaders(origin: string | null) {
   };
 }
 
-/** Đảm bảo cookie accessToken/refreshToken luôn có Max-Age=7 ngày và được lưu ở Path=/ */
-function ensurePersistentCookie(cookieStr: string): string {
-  if (!cookieStr.includes('accessToken') && !cookieStr.includes('refreshToken')) {
-    return cookieStr;
-  }
-  
-  // Kiểm tra xem đây có phải là cookie xóa (Max-Age=0 hoặc giá trị trống/đã hết hạn)
+function parseCookies(cookieHeader: string): Record<string, string> {
+  const list: Record<string, string> = {};
+  if (!cookieHeader) return list;
+  cookieHeader.split(';').forEach((cookie) => {
+    const parts = cookie.split('=');
+    if (parts.length >= 2) {
+      list[parts[0].trim()] = parts.slice(1).join('=').trim();
+    }
+  });
+  return list;
+}
+
+function serializeCookies(cookies: Record<string, string>): string {
+  return Object.entries(cookies)
+    .map(([name, value]) => `${name}=${value}`)
+    .join('; ');
+}
+
+function rewriteSetCookieHeader(cookieStr: string, fromAdmin: boolean): string {
   const isDelete = /Max-Age=0/i.test(cookieStr) || /expires=Thu, 01 Jan 1970/i.test(cookieStr);
-  
-  // Xóa sạch các thuộc tính cũ để tránh trùng lặp
-  let c = cookieStr
-    .replace(/;\s*Max-Age=[^;]*/gi, '')
-    .replace(/;\s*Expires=[^;]*/gi, '')
-    .replace(/;\s*Path=[^;]*/gi, '')
-    .replace(/;\s*HttpOnly/gi, '');
-  
-  if (isDelete) {
-    c += '; Path=/; HttpOnly; Max-Age=0';
-  } else {
-    c += '; Path=/; HttpOnly; Max-Age=604800'; // 7 ngày
+
+  let name = '';
+  let value = '';
+  const match = cookieStr.match(/^\s*([^=;]+)\s*=\s*([^;]*)/);
+  if (match) {
+    name = match[1].trim();
+    value = match[2].trim();
   }
-  
-  if (!/;\s*SameSite=/i.test(c)) c += '; SameSite=Lax';
-  return c;
+
+  if (!name) return cookieStr;
+
+  let targetName = name;
+  let isHttpOnly = true;
+
+  if (fromAdmin) {
+    if (name === 'accessToken') {
+      targetName = 'adminAccessToken';
+      isHttpOnly = false; // Admin needs to read accessToken via js-cookie
+    } else if (name === 'refreshToken') {
+      targetName = 'adminRefreshToken';
+      isHttpOnly = true;
+    } else if (name === 'adminAccessToken') {
+      isHttpOnly = false;
+    } else if (name === 'adminRefreshToken') {
+      isHttpOnly = true;
+    }
+  } else {
+    // Client
+    if (name === 'accessToken' || name === 'refreshToken') {
+      isHttpOnly = true;
+    }
+  }
+
+  // Xác định Path cho cookie:
+  // - refreshToken và adminRefreshToken dùng path mặc định là '/api/v1/auth'
+  // - Các cookie khác dùng path mặc định là '/'
+  // Nếu trong cookieStr gốc có sẵn Path thì ưu tiên sử dụng Path gốc đó.
+  let path = (targetName === 'refreshToken' || targetName === 'adminRefreshToken') ? '/api/v1/auth' : '/';
+  const pathMatch = cookieStr.match(/Path\s*=\s*([^;]+)/i);
+  if (pathMatch) {
+    path = pathMatch[1].trim();
+  }
+
+  // Build new cookie string
+  let newCookie = `${targetName}=${value}; Path=${path}; SameSite=Lax`;
+  if (isHttpOnly) {
+    newCookie += '; HttpOnly';
+  }
+  if (isDelete) {
+    newCookie += '; Max-Age=0';
+  } else {
+    newCookie += '; Max-Age=604800'; // 7 ngày
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    newCookie += '; Secure';
+  }
+
+  return newCookie;
 }
 
 // Xử lý OPTIONS preflight
@@ -65,7 +121,15 @@ export async function OPTIONS(request: NextRequest) {
 
 async function proxyRequest(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const { path } = await params;
-  const origin = request.headers.get('origin');
+  const origin = request.headers.get('origin') || '';
+  const referer = request.headers.get('referer') || '';
+  const fromAdmin = origin.includes('localhost:5173') || referer.includes('localhost:5173');
+
+  const cookieHeader = request.headers.get('cookie') || '';
+  const cookiesMap = parseCookies(cookieHeader);
+  const hasAdminCookie = !!(cookiesMap['adminAccessToken'] || cookiesMap['adminRefreshToken']);
+  let isForAdmin = fromAdmin || hasAdminCookie;
+
   const corsHeaders = getCorsHeaders(origin);
 
   try {
@@ -96,10 +160,48 @@ async function proxyRequest(request: NextRequest, { params }: { params: Promise<
       forwardHeaders['Authorization'] = authorization;
     }
 
-    // Forward nguyên vẹn Cookie của trình duyệt (chứa accessToken, refreshToken)
-    const cookieHeader = request.headers.get('cookie') || '';
+    // Forward Cookie của trình duyệt, đổi tên cookie cho Admin App để cô lập
+    let hasAccessToken = false;
+
     if (cookieHeader) {
-      forwardHeaders['Cookie'] = cookieHeader;
+      if (isForAdmin) {
+        const mappedCookies: Record<string, string> = {};
+
+        // Map admin specific cookies to standard names backend expects
+        if (cookiesMap['adminAccessToken']) {
+          mappedCookies['accessToken'] = cookiesMap['adminAccessToken'];
+          hasAccessToken = true;
+        }
+        if (cookiesMap['adminRefreshToken']) {
+          mappedCookies['refreshToken'] = cookiesMap['adminRefreshToken'];
+        }
+
+        // Copy other cookies EXCEPT client's accessToken/refreshToken
+        Object.entries(cookiesMap).forEach(([key, val]) => {
+          if (key !== 'accessToken' && key !== 'refreshToken' && key !== 'adminAccessToken' && key !== 'adminRefreshToken') {
+            mappedCookies[key] = val;
+          }
+        });
+
+        forwardHeaders['Cookie'] = serializeCookies(mappedCookies);
+      } else {
+        forwardHeaders['Cookie'] = cookieHeader;
+        if (cookiesMap['accessToken']) {
+          hasAccessToken = true;
+        }
+      }
+    }
+
+    // Nếu là truy vấn voucher của khách vãng lai (không đăng nhập) -> Sử dụng tài khoản khách hệ thống ở background
+    if (pathStr === 'admin/vouchers' && !authorization && !hasAccessToken) {
+      try {
+        const guestToken = await getGuestAccessToken();
+        if (guestToken) {
+          forwardHeaders['Authorization'] = `Bearer ${guestToken}`;
+        }
+      } catch (e) {
+        console.error('[API Proxy] Không thể lấy token khách vãng lai:', e);
+      }
     }
 
     // ── Gửi request đến backend ─────────────────────────────────────────────
@@ -123,25 +225,41 @@ async function proxyRequest(request: NextRequest, { params }: { params: Promise<
 
     // ── Khi auth/refresh hoặc auth/login thành công: set cookie bền vững ────
     // Backend Springboot trả token trong JSON body (không phải Set-Cookie header)
-    // → Proxy tự tạo Set-Cookie với Max-Age=7 ngày, HttpOnly
+    // → Proxy tự tạo Set-Cookie với Max-Age=7 ngày
     if ((pathStr === 'auth/refresh' || pathStr === 'auth/login') && backendResponse.ok) {
       try {
         const data = JSON.parse(responseText);
         const newAccessToken = data?.data?.accessToken || data?.accessToken;
         const newRefreshToken = data?.data?.refreshToken || data?.refreshToken;
+        const user = data?.data?.user || data?.user;
+        const role = user?.role?.toUpperCase();
+        if (role === 'ADMIN' || role === 'STAFF') {
+          isForAdmin = true;
+        }
 
         if (newAccessToken) {
+          const accessCookie = rewriteSetCookieHeader(`accessToken=${newAccessToken}`, isForAdmin);
+          responseHeaders.append('Set-Cookie', accessCookie);
+          if (newRefreshToken) {
+            const refreshCookie = rewriteSetCookieHeader(`refreshToken=${newRefreshToken}`, isForAdmin);
+            responseHeaders.append('Set-Cookie', refreshCookie);
+
+            // Xóa cookie refreshToken bị thừa ở Path=/ để tránh xung đột Path (Cookie Collision)
+            const deleteTargetName = isForAdmin ? 'adminRefreshToken' : 'refreshToken';
+            const deleteSecure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+            responseHeaders.append('Set-Cookie', `${deleteTargetName}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${deleteSecure}`);
+          }
+
+          // ── Set tracking cookie (non-HttpOnly) để Axios interceptor đọc được ──
+          // Interceptor dùng cookie này để kiểm tra token có thực sự hết hạn không
+          // trước khi quyết định có nên refresh hay không (tránh logout nhầm khi 403 phân quyền)
           const secureFlag = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+          const trackingCookieName = isForAdmin ? 'adminLastRefreshedToken' : 'lastRefreshedToken';
           responseHeaders.append(
             'Set-Cookie',
-            `accessToken=${newAccessToken}; Path=/; HttpOnly; Max-Age=604800; SameSite=Lax${secureFlag}`
+            `${trackingCookieName}=${newAccessToken}; Path=/; Max-Age=604800; SameSite=Lax${secureFlag}`
+            // Không có HttpOnly → JS có thể đọc để check expiry
           );
-          if (newRefreshToken) {
-            responseHeaders.append(
-              'Set-Cookie',
-              `refreshToken=${newRefreshToken}; Path=/; HttpOnly; Max-Age=604800; SameSite=Lax${secureFlag}`
-            );
-          }
         }
       } catch {
         // Không parse được JSON – bỏ qua, vẫn trả về response bình thường
@@ -152,12 +270,12 @@ async function proxyRequest(request: NextRequest, { params }: { params: Promise<
     const setCookieValues = backendResponse.headers.getSetCookie();
     if (setCookieValues.length > 0) {
       setCookieValues.forEach((c) => {
-        responseHeaders.append('Set-Cookie', ensurePersistentCookie(c));
+        responseHeaders.append('Set-Cookie', rewriteSetCookieHeader(c, isForAdmin));
       });
     } else {
       const setCookie = backendResponse.headers.get('set-cookie');
       if (setCookie) {
-        responseHeaders.set('Set-Cookie', ensurePersistentCookie(setCookie));
+        responseHeaders.set('Set-Cookie', rewriteSetCookieHeader(setCookie, isForAdmin));
       }
     }
 
@@ -179,3 +297,4 @@ export const POST = proxyRequest;
 export const PUT = proxyRequest;
 export const PATCH = proxyRequest;
 export const DELETE = proxyRequest;
+

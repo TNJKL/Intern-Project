@@ -16,8 +16,19 @@ export async function getServerApi(endpoint: string, options: RequestInit = {}) 
             headers.set('ngrok-skip-browser-warning', '69420');
         }
 
-        // Forward Authorization header dự phòng từ session
-        if (session?.accessToken && !headers.has('Authorization')) {
+        // Nếu là endpoint lấy danh sách voucher, luôn dùng token khách vãng lai để tránh bị 403 (vì endpoint này là của admin)
+        if (endpoint.includes('admin/vouchers')) {
+            try {
+                const { getGuestAccessToken } = await import('@/lib/guest-auth');
+                const guestToken = await getGuestAccessToken();
+                if (guestToken) {
+                    headers.set('Authorization', `Bearer ${guestToken}`);
+                }
+            } catch (e) {
+                console.error('[server-api] Lỗi lấy token khách vãng lai:', e);
+            }
+        } else if (session?.accessToken && !headers.has('Authorization')) {
+            // Forward Authorization header dự phòng từ session cho các request khác
             headers.set('Authorization', `Bearer ${session.accessToken}`);
         }
 

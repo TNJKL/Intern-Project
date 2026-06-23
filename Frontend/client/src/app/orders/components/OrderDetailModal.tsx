@@ -22,7 +22,7 @@ const getStatusDisplay = (status: string) => {
         case "CONFIRMED": return { label: "Đã xác nhận", icon: CheckCircle2, color: "text-cyan-700", bg: "bg-cyan-50 border-cyan-200" };
         case "PREPARING": return { label: "Đang pha chế", icon: Coffee, color: "text-purple-700", bg: "bg-purple-50 border-purple-200" };
         case "READY": return { label: "Chờ giao", icon: Package, color: "text-orange-700", bg: "bg-orange-50 border-orange-200" };
-        case "DELIVERING": return { label: "Đang giao hàng", icon: Truck, color: "text-[#5c3d2e]", bg: "bg-[#5c3d2e]/10 border-[#5c3d2e]/20" };
+        case "DELIVERING": return { label: "Đang giao hàng", icon: Truck, color: "text-primary", bg: "bg-primary/10 border-primary/20" };
         case "COMPLETED": return { label: "Hoàn thành", icon: CheckCircle2, color: "text-green-700", bg: "bg-green-50 border-green-200" };
         case "CANCELLED": return { label: "Đã hủy", icon: X, color: "text-red-700", bg: "bg-red-50 border-red-200" };
         default: return { label: "Mới đặt", icon: Clock, color: "text-gray-700", bg: "bg-gray-50 border-gray-200" };
@@ -83,7 +83,7 @@ export function OrderDetailModal({
                 {/* Tiêu đề Form - Chữ to, đậm đà */}
                 <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-white shrink-0">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-[#5c3d2e]/10 text-[#5c3d2e] rounded-xl flex items-center justify-center">
+                        <div className="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center">
                             <FileText className="w-5 h-5" />
                         </div>
                         <div>
@@ -109,7 +109,7 @@ export function OrderDetailModal({
                 <div className="p-6 overflow-y-auto space-y-6 flex-1 text-sm scrollbar-none bg-white">
                     {isLoading ? (
                         <div className="flex flex-col items-center justify-center py-24 text-gray-500">
-                            <Loader2 className="w-12 h-12 animate-spin mb-4 text-[#5c3d2e]" />
+                            <Loader2 className="w-12 h-12 animate-spin mb-4 text-primary" />
                             <p className="text-base font-bold animate-pulse">Đang tải thông tin chi tiết đơn hàng...</p>
                         </div>
                     ) : orderDetail ? (
@@ -124,7 +124,7 @@ export function OrderDetailModal({
                                     <button
                                         onClick={handleRepay}
                                         disabled={isRepaying}
-                                        className="bg-[#5c3d2e] text-white text-xs font-black uppercase px-4 py-2.5 rounded-xl hover:bg-[#4a3125] transition-all flex items-center gap-1.5 shrink-0 shadow-sm disabled:opacity-50"
+                                        className="bg-primary text-white text-xs font-black uppercase px-4 py-2.5 rounded-xl hover:bg-primary/90 transition-all flex items-center gap-1.5 shrink-0 shadow-sm disabled:opacity-50"
                                     >
                                         {isRepaying && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                                         Thanh toán ngay
@@ -134,9 +134,9 @@ export function OrderDetailModal({
 
                             {/* Khối hiển thị Tổng quan 2 Cột */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="flex flex-col justify-center bg-[#5c3d2e]/5 p-4 rounded-2xl border border-[#5c3d2e]/15">
+                                <div className="flex flex-col justify-center bg-primary/5 p-4 rounded-2xl border border-primary/15">
                                     <span className="text-gray-600 font-extrabold text-xs uppercase tracking-wider mb-1">Mã đơn hàng</span>
-                                    <span className="text-[#5c3d2e] font-black text-lg sm:text-xl tracking-wide select-all">
+                                    <span className="text-primary font-black text-lg sm:text-xl tracking-wide select-all">
                                         {orderDetail.orderCode || orderDetail.id.slice(0, 8).toUpperCase()}
                                     </span>
                                 </div>
@@ -166,7 +166,7 @@ export function OrderDetailModal({
                                 {/* Cột trái: Thông tin nhận hàng (Rõ ràng, Tương phản cao) */}
                                 <div className="space-y-3 flex flex-col">
                                     <h4 className="font-black text-gray-900 uppercase tracking-wider text-xs flex items-center gap-2">
-                                        <MapPin className="w-4 h-4 text-[#5c3d2e]" /> Thông tin nhận hàng
+                                        <MapPin className="w-4 h-4 text-primary" /> Thông tin nhận hàng
                                     </h4>
                                     <div className="bg-gray-50/80 rounded-2xl p-5 space-y-4 text-sm border border-gray-200/60 flex-1">
                                         <div>
@@ -207,7 +207,7 @@ export function OrderDetailModal({
                                 {/* Cột phải: Chi tiết tài chính thanh toán */}
                                 <div className="space-y-3 flex flex-col">
                                     <h4 className="font-black text-gray-900 uppercase tracking-wider text-xs flex items-center gap-2">
-                                        <CreditCard className="w-4 h-4 text-[#5c3d2e]" /> Trạng thái & Giá trị đơn
+                                        <CreditCard className="w-4 h-4 text-primary" /> Trạng thái & Giá trị đơn
                                     </h4>
                                     <div className="bg-gray-50/80 rounded-2xl p-5 flex flex-col justify-between text-sm border border-gray-200/60 flex-1 min-h-[180px]">
                                         <div>
@@ -239,7 +239,7 @@ export function OrderDetailModal({
                             {/* Danh sách món ăn / đồ uống */}
                             <div className="space-y-3">
                                 <h4 className="font-black text-gray-900 uppercase tracking-wider text-xs flex items-center gap-2">
-                                    <Coffee className="w-4 h-4 text-[#5c3d2e]" /> Danh sách món ăn / đồ uống đã đặt
+                                    <Coffee className="w-4 h-4 text-primary" /> Danh sách món ăn / đồ uống đã đặt
                                 </h4>
                                 <div className="bg-gray-50/80 rounded-2xl p-5 space-y-4 border border-gray-200/60">
                                     {orderDetail.items && orderDetail.items.length > 0 ? (
@@ -247,7 +247,7 @@ export function OrderDetailModal({
                                             <div key={item.id || idx} className="flex justify-between items-center border-b border-gray-200/60 pb-4 last:border-0 last:pb-0 gap-4">
                                                 <div className="flex-1 space-y-1">
                                                     <p className="font-bold text-gray-900 text-base">
-                                                        <span className="text-[#5c3d2e] font-black text-lg mr-2 bg-[#5c3d2e]/10 px-2 py-0.5 rounded-lg inline-block">
+                                                        <span className="text-primary font-black text-lg mr-2 bg-primary/10 px-2 py-0.5 rounded-lg inline-block">
                                                             {item.quantity}x
                                                         </span>
                                                         {item.productName}
@@ -292,14 +292,14 @@ export function OrderDetailModal({
                             <p className="text-xs font-black text-gray-500 uppercase tracking-wider flex items-center gap-1">
                                 <DollarSign className="w-3.5 h-3.5 text-gray-600" /> Tổng thanh toán
                             </p>
-                            <p className="text-2xl sm:text-3xl font-black text-[#5c3d2e] tracking-tight">
+                            <p className="text-2xl sm:text-3xl font-black text-primary tracking-tight">
                                 {orderDetail.totalAmount?.toLocaleString("vi-VN") ?? 0}đ
                             </p>
                         </div>
 
                         <div className="flex items-center gap-3 w-full sm:w-auto">
                             {orderDetail.status?.toUpperCase() === "COMPLETED" && (
-                                <button className="flex-1 sm:flex-initial px-6 py-3.5 bg-[#5c3d2e] text-white rounded-xl font-bold hover:bg-[#4a3125] active:scale-98 transition-all uppercase tracking-wider text-sm shadow-md">
+                                <button className="flex-1 sm:flex-initial px-6 py-3.5 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 active:scale-98 transition-all uppercase tracking-wider text-sm shadow-md">
                                     Mua lại đơn này
                                 </button>
                             )}

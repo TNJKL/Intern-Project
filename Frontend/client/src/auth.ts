@@ -114,15 +114,50 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           // và bị trình duyệt xóa khi tab đi vào chế độ ngủ (Memory Saver)
           try {
             const cookieStore = await cookies();
+            const role = profile?.role?.toUpperCase();
+            const isAdmin = role === 'ADMIN' || role === 'STAFF';
+
+            const accessName = isAdmin ? 'adminAccessToken' : 'accessToken';
+            const refreshName = isAdmin ? 'adminRefreshToken' : 'refreshToken';
+            const lastRefreshedName = isAdmin ? 'adminLastRefreshedToken' : 'lastRefreshedToken';
+
             const cookieOptions = {
               path: '/',
-              httpOnly: true,
+              httpOnly: !isAdmin, // Admin needs to read accessToken via js-cookie
               secure: process.env.NODE_ENV === 'production',
               sameSite: 'lax' as const,
               maxAge: 7 * 24 * 60 * 60, // 7 ngày (giây)
             };
-            cookieStore.set('accessToken', accessToken, cookieOptions);
-            cookieStore.set('refreshToken', refreshToken, cookieOptions);
+
+            // Set access token
+            cookieStore.set(accessName, accessToken, cookieOptions);
+
+            // Set refresh token (always httpOnly: true, path /api/v1/auth)
+            cookieStore.set(refreshName, refreshToken, {
+              ...cookieOptions,
+              httpOnly: true,
+              path: '/api/v1/auth',
+            });
+
+            // Set last refreshed token (always httpOnly: false, path /)
+            cookieStore.set(lastRefreshedName, accessToken, {
+              path: '/',
+              httpOnly: false,
+              secure: process.env.NODE_ENV === 'production',
+              sameSite: 'lax' as const,
+              maxAge: 7 * 24 * 60 * 60,
+            });
+
+            // Cleanup opposite role's cookies to prevent conflicts
+            if (isAdmin) {
+              cookieStore.delete('accessToken');
+              cookieStore.delete('lastRefreshedToken');
+              cookieStore.delete({ name: 'refreshToken', path: '/api/v1/auth' });
+            } else {
+              cookieStore.delete('adminAccessToken');
+              cookieStore.delete('adminLastRefreshedToken');
+              cookieStore.delete({ name: 'adminRefreshToken', path: '/api/v1/auth' });
+            }
           } catch (e) {
             console.warn('[NextAuth] authorize: Không thể set browser cookies:', e);
           }
@@ -143,8 +178,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       let cookieRefreshToken: string | undefined;
       try {
         const cookieStore = await cookies();
-        cookieAccessToken = cookieStore.get('accessToken')?.value;
-        cookieRefreshToken = cookieStore.get('refreshToken')?.value;
+        const role = token?.profile?.role?.toUpperCase() || (user as any)?.profile?.role?.toUpperCase();
+        const isAdmin = role === 'ADMIN' || role === 'STAFF';
+        const accessName = isAdmin ? 'adminAccessToken' : 'accessToken';
+        const refreshName = isAdmin ? 'adminRefreshToken' : 'refreshToken';
+
+        cookieAccessToken = cookieStore.get(accessName)?.value;
+        cookieRefreshToken = cookieStore.get(refreshName)?.value;
       } catch {
         // Bình thường nếu chạy ngoài request context (vd: background revalidation)
       }
@@ -204,9 +244,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signOut() {
       try {
         const cookieStore = await cookies();
+        // Xóa các cookie ở Path=/
         cookieStore.delete('accessToken');
-        cookieStore.delete('refreshToken');
-        console.log('[NextAuth] signOut: Đã xóa cookies accessToken và refreshToken');
+        cookieStore.delete('refreshToken'); // Xoá phòng hờ bản cũ ở path=/
+        cookieStore.delete('lastRefreshedToken');
+        cookieStore.delete('adminAccessToken');
+        cookieStore.delete('adminRefreshToken'); // Xoá phòng hờ bản cũ ở path=/
+        cookieStore.delete('adminLastRefreshedToken');
+        
+        // Xóa các cookie HttpOnly ở Path=/api/v1/auth để tránh sót rác
+        cookieStore.delete({ name: 'refreshToken', path: '/api/v1/auth' });
+        cookieStore.delete({ name: 'adminRefreshToken', path: '/api/v1/auth' });
+        
+        console.log('[NextAuth] signOut: Đã xóa toàn bộ cookies bao gồm admin cookies ở mọi path');
       } catch (e) {
         console.error('[NextAuth] signOut: Lỗi khi xóa cookies:', e);
       }

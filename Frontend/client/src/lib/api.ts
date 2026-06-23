@@ -2,6 +2,7 @@ import axios from 'axios';
 import { store } from '../store/redux/store';
 import { clearCredentials } from '../store/redux/authSlice';
 import { signOut } from 'next-auth/react';
+import Cookies from 'js-cookie';
 
 /**
  * 📄 src/lib/api.ts
@@ -22,6 +23,7 @@ export const apiClient = axios.create({
 
 let isRefreshing = false;
 let failedQueue: Array<{ resolve: () => void; reject: (err: any) => void }> = [];
+let lastRefreshTime = 0;
 
 const processQueue = (error: any) => {
   failedQueue.forEach((prom) => (error ? prom.reject(error) : prom.resolve()));
@@ -29,7 +31,36 @@ const processQueue = (error: any) => {
 };
 
 // ─── Request interceptor ───
-apiClient.interceptors.request.use((config) => config);
+apiClient.interceptors.request.use((config) => {
+  // Client App luôn dùng 'lastRefreshedToken' (không dùng adminAccessToken/adminRefreshToken)
+  (config as any)._tokenSent = Cookies.get('lastRefreshedToken') || '';
+  return config;
+});
+
+// Hàm kiểm tra thời hạn JWT
+function isTokenExpired(token: string | null | undefined): boolean {
+  if (!token) return true;
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return true;
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    
+    let jsonPayload: string;
+    if (typeof window === 'undefined') {
+      jsonPayload = Buffer.from(base64, 'base64').toString('utf8');
+    } else {
+      jsonPayload = atob(base64);
+    }
+    
+    const payload = JSON.parse(jsonPayload);
+    if (typeof payload.exp !== 'number') return true;
+    // Hết hạn hoặc sẽ hết hạn trong vòng 5 giây tới
+    return payload.exp * 1000 < Date.now() + 5000;
+  } catch (e) {
+    return true;
+  }
+}
 
 // ─── Response interceptor: Tự động refresh token bằng Cookie ───
 apiClient.interceptors.response.use(
@@ -37,11 +68,50 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     const status = error.response?.status;
-    const isAuthError = status === 401 || status === 403;
+    // Client App luôn dùng 'lastRefreshedToken' – không bao giờ dùng adminAccessToken
+    const LAST_REFRESHED_KEY = 'lastRefreshedToken';
+    const isExpired = error.response?.data?.errorCode === 'TOKEN_EXPIRED';
+
+    // Chỉ coi 403 là lỗi Auth (cần refresh) nếu token thực sự hết hạn hoặc không có token.
+    // Nếu token vẫn còn hạn mà bị 403 -> lỗi phân quyền (Forbidden) thông thường, không refresh.
+    let isAuthError = false;
+    if (status === 401 || isExpired) {
+      isAuthError = true;
+    } else if (status === 403) {
+      // Dùng accessToken từ Redux store, nếu không có thì đọc từ cookie client
+      // KHÔNG dùng adminAccessToken vì đây là Client App
+      const token = store.getState().auth.accessToken || Cookies.get(LAST_REFRESHED_KEY);
+      
+      if (!token || isTokenExpired(token)) {
+        isAuthError = true;
+      } else {
+        console.warn('[Client API] Legitimate 403 Forbidden (Permission denied). Bypassing refresh.');
+      }
+    }
 
     // Tránh loop vô hạn nếu request này đã retry hoặc không phải lỗi Auth
     if (!isAuthError || originalRequest._retry) {
       return Promise.reject(error);
+    }
+
+    // Nếu vừa mới refresh thành công trong vòng 5 giây qua, chỉ cần retry trực tiếp
+    const now = Date.now();
+    if (now - lastRefreshTime < 5000) {
+      console.log('[Client API] Refresh occurred less than 5s ago. Retrying original request directly.');
+      originalRequest._retry = true;
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      return apiClient(originalRequest);
+    }
+
+    // ─── KIỂM TRA ĐỒNG BỘ ĐA TAB TRƯỚC KHI REFRESH ───
+    // Nếu token trong cookie đã thay đổi so với token lúc gửi request,
+    // nghĩa là có tab khác đã refresh thành công. Ta chỉ cần retry lại request gốc.
+    const tokenSent = originalRequest._tokenSent || '';
+    const currentToken = Cookies.get(LAST_REFRESHED_KEY) || '';
+    if (currentToken && currentToken !== tokenSent) {
+      console.log('[Client API] Token has been refreshed by another tab. Retrying original request.');
+      originalRequest._retry = true;
+      return apiClient(originalRequest);
     }
 
     // Nếu đang có một tiến trình refresh token khác đang chạy -> Xếp hàng đợi
@@ -58,53 +128,103 @@ apiClient.interceptors.response.use(
     originalRequest._retry = true;
     isRefreshing = true;
 
+    // Lưu lại giá trị token trước khi thực hiện refresh để đối chiếu race condition đa tab
+    originalRequest._lastRefreshedBefore = Cookies.get('lastRefreshedToken') || '';
+
     try {
       // "Ra tín hiệu" refresh token: gửi POST rỗng sang endpoint của backend qua proxy.
       // Trình duyệt sẽ tự động gửi kèm cookie refreshToken.
       // Backend phản hồi và Set-Cookie cặp accessToken + refreshToken mới, proxy sẽ trả về cho trình duyệt lưu.
-      await axios.post('/api/v1/auth/refresh', {}, { withCredentials: true });
+      const res = await axios.post('/api/v1/auth/refresh', {}, { withCredentials: true });
 
+      const responseData = res.data;
+      const newToken = responseData?.data?.accessToken || responseData?.accessToken;
+      const newUser = responseData?.data?.user || responseData?.user;
+      if (newToken) {
+        Cookies.set('lastRefreshedToken', newToken, { path: '/' });
+        // Cập nhật Redux store để các component re-render với token mới
+        const { updateAccessToken } = await import('../store/redux/authSlice');
+        store.dispatch(updateAccessToken({ accessToken: newToken, ...(newUser ? { user: newUser } : {}) }));
+      }
+
+      lastRefreshTime = Date.now(); // Cập nhật thời điểm refresh thành công
       processQueue(null);
       return apiClient(originalRequest);
     } catch (refreshError) {
+      // Kiểm tra xem có phải lỗi do refresh token đã được sử dụng bởi tab khác hay không
+      const isAxiosErr = axios.isAxiosError(refreshError);
+      const errMsg = isAxiosErr ? refreshError.response?.data?.message : '';
+      const isReplayedToken = errMsg === 'Refresh token đã được sử dụng';
+
+      if (isReplayedToken) {
+        console.log('[Client API] Refresh token already used by another tab. Waiting for cookie sync and retrying...');
+        // Chờ 1.5 giây để tab khác hoàn tất việc ghi cookie mới
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        processQueue(null);
+        return apiClient(originalRequest);
+      }
+
+      // Đối với các lỗi khác, kiểm tra xem có tab nào khác vừa mới refresh thành công hay không
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      const lastRefreshedAfter = Cookies.get('lastRefreshedToken') || '';
+      const wasRefreshedByOther = lastRefreshedAfter && lastRefreshedAfter !== originalRequest._lastRefreshedBefore;
+
+      if (wasRefreshedByOther) {
+        console.log('[Client API] Another tab has successfully refreshed the token. Syncing and retrying.');
+        processQueue(null);
+        return apiClient(originalRequest);
+      }
+
       processQueue(refreshError);
 
       // Lưu chi tiết lỗi vào localStorage trước khi chuyển hướng để tránh mất log
+      let failStatus: number | null = null;
+      let failedUrl = '';
       if (typeof window !== 'undefined') {
         try {
-          const isAxiosErr = axios.isAxiosError(refreshError);
+          failStatus = (isAxiosErr && refreshError.response) ? refreshError.response.status : null;
+          failedUrl = isAxiosErr && refreshError.config?.url ? refreshError.config.url : '';
           const errDetail = {
             timestamp: new Date().toISOString(),
-            status: isAxiosErr ? refreshError.response?.status : 'unknown',
+            status: failStatus || 'unknown',
             data: isAxiosErr ? refreshError.response?.data : null,
             message: refreshError instanceof Error ? refreshError.message : String(refreshError),
-            url: isAxiosErr ? refreshError.config?.url : '',
+            url: failedUrl,
           };
-          console.error('[API Client] Refresh Token Failed:', errDetail);
+          console.error('[Client API] Token Refresh / Retry Failed:', errDetail);
           localStorage.setItem('last_auth_error_client', JSON.stringify(errDetail));
         } catch (e) {
-          console.error('[API Client] Failed to save error details:', e);
+          console.error('[Client API] Failed to save error details:', e);
         }
       }
 
-      // Nếu refresh thất bại (ví dụ: Refresh Token hết hạn thực sự) -> Đăng xuất
-      store.dispatch(clearCredentials());
-      try {
-        await signOut({ redirect: false });
-      } catch {}
+      // CHỈ CƯỠNG CHẾ ĐĂNG XUẤT nếu chính request refresh token thất bại!
+      // Không logout khi originalRequest bị 403 do phân quyền.
+      const isRefreshEndpoint = failedUrl.includes('/auth/refresh');
+      const isAuthFailure = failStatus === 401 || failStatus === 403 || failStatus === 400;
 
-      if (typeof window !== 'undefined') {
-        // Xóa tạm thời cookie ở client side (chỉ xóa được nếu cookie không phải HttpOnly, 
-        // nhưng ghi đè hết hạn là best practice để dọn dẹp)
-        document.cookie = "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
-        document.cookie = "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+      if (isAuthFailure && isRefreshEndpoint) {
+        store.dispatch(clearCredentials());
+        try {
+          await signOut({ redirect: false });
+        } catch { }
 
-        const pathname = window.location.pathname;
-        const protectedPaths = ['/profile', '/orders', '/admin'];
-        const isProtected = protectedPaths.some((p) => pathname.startsWith(p));
-        if (isProtected) {
-          window.location.href = '/login';
+        if (typeof window !== 'undefined') {
+          // Chỉ xóa cookie của Client App, không xóa cookie của Admin App
+          document.cookie = "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+          document.cookie = "refreshToken=; path=/api/v1/auth; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+          document.cookie = "lastRefreshedToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+
+          const pathname = window.location.pathname;
+          const protectedPaths = ['/profile', '/orders'];
+          const isProtected = protectedPaths.some((p) => pathname.startsWith(p));
+          if (isProtected) {
+            window.location.href = '/login';
+          }
         }
+      } else {
+        console.warn('[Client API] Temporary network or server error. Retaining session (no logout).');
       }
 
       return Promise.reject(refreshError);

@@ -22,10 +22,13 @@ export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const cookieStore = await cookies();
-    const refreshToken = cookieStore.get('refreshToken')?.value;
+    // Ưu tiên đọc adminRefreshToken trước (vì đây là token của Admin)
+    const adminRefreshToken = cookieStore.get('adminRefreshToken')?.value;
+    const clientRefreshToken = cookieStore.get('refreshToken')?.value;
+    const refreshToken = adminRefreshToken || clientRefreshToken;
 
     if (!refreshToken) {
       // Thử lấy từ NextAuth session nếu cookie không có
@@ -38,19 +41,37 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Lấy cookie header từ request để forward xuống backend
-    const cookieHeader = request.headers.get('cookie') || '';
+    // Hàm gọi backend để refresh token với một refreshToken cụ thể
+    const callBackendRefresh = async (tokenValue: string): Promise<Response> => {
+      return fetch(`${BACKEND_URL}/api/v1/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': '69420',
+          // Chỉ gửi đúng 1 refreshToken, không gửi cả 2 để tránh xung đột
+          'Cookie': `refreshToken=${tokenValue}`,
+        },
+        signal: AbortSignal.timeout(10000),
+      });
+    };
 
-    // Gọi backend refresh endpoint — backend đọc refreshToken từ Cookie header
-    const backendRes = await fetch(`${BACKEND_URL}/api/v1/auth/refresh`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': '69420',
-        ...(cookieHeader ? { Cookie: cookieHeader } : {}),
-      },
-      signal: AbortSignal.timeout(10000),
-    });
+    // Ưu tiên dùng adminRefreshToken
+    let backendRes = await callBackendRefresh(refreshToken!);
+
+    // Nếu adminRefreshToken đã bị dùng và có clientRefreshToken, thử với clientRefreshToken
+    if (!backendRes.ok && adminRefreshToken && clientRefreshToken) {
+      const errText = await backendRes.text();
+      let parsedErr: any = {};
+      try { parsedErr = JSON.parse(errText); } catch {}
+      const isReplayed = parsedErr?.message === 'Refresh token đã được sử dụng';
+      
+      if (isReplayed) {
+        console.log('[session-token] adminRefreshToken đã được sử dụng. Thử lại với clientRefreshToken...');
+        // Đợi 1 giây để backend commit refreshToken mới
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        backendRes = await callBackendRefresh(clientRefreshToken);
+      }
+    }
 
     if (!backendRes.ok) {
       const errText = await backendRes.text();
@@ -78,14 +99,16 @@ export async function GET(request: NextRequest) {
     const secureFlag = isProd ? '; Secure' : '';
 
     const responseHeaders = new Headers(CORS_HEADERS);
+    
+    // Lưu ý: Đặt tên là adminAccessToken và adminRefreshToken để tránh đè lên cookie của người dùng thường (Client App)
     responseHeaders.append(
       'Set-Cookie',
-      `accessToken=${newAccessToken}; Path=/; HttpOnly; Max-Age=604800; SameSite=Lax${secureFlag}`
+      `adminAccessToken=${newAccessToken}; Path=/; Max-Age=604800; SameSite=Lax${secureFlag}`
     );
     if (newRefreshToken) {
       responseHeaders.append(
         'Set-Cookie',
-        `refreshToken=${newRefreshToken}; Path=/; HttpOnly; Max-Age=604800; SameSite=Lax${secureFlag}`
+        `adminRefreshToken=${newRefreshToken}; Path=/; HttpOnly; Max-Age=604800; SameSite=Lax${secureFlag}`
       );
     }
     responseHeaders.set('Content-Type', 'application/json');

@@ -95,7 +95,7 @@ const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({ orderId, isOpen, 
               <Text type="secondary" className="text-xs uppercase tracking-widest font-bold">Mã đơn hàng</Text>
               <div className="text-lg font-black text-gray-800 mt-1">{order.orderCode}</div>
             </div>
-            <div className="text-right flex flex-col items-end gap-1">
+            <div className="text-left flex flex-col items-start gap-1">
               <Text type="secondary" className="text-xs uppercase tracking-widest font-bold">Trạng thái</Text>
               <Select
                 value={order.status}
@@ -109,8 +109,8 @@ const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({ orderId, isOpen, 
                 }}
                 loading={updateStatusMutation.isPending}
                 disabled={order.status === 'CANCELLED' || order.status === 'COMPLETED'}
-                style={{ width: 145 }}
-                size="small"
+                style={{ width: 170, fontWeight: 'bold' }}
+                className="font-bold text-sm"
                 options={[
                   { value: 'PENDING', label: 'ĐÃ NHẬN ĐƠN' },
                   { value: 'CONFIRMED', label: 'ĐÃ XÁC NHẬN' },

@@ -95,9 +95,9 @@ export default function OffersClient({ initialVouchers = [] }: { initialVouchers
   });
 
   return (
-    <div className="min-h-screen bg-[#fcf9f2] pb-24 md:pb-32">
+    <div className="min-h-screen bg-secondary/30 pb-24 md:pb-32">
       {/* Hero Banner Section */}
-      <div className="relative bg-gradient-to-br from-[#2e1f16] to-[#120a06] text-white pt-16 pb-24 md:pt-20 md:pb-28 px-4 sm:px-6 overflow-hidden rounded-b-[32px] md:rounded-b-[50px] shadow-xl">
+      <div className="relative bg-gradient-to-br from-coffee-dark to-black text-white pt-16 pb-24 md:pt-20 md:pb-28 px-4 sm:px-6 overflow-hidden rounded-b-[32px] md:rounded-b-[50px] shadow-xl">
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#d4af37_1px,transparent_1px)] [background-size:16px_16px]"></div>
         <div className="absolute -top-10 -right-10 w-48 h-48 md:w-60 md:h-60 bg-primary/20 rounded-full blur-3xl"></div>
         <div className="absolute -bottom-10 -left-10 w-48 h-48 md:w-60 md:h-60 bg-primary/10 rounded-full blur-3xl"></div>
@@ -236,14 +236,14 @@ export default function OffersClient({ initialVouchers = [] }: { initialVouchers
                           : v.applicableTier === 'VIP'
                             ? 'border-amber-200 hover:border-amber-300 shadow-sm shadow-amber-50/30'
                             : v.applicableTier === 'MEMBER'
-                              ? 'border-[#E5DEC9] hover:border-primary/40'
+                              ? 'border-primary/20 hover:border-primary/40'
                               : 'border-gray-100 hover:border-primary/20'
                           }`}
                       >
                         {/* Định vị lại vị trí đục lỗ vé chuẩn theo chiều ngang (Sử dụng 90px cố định thay vì %) */}
-                        <div className={`absolute -top-2 left-[85px] sm:left-[105px] -translate-x-1/2 w-3.5 h-3.5 bg-[#fcf9f2] rounded-full border z-10 ${v.applicableTier === 'VIP' ? 'border-amber-200' : v.applicableTier === 'MEMBER' ? 'border-[#E5DEC9]' : 'border-gray-200'
+                        <div className={`absolute -top-2 left-[85px] sm:left-[105px] -translate-x-1/2 w-3.5 h-3.5 bg-secondary/30 rounded-full border z-10 ${v.applicableTier === 'VIP' ? 'border-amber-200' : v.applicableTier === 'MEMBER' ? 'border-primary/20' : 'border-gray-200'
                           }`}></div>
-                        <div className={`absolute -bottom-2 left-[85px] sm:left-[105px] -translate-x-1/2 w-3.5 h-3.5 bg-[#fcf9f2] rounded-full border z-10 ${v.applicableTier === 'VIP' ? 'border-amber-200' : v.applicableTier === 'MEMBER' ? 'border-[#E5DEC9]' : 'border-gray-200'
+                        <div className={`absolute -bottom-2 left-[85px] sm:left-[105px] -translate-x-1/2 w-3.5 h-3.5 bg-secondary/30 rounded-full border z-10 ${v.applicableTier === 'VIP' ? 'border-amber-200' : v.applicableTier === 'MEMBER' ? 'border-primary/20' : 'border-gray-200'
                           }`}></div>
 
                         {/* Đường kẻ đứt phân đoạn cuống vé */}
@@ -253,7 +253,7 @@ export default function OffersClient({ initialVouchers = [] }: { initialVouchers
                         <div className={`w-[85px] sm:w-[105px] shrink-0 flex flex-col items-center justify-center p-2 relative select-none text-white ${v.applicableTier === 'VIP'
                           ? 'bg-gradient-to-br from-[#c8a97e] to-[#8c6b3f]'
                           : v.applicableTier === 'MEMBER'
-                            ? 'bg-gradient-to-br from-[#8C5E3C] to-[#5C3E26]'
+                            ? 'bg-gradient-to-br from-primary to-accent'
                             : 'bg-gradient-to-br from-primary to-coffee-dark'
                           }`}>
                           <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-white/80 mb-0.5 sm:mb-1">
@@ -311,7 +311,7 @@ export default function OffersClient({ initialVouchers = [] }: { initialVouchers
 
                             {/* Điều kiện áp dụng */}
                             <p className="text-[11px] text-gray-500 font-bold mb-2 flex flex-wrap items-center gap-1">
-                              <span className="text-[#a87c53] font-extrabold">Đơn từ {v.minOrderAmount.toLocaleString('vi-VN')}đ</span>
+                              <span className="text-primary font-extrabold">Đơn từ {v.minOrderAmount.toLocaleString('vi-VN')}đ</span>
                               {v.discountType === 'PERCENTAGE' && v.maxDiscountAmount && (
                                 <>
                                   <span className="text-gray-300">•</span>
@@ -370,7 +370,7 @@ export default function OffersClient({ initialVouchers = [] }: { initialVouchers
                               ) : tierEligibility.reason === 'LOGIN_REQUIRED' ? (
                                 <Link
                                   href="/login"
-                                  className="w-full bg-[#f3ede4] hover:bg-[#eadecc] text-primary py-1.5 md:py-2 rounded-lg text-[11px] font-black uppercase tracking-wider text-center transition-all flex items-center justify-center gap-1"
+                                  className="w-full bg-primary/10 hover:bg-primary/20 text-primary py-1.5 md:py-2 rounded-lg text-[11px] font-black uppercase tracking-wider text-center transition-all flex items-center justify-center gap-1"
                                 >
                                   <span>Đăng nhập để nhận</span>
                                   <ArrowRight className="w-3 h-3" />

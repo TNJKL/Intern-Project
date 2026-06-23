@@ -13,7 +13,7 @@ interface AuthState {
   accessToken: string | null;
   isAuthenticated: boolean;
   setAuth: (user: User, accessToken: string) => void;
-  logout: () => void;
+  logout: (manual?: boolean) => void;
   fetchUser: () => Promise<void>;
   silentRefresh: () => Promise<boolean>;
 }

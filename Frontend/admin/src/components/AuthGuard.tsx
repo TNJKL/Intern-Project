@@ -45,11 +45,11 @@ export const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children })
           await fetchUser();
         } catch (err) {
           console.error('[AuthGuard] fetchUser thất bại:', err);
-          // fetchUser thất bại với 401 → interceptor sẽ tự xử lý refresh
-          // Không cần redirect ở đây, để interceptor làm việc
         }
-        setIsCheckingAuth(false);
-        return;
+        if (useAuthStore.getState().isAuthenticated) {
+          setIsCheckingAuth(false);
+          return;
+        }
       }
 
       // 3. Không có token → thử silent refresh qua cookie HttpOnly (refreshToken)

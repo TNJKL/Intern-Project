@@ -11,6 +11,7 @@ import { useAuthStore } from "@/store/zustand/useAuthStore";
 import { useAppDispatch } from "@/store/redux/hooks";
 import { setCredentials } from "@/store/redux/authSlice";
 import { signIn, getSession } from "next-auth/react";
+import Cookies from "js-cookie";
 import { useState, useEffect } from "react";
 import { AlertCircle, Coffee } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
@@ -79,10 +80,23 @@ export default function LoginPage() {
                 const user = session.user as any;
                 const accessToken = (session as any).accessToken;
 
+                const role = user.role?.toUpperCase();
+                const isAdmin = role === 'ADMIN' || role === 'STAFF';
+
+                // Thiết lập cookie đồng bộ ở client ngay khi đăng nhập thành công
+                if (isAdmin) {
+                    Cookies.set('adminLastRefreshedToken', accessToken, { path: '/' });
+                    Cookies.set('adminAccessToken', accessToken, { path: '/' });
+                    Cookies.remove('lastRefreshedToken', { path: '/' });
+                } else {
+                    Cookies.set('lastRefreshedToken', accessToken, { path: '/' });
+                    Cookies.remove('adminAccessToken', { path: '/' });
+                    Cookies.remove('adminLastRefreshedToken', { path: '/' });
+                }
+
                 dispatch(setCredentials({ user, accessToken }));
                 setUser(user);
 
-                const role = user.role?.toUpperCase();
                 if (role === 'ADMIN') {
                     const authData = encodeURIComponent(JSON.stringify({ user, accessToken }));
                     window.location.href = `http://localhost:5173/admin/dashboard?auth=${authData}`;
@@ -114,8 +128,8 @@ export default function LoginPage() {
                 <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-3.5 bg-amber-500/10 text-amber-300 rounded-xl text-xs font-medium border border-amber-500/20 flex items-start gap-2 mb-4 leading-relaxed">
                     <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
                     <div>
-                      <strong className="block text-amber-400 font-bold mb-0.5">Lỗi tự động làm mới token (Auto-Logout Cause):</strong>
-                      <span>{persistedError}</span>
+                        <strong className="block text-amber-400 font-bold mb-0.5">Lỗi tự động làm mới token (Auto-Logout Cause):</strong>
+                        <span>{persistedError}</span>
                     </div>
                 </motion.div>
             )}

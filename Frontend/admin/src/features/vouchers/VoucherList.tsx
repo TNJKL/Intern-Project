@@ -26,21 +26,24 @@ const VoucherList: React.FC = () => {
 
   const columns = [
     {
-      title: 'Mã',
+      title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">Mã</span>,
       dataIndex: 'code',
       key: 'code',
-      render: (text: string) => <Tag color="blue" className="text-base font-bold uppercase">{text}</Tag>,
+      width: 120,
+      render: (text: string) => <Tag color="blue" className="text-xs font-bold uppercase py-0.5 px-2.5 rounded-lg border-none">{text}</Tag>,
     },
     {
-      title: 'Tên Voucher',
+      title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">Tên Voucher</span>,
       dataIndex: 'name',
       key: 'name',
+      render: (text: string) => <span className="font-semibold text-gray-800 text-sm">{text}</span>,
     },
     {
-      title: 'Mức giảm',
+      title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">Mức giảm</span>,
       key: 'discount',
+      width: 200,
       render: (_: any, record: Voucher) => (
-        <span>
+        <span className="whitespace-nowrap font-bold text-[#d37533]">
           {record.discountType === 'PERCENTAGE' 
             ? `${record.discountValue}% (Tối đa ${record.maxDiscountAmount?.toLocaleString()}đ)`
             : `${record.discountValue.toLocaleString()}đ`
@@ -49,56 +52,63 @@ const VoucherList: React.FC = () => {
       ),
     },
     {
-      title: 'Đơn tối thiểu',
+      title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">Đơn tối thiểu</span>,
       dataIndex: 'minOrderAmount',
       key: 'minOrderAmount',
-      render: (val: number) => `${val.toLocaleString()}đ`,
+      width: 130,
+      render: (val: number) => <span className="whitespace-nowrap font-semibold text-gray-700">{val.toLocaleString()}đ</span>,
     },
     {
-      title: 'Hạng áp dụng',
+      title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">Hạng áp dụng</span>,
       key: 'applicableTier',
+      width: 130,
       render: (_: any, record: Voucher) => {
         const tier = record.applicableTier || 'ALL';
-        if (tier === 'VIP') return <Tag color="gold" className="font-bold">Chỉ VIP</Tag>;
-        if (tier === 'MEMBER') return <Tag color="orange" className="font-bold">Thành viên</Tag>;
-        return <Tag color="blue" className="font-bold">Tất cả</Tag>;
+        if (tier === 'VIP') return <Tag color="gold" className="font-bold text-xs py-0.5 px-2.5 rounded-lg border-none">Chỉ VIP</Tag>;
+        if (tier === 'MEMBER') return <Tag color="orange" className="font-bold text-xs py-0.5 px-2.5 rounded-lg border-none">Thành viên</Tag>;
+        return <Tag color="blue" className="font-bold text-xs py-0.5 px-2.5 rounded-lg border-none">Tất cả</Tag>;
       }
     },
     {
-      title: 'Đã dùng',
+      title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">Đã dùng</span>,
       key: 'usage',
+      width: 100,
       render: (_: any, record: Voucher) => (
-        <span>{record.currentUsageCount} / {record.maxUsageCount}</span>
+        <span className="whitespace-nowrap font-semibold text-gray-600">{record.currentUsageCount} / {record.maxUsageCount}</span>
       ),
     },
     {
-      title: 'Hạn sử dụng',
+      title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">Hạn sử dụng</span>,
       key: 'validUntil',
+      width: 200,
       render: (_: any, record: Voucher) => (
-        <span className={dayjs(record.validUntil).isBefore(dayjs()) ? "text-red-500" : ""}>
+        <span className={`whitespace-nowrap font-medium text-xs sm:text-sm ${dayjs(record.validUntil).isBefore(dayjs()) ? "text-red-500 bg-red-50 px-2 py-1 rounded-lg font-bold" : "text-gray-600"}`}>
           {dayjs(record.validFrom).format('DD/MM/YYYY')} - {dayjs(record.validUntil).format('DD/MM/YYYY')}
         </span>
       ),
     },
     {
-      title: 'Trạng thái',
+      title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">Trạng thái</span>,
       key: 'status',
+      width: 100,
       render: (_: any, record: Voucher) => (
         <Switch 
           checked={record.isActive}
           loading={toggleStatus.isPending}
           onChange={() => toggleStatus.mutate(record.id)}
+          size="small"
         />
       ),
     },
     {
-      title: 'Thao tác',
+      title: <span className="font-black text-gray-500 text-[11px] uppercase tracking-widest">Thao tác</span>,
       key: 'action',
+      width: 120,
       render: (_: any, record: Voucher) => (
         <Space size="middle">
           <Button 
             type="text" 
-            icon={<EyeOutlined className="text-blue-500" />} 
+            icon={<EyeOutlined className="text-blue-500 text-lg" />} 
             onClick={() => {
               setDetailedVoucher(record);
               setIsDetailOpen(true);
@@ -107,7 +117,7 @@ const VoucherList: React.FC = () => {
           />
           <Button 
             type="text" 
-            icon={<EditOutlined className="text-amber-600" />} 
+            icon={<EditOutlined className="text-[#d37533] text-lg" />} 
             onClick={() => {
               setEditingVoucher(record);
               setIsModalOpen(true);
@@ -122,7 +132,7 @@ const VoucherList: React.FC = () => {
             cancelText="Hủy"
             okButtonProps={{ danger: true }}
           >
-            <Button type="text" danger icon={<DeleteOutlined />} loading={deleteVoucher.isPending} />
+            <Button type="text" danger icon={<DeleteOutlined className="text-lg" />} loading={deleteVoucher.isPending} />
           </Popconfirm>
         </Space>
       ),
@@ -161,6 +171,8 @@ const VoucherList: React.FC = () => {
           rowKey="id"
           loading={isLoading}
           pagination={{ pageSize: 10 }}
+          size="small"
+          scroll={{ x: 'max-content' }}
         />
       </Card>
 

@@ -36,7 +36,7 @@ const getStatusDisplay = (status: string) => {
     case "CONFIRMED": return { label: "Đã xác nhận", icon: CheckCircle2, color: "text-cyan-600", bg: "bg-cyan-50" };
     case "PREPARING": return { label: "Đang pha chế", icon: Coffee, color: "text-purple-600", bg: "bg-purple-50" };
     case "READY": return { label: "Chờ giao", icon: Package, color: "text-orange-600", bg: "bg-orange-50" };
-    case "DELIVERING": return { label: "Đang giao hàng", icon: Truck, color: "text-[#5c3d2e]", bg: "bg-[#5c3d2e]/10" };
+    case "DELIVERING": return { label: "Đang giao hàng", icon: Truck, color: "text-primary", bg: "bg-primary/10" };
     case "COMPLETED": return { label: "Hoàn thành", icon: CheckCircle2, color: "text-green-600", bg: "bg-green-50" };
     case "CANCELLED": return { label: "Đã hủy", icon: X, color: "text-red-600", bg: "bg-red-50" };
     default: return { label: "Mới đặt", icon: Clock, color: "text-gray-600", bg: "bg-gray-50" };
@@ -94,11 +94,38 @@ export default function OrdersClient({ initialOrders, isServerError }: OrdersCli
     }
   }, [isServerError]);
 
+  // Đồng bộ props từ Server Component (sau khi router.refresh() hoàn tất)
+  useEffect(() => {
+    setOrders(initialOrders);
+  }, [initialOrders]);
+
+  // Lắng nghe sự kiện WebSocket cập nhật trạng thái đơn hàng real-time
+  useEffect(() => {
+    const handleStatusUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const { orderCode, status } = customEvent.detail || {};
+      if (orderCode && status) {
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.orderCode === orderCode || o.id === orderCode
+              ? { ...o, status: status }
+              : o
+          )
+        );
+      }
+    };
+
+    window.addEventListener("order-status-updated", handleStatusUpdate);
+    return () => {
+      window.removeEventListener("order-status-updated", handleStatusUpdate);
+    };
+  }, []);
+
   if (isLoading) {
     return (
-      <div className="w-full min-h-screen bg-[#fdf3eb]/30 flex items-center justify-center">
+      <div className="w-full min-h-screen bg-secondary/30 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-10 h-10 text-[#5c3d2e] animate-spin" />
+          <Loader2 className="w-10 h-10 text-primary animate-spin" />
           <span className="text-sm font-bold text-gray-500 uppercase tracking-widest">Đang tải đơn hàng...</span>
         </div>
       </div>
@@ -149,6 +176,10 @@ export default function OrdersClient({ initialOrders, isServerError }: OrdersCli
     try {
       const res = await orderService.cancelOrder(cancelConfirmId);
       if (res.success) {
+        // Cập nhật trạng thái local state ngay lập tức sang CANCELLED
+        setOrders((prev) =>
+          prev.map((o) => (o.id === cancelConfirmId ? { ...o, status: "CANCELLED" } : o))
+        );
         if (isModalOpen && orderDetail?.id === cancelConfirmId) {
           const detailRes = await fetch(`/api/v1/orders/${cancelConfirmId}`);
           const detailData = await detailRes.json();
@@ -182,7 +213,7 @@ export default function OrdersClient({ initialOrders, isServerError }: OrdersCli
       <div className="relative mt-6 mb-4 px-2 sm:px-6 w-full">
         <div className="absolute top-3 left-6 right-6 h-0.5 bg-gray-100 -translate-y-1/2 rounded-full z-0" />
         <div
-          className="absolute top-3 left-6 h-0.5 bg-[#5c3d2e] -translate-y-1/2 rounded-full z-0 transition-all duration-1000"
+          className="absolute top-3 left-6 h-0.5 bg-primary -translate-y-1/2 rounded-full z-0 transition-all duration-1000"
           style={{
             width: `${Math.max(0, (currentStepIndex / (steps.length - 1)) * 100)}%`
           }}
@@ -194,10 +225,10 @@ export default function OrdersClient({ initialOrders, isServerError }: OrdersCli
             const isCurrent = index === currentStepIndex;
             return (
               <div key={step.id} className="flex flex-col items-center gap-2 flex-1 text-center">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors duration-500 ${isCompleted ? "bg-[#5c3d2e] text-white shadow-sm" : "bg-white text-gray-300 border border-gray-200"}`}>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors duration-500 ${isCompleted ? "bg-primary text-white shadow-sm" : "bg-white text-gray-300 border border-gray-200"}`}>
                   {isCompleted ? "✓" : index + 1}
                 </div>
-                <span className={`text-[9px] md:text-[11px] font-bold uppercase tracking-wider block max-w-[65px] sm:max-w-none break-words ${isCurrent ? "text-[#5c3d2e]" : isCompleted ? "text-gray-500" : "text-gray-400"}`}>
+                <span className={`text-[9px] md:text-[11px] font-bold uppercase tracking-wider block max-w-[65px] sm:max-w-none break-words ${isCurrent ? "text-primary" : isCompleted ? "text-gray-500" : "text-gray-400"}`}>
                   {step.label}
                 </span>
               </div>
@@ -209,24 +240,24 @@ export default function OrdersClient({ initialOrders, isServerError }: OrdersCli
   };
 
   return (
-    <div className="w-full min-h-screen bg-[#fdf3eb]/30 pb-24 md:pb-32 transition-colors duration-300">
+    <div className="w-full min-h-screen bg-secondary/30 pb-24 md:pb-32 transition-colors duration-300">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-12">
 
         {/* Header */}
         <div className="flex items-center gap-4 mb-6 md:mb-8">
-          <Link href="/" className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm border border-[#91461e]/5 hover:bg-gray-50 transition-colors shrink-0">
+          <Link href="/" className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm border border-primary/5 hover:bg-gray-50 transition-colors shrink-0">
             <ChevronLeft className="w-5 h-5 text-gray-600" />
           </Link>
           <h1 className="text-xl sm:text-2xl font-black text-gray-800 uppercase tracking-tight">Đơn hàng của bạn</h1>
         </div>
 
         {/* Tabs */}
-        <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-[#91461e]/5 mb-6 md:mb-8">
+        <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-primary/5 mb-6 md:mb-8">
           {ORDER_TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => handleTabChange(tab.id)}
-              className={`flex-1 py-3 text-xs sm:text-sm font-bold uppercase tracking-wider rounded-xl transition-all ${activeTab === tab.id ? "bg-[#5c3d2e] text-white shadow-md shadow-[#5c3d2e]/10" : "text-gray-500 hover:text-[#5c3d2e]"}`}
+              className={`flex-1 py-3 text-xs sm:text-sm font-bold uppercase tracking-wider rounded-xl transition-all ${activeTab === tab.id ? "bg-primary text-white shadow-md shadow-primary/10" : "text-gray-500 hover:text-primary"}`}
             >
               {tab.label}
             </button>
@@ -242,14 +273,14 @@ export default function OrdersClient({ initialOrders, isServerError }: OrdersCli
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="bg-white rounded-2xl sm:rounded-3xl p-8 sm:p-12 text-center shadow-sm border border-[#91461e]/5 flex flex-col items-center"
+                className="bg-white rounded-2xl sm:rounded-3xl p-8 sm:p-12 text-center shadow-sm border border-primary/5 flex flex-col items-center"
               >
                 <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
                   <Package className="w-8 h-8 sm:w-10 sm:h-10 text-gray-300" />
                 </div>
                 <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-1">Chưa có đơn hàng nào</h3>
                 <p className="text-gray-500 mb-6 text-xs sm:text-sm">Bạn chưa có đơn hàng nào trong mục này.</p>
-                <Link href="/menu" className="bg-[#5c3d2e] text-white px-6 py-3 rounded-xl font-bold hover:bg-[#5c3d2e]/90 transition-colors uppercase tracking-wider text-xs sm:text-sm">
+                <Link href="/menu" className="bg-primary text-white px-6 py-3 rounded-xl font-bold hover:bg-primary/90 transition-colors uppercase tracking-wider text-xs sm:text-sm">
                   Khám phá Menu
                 </Link>
               </motion.div>
@@ -267,7 +298,7 @@ export default function OrdersClient({ initialOrders, isServerError }: OrdersCli
                   return (
                     <div
                       key={order.id}
-                      className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border border-[#91461e]/5 hover:shadow-md transition-all duration-300"
+                      className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border border-primary/5 hover:shadow-md transition-all duration-300"
                     >
                       {/* Order Item Header */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 border-b border-gray-100 pb-4">
@@ -286,7 +317,7 @@ export default function OrdersClient({ initialOrders, isServerError }: OrdersCli
 
                         <div className="flex sm:flex-col justify-between sm:justify-start items-center sm:items-end bg-gray-50 sm:bg-transparent p-2 sm:p-0 rounded-xl">
                           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider sm:mb-0.5 pl-2 sm:pl-0">Tổng tiền</p>
-                          <p className="text-base sm:text-xl font-black text-[#5c3d2e] pr-2 sm:pr-0">{order.totalAmount?.toLocaleString("vi-VN") ?? 0}đ</p>
+                          <p className="text-base sm:text-xl font-black text-primary pr-2 sm:pr-0">{order.totalAmount?.toLocaleString("vi-VN") ?? 0}đ</p>
                         </div>
                       </div>
 
@@ -300,9 +331,17 @@ export default function OrdersClient({ initialOrders, isServerError }: OrdersCli
                       )}
 
                       {/* Action buttons */}
-                      <div className="flex justify-end gap-2 mt-2">
+                      <div className="flex justify-end gap-2 mt-2 w-full sm:w-auto">
+                        {["pending", "confirmed"].includes(order.status?.toLowerCase()) && (
+                          <button
+                            onClick={() => handleCancelOrder(order.id)}
+                            className="flex-1 sm:flex-initial px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl font-extrabold transition-colors text-xs uppercase tracking-wider border border-red-200 text-center"
+                          >
+                            Hủy đơn
+                          </button>
+                        )}
                         {order.status?.toLowerCase() === "completed" && (
-                          <button className="px-4 py-2.5 bg-[#5c3d2e]/5 text-[#5c3d2e] rounded-xl font-extrabold hover:bg-[#5c3d2e]/10 transition-colors text-xs uppercase tracking-wider">
+                          <button className="flex-1 sm:flex-initial px-4 py-2.5 bg-primary/5 text-primary rounded-xl font-extrabold hover:bg-primary/10 transition-colors text-xs uppercase tracking-wider">
                             Đánh giá
                           </button>
                         )}
@@ -310,13 +349,20 @@ export default function OrdersClient({ initialOrders, isServerError }: OrdersCli
                           <button
                             onClick={() => handleRepay(order.id)}
                             disabled={repayingOrderId !== null}
-                            className="px-4 py-2.5 bg-amber-500 text-white rounded-xl font-extrabold hover:bg-amber-600 transition-colors text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+                            className="flex-1 sm:flex-initial px-4 py-2.5 bg-amber-500 text-white rounded-xl font-extrabold hover:bg-amber-600 transition-colors text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-sm disabled:opacity-50"
                           >
                             {repayingOrderId === order.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                             Thanh toán ngay
                           </button>
                         )}
-                        <button onClick={() => handleViewDetail(order.id)} className="w-full sm:w-auto justify-center px-5 py-2.5 bg-[#5c3d2e] text-white rounded-xl font-extrabold hover:bg-[#5c3d2e]/90 transition-colors text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
+                        <button
+                          onClick={() => handleViewDetail(order.id)}
+                          className={`${
+                            ["pending", "confirmed", "completed"].includes(order.status?.toLowerCase())
+                              ? "flex-1 sm:flex-initial"
+                              : "w-full"
+                          } sm:w-auto justify-center px-5 py-2.5 bg-primary text-white rounded-xl font-extrabold hover:bg-primary/90 transition-colors text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-sm`}
+                        >
                           {order.status?.toLowerCase() === "completed" || order.status?.toLowerCase() === "cancelled" ? "Mua lại đơn này" : "Xem chi tiết"}
                           <ArrowRight className="w-3.5 h-3.5" />
                         </button>
@@ -330,22 +376,22 @@ export default function OrdersClient({ initialOrders, isServerError }: OrdersCli
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-8 bg-white p-4 rounded-2xl shadow-sm border border-[#91461e]/5">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-8 bg-white p-4 rounded-2xl shadow-sm border border-primary/5">
               <span className="text-xs sm:text-sm font-medium text-gray-500 text-center md:text-left">
-                Hiển thị <strong className="text-[#5c3d2e] font-black">{filteredOrders.length > 0 ? (adjustedPage - 1) * itemsPerPage + 1 : 0} - {Math.min(adjustedPage * itemsPerPage, filteredOrders.length)}</strong> / <strong className="text-[#5c3d2e] font-black">{filteredOrders.length}</strong> đơn
+                Hiển thị <strong className="text-primary font-black">{filteredOrders.length > 0 ? (adjustedPage - 1) * itemsPerPage + 1 : 0} - {Math.min(adjustedPage * itemsPerPage, filteredOrders.length)}</strong> / <strong className="text-primary font-black">{filteredOrders.length}</strong> đơn
               </span>
               <div className="flex items-center justify-between w-full md:w-auto gap-2">
                 <button
                   disabled={adjustedPage === 1}
                   onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  className="px-3 py-2 bg-gray-50 text-[#5c3d2e] rounded-xl font-bold hover:bg-gray-100 disabled:opacity-40 disabled:hover:bg-gray-50 transition-all text-xs flex items-center gap-1 border border-gray-200/50 grow md:grow-0 justify-center"
+                  className="px-3 py-2 bg-gray-50 text-primary rounded-xl font-bold hover:bg-gray-100 disabled:opacity-40 disabled:hover:bg-gray-50 transition-all text-xs flex items-center gap-1 border border-gray-200/50 grow md:grow-0 justify-center"
                 >
                   <ChevronLeft className="w-4 h-4" /> Trước
                 </button>
                 <button
                   disabled={adjustedPage === totalPages}
                   onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  className="px-3 py-2 bg-gray-50 text-[#5c3d2e] rounded-xl font-bold hover:bg-gray-100 disabled:opacity-40 disabled:hover:bg-gray-50 transition-all text-xs flex items-center gap-1 border border-gray-200/50 grow md:grow-0 justify-center"
+                  className="px-3 py-2 bg-gray-50 text-primary rounded-xl font-bold hover:bg-gray-100 disabled:opacity-40 disabled:hover:bg-gray-50 transition-all text-xs flex items-center gap-1 border border-gray-200/50 grow md:grow-0 justify-center"
                 >
                   Sau <ArrowRight className="w-4 h-4" />
                 </button>

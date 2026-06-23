@@ -24,6 +24,8 @@ const { Header, Sider, Content } = Layout;
 
 export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [collapsed, setCollapsed] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(256);
+  const [isResizing, setIsResizing] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const navigate = useNavigate();
@@ -32,6 +34,52 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
+
+  // Xử lý sự kiện kéo thả chuột để thay đổi kích thước Sidebar
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      let newWidth = e.clientX;
+      if (newWidth < 140) {
+        setCollapsed(true);
+      } else {
+        if (collapsed) {
+          setCollapsed(false);
+        }
+        if (newWidth > 400) newWidth = 400;
+        if (newWidth < 180) newWidth = 180;
+        setSidebarWidth(newWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, collapsed]);
+
+  // Ngăn chặn bôi đen văn bản và đổi con trỏ chuột khi đang kéo thả
+  useEffect(() => {
+    if (isResizing) {
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    } else {
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    }
+    return () => {
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizing]);
 
   const { data: alertCountRes } = useQuery({
     queryKey: ['ingredients', 'alerts-count'],
@@ -122,17 +170,37 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
   return (
     <Layout className="h-screen overflow-hidden">
       {!isMobile && (
-        <Sider trigger={null} collapsible collapsed={collapsed} theme="light" className="shadow-md overflow-y-auto">
+        <Sider
+          trigger={null}
+          collapsible
+          collapsed={collapsed}
+          width={sidebarWidth}
+          collapsedWidth={80}
+          theme="light"
+          className="shadow-md overflow-y-auto relative"
+          style={{ transition: isResizing ? 'none' : undefined }}
+        >
           <div className="h-16 flex items-center justify-center font-bold text-lg text-coffee-dark uppercase tracking-wider overflow-hidden px-2 whitespace-nowrap" style={{ fontFamily: "'Quicksand', sans-serif" }}>
             {collapsed ? 'B' : 'Brewtra Admin'}
           </div>
           <Menu
             theme="light"
             mode="inline"
+            inlineCollapsed={collapsed}
             defaultSelectedKeys={[location.pathname]}
             items={menuItems}
             onClick={({ key }) => handleMenuClick(key)}
           />
+          {/* Resizer handle */}
+          {!collapsed && (
+            <div
+              className="absolute top-0 right-0 w-1.5 h-full cursor-col-resize hover:bg-[#5c3d2e]/10 active:bg-[#5c3d2e]/20 transition-colors z-50 border-r border-transparent hover:border-[#5c3d2e]/30"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                setIsResizing(true);
+              }}
+            />
+          )}
         </Sider>
       )}
 
@@ -185,8 +253,7 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
                 ],
                 onClick: ({ key }) => {
                   if (key === 'logout') {
-                    logout();
-                    window.location.href = `http://localhost:3000/login?logout=true&t=${Date.now()}`;
+                    logout(true);
                   } else if (key === 'view-website') {
                     // Pass current auth back to client to sync session
                     const state = useAuthStore.getState() as any;
