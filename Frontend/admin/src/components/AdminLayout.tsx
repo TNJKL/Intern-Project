@@ -266,11 +266,14 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
                 }
               }}
               placement="bottomRight"
+              trigger={['click']}
             >
-              <Space className="cursor-pointer">
-                <Avatar src={user?.avatarUrl} icon={!user?.avatarUrl && <UserOutlined />} />
-                <span className="font-medium hidden sm:inline">{user?.fullName || user?.email || 'Admin'}</span>
-              </Space>
+              <a className="cursor-pointer select-none text-inherit hover:text-inherit" onClick={(e) => e.preventDefault()}>
+                <Space className="cursor-pointer">
+                  <Avatar src={user?.avatarUrl} icon={!user?.avatarUrl && <UserOutlined />} />
+                  <span className="font-medium hidden sm:inline">{user?.fullName || user?.email || 'Admin'}</span>
+                </Space>
+              </a>
             </Dropdown>
           </div>
         </Header>
@@ -282,7 +285,7 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
             background: colorBgContainer,
             borderRadius: borderRadiusLG,
           }}
-          className="overflow-auto"
+          className="overflow-auto scrollbar-hide"
         >
           {children}
         </Content>
