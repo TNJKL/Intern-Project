@@ -76,14 +76,14 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
           <span className="text-primary">Hồ sơ cá nhân</span>
         </div>
 
-        {/* Cấu hình flex-col và lg:grid để dàn trang to rộng và cân đối trên laptop/desktop */}
-        <div className="flex flex-col lg:grid lg:grid-cols-3 gap-8 items-stretch lg:items-start">
+        {/* Cấu hình flex-col và xl:grid để dàn trang to rộng và cân đối trên laptop/desktop */}
+        <div className="flex flex-col xl:grid xl:grid-cols-3 gap-8 items-stretch xl:items-start">
 
           {/* CỘT TRÁI: THẺ TÓM TẮT & HÀNH ĐỘNG */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="w-full max-w-xl mx-auto lg:max-w-none bg-white rounded-[32px] p-8 shadow-sm border border-primary/10 flex flex-col items-center text-center lg:sticky lg:top-28"
+            className="w-full max-w-xl md:max-w-3xl mx-auto xl:max-w-none bg-white rounded-[32px] p-8 shadow-sm border border-primary/10 flex flex-col items-center text-center xl:sticky xl:top-28"
           >
             {/* Khung Avatar Brand */}
             <div className="relative group mb-5">
@@ -120,7 +120,7 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
             <div className="w-full border-t border-gray-100 my-2" />
 
             {/* Nhóm nút bấm hành động */}
-            <div className="flex flex-col sm:flex-row lg:flex-col gap-3 w-full mt-4">
+            <div className="flex flex-col sm:flex-row xl:flex-col gap-3 w-full mt-4">
               <button
                 onClick={() => setIsEditModalOpen(true)}
                 className="flex-1 py-3.5 px-6 rounded-2xl bg-white border border-gray-200 text-gray-700 font-bold text-sm hover:bg-gray-50 hover:border-gray-300 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
@@ -143,7 +143,7 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="w-full max-w-xl mx-auto lg:max-w-none lg:col-span-2 bg-white rounded-[32px] p-8 md:p-10 shadow-sm border border-primary/10"
+            className="w-full max-w-xl md:max-w-3xl mx-auto xl:max-w-none xl:col-span-2 bg-white rounded-[32px] p-8 md:p-10 shadow-sm border border-primary/10"
           >
             <div className="flex items-center gap-3 mb-8">
               <div className="w-1.5 h-5 bg-primary rounded-full" />
