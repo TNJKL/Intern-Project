@@ -13,6 +13,7 @@ import { NotificationTemplate } from './notification/entities/notification-templ
 import { ProcessedEvent } from './events/entities/processed-event.entity';
 import { FirebaseModule } from './firebase/firebase.module';
 import { ChatModule } from './chat/chat.module';
+import { ChatSession } from './chat/entities/chat-session.entity';
 
 @Module({
   imports: [
@@ -28,6 +29,18 @@ import { ChatModule } from './chat/chat.module';
       password: process.env.POSTGRES_PASSWORD || 'postgres',
       entities: [Notification, NotificationTemplate, ProcessedEvent],
       synchronize: false,
+      logging: process.env.NODE_ENV !== 'production',
+    }),
+    TypeOrmModule.forRoot({
+      name: 'chatConnection',
+      type: 'postgres',
+      host: process.env.POSTGRES_HOST || 'localhost',
+      port: parseInt(process.env.POSTGRES_PORT || '5432'),
+      database: 'chat_db',
+      username: process.env.POSTGRES_USER || 'postgres',
+      password: process.env.POSTGRES_PASSWORD || 'postgres',
+      entities: [ChatSession],
+      synchronize: true,
       logging: process.env.NODE_ENV !== 'production',
     }),
     AuthModule,
