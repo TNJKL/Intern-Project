@@ -1,4 +1,4 @@
-import { Controller, Get, Headers, Query } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Headers, Query } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { ApiTags, ApiOperation, ApiQuery, ApiHeader } from '@nestjs/swagger';
 
@@ -33,6 +33,28 @@ export class ChatController {
     return {
       success: true,
       message: 'Lấy token chat Firebase thành công',
+      data: result,
+    };
+  }
+
+  @Post('rooms/:roomId/archive')
+  @ApiOperation({ summary: 'Lưu trữ cuộc trò chuyện từ Firestore sang PostgreSQL và đóng phòng' })
+  async archiveRoom(
+    @Param('roomId') roomId: string,
+    @Body() body: { adminId: string; adminName: string },
+  ) {
+    const result = await this.chatService.archiveChatRoom(roomId, body.adminId, body.adminName);
+    return result;
+  }
+
+  @Get('history')
+  @ApiOperation({ summary: 'Lấy lịch sử chat cũ lưu trữ trong PostgreSQL' })
+  @ApiQuery({ name: 'roomId', required: true })
+  async getChatHistory(@Query('roomId') roomId: string) {
+    const result = await this.chatService.getChatHistoryFromPostgres(roomId);
+    return {
+      success: true,
+      message: 'Lấy lịch sử chat thành công',
       data: result,
     };
   }

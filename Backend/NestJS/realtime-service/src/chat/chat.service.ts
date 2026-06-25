@@ -1,6 +1,9 @@
 import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { FirebaseAdminService } from '../firebase/firebase-admin.service';
 import { AuthService } from '../auth/auth.service';
+import { ChatSession } from './entities/chat-session.entity';
 
 @Injectable()
 export class ChatService {
@@ -9,6 +12,8 @@ export class ChatService {
   constructor(
     private firebaseAdminService: FirebaseAdminService,
     private authService: AuthService,
+    @InjectRepository(ChatSession, 'chatConnection')
+    private chatSessionRepository: Repository<ChatSession>,
   ) {}
 
   async getChatToken(
@@ -86,5 +91,98 @@ export class ChatService {
     throw new UnauthorizedException(
       'Không thể xác thực danh tính để vào Chat. Vui lòng đăng nhập hoặc cung cấp Email khách vãng lai.',
     );
+  }
+
+  async archiveChatRoom(
+    roomId: string,
+    adminId: string,
+    adminName: string,
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const db = this.firebaseAdminService.getFirestore();
+
+      // 1. Read the chatRoom document
+      const roomRef = db.collection('chatRooms').doc(roomId);
+      const roomSnap = await roomRef.get();
+
+      if (!roomSnap.exists) {
+        throw new Error('Phòng chat không tồn tại trên Firestore.');
+      }
+
+      const roomData = roomSnap.data();
+
+      // 2. Read all messages subcollection sorted by createdAt
+      const messagesSnap = await roomRef
+        .collection('messages')
+        .orderBy('createdAt', 'asc')
+        .get();
+
+      const messagesList = [];
+      messagesSnap.forEach((docSnap) => {
+        const data = docSnap.data();
+        messagesList.push({
+          id: docSnap.id,
+          senderId: data.senderId,
+          senderName: data.senderName,
+          text: data.text,
+          createdAt: data.createdAt ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
+          isSeen: data.isSeen ?? false,
+        });
+      });
+
+      // 3. Save to PostgreSQL chat_db
+      let chatSession = await this.chatSessionRepository.findOne({ where: { id: roomId } });
+      if (!chatSession) {
+        chatSession = new ChatSession();
+        chatSession.id = roomId;
+        chatSession.customerId = roomData.customerId;
+        chatSession.customerName = roomData.customerName;
+        chatSession.customerEmail = roomData.customerEmail || null;
+      }
+
+      chatSession.assignedAdminId = adminId;
+      chatSession.assignedAdminName = adminName;
+      chatSession.closedAt = new Date();
+      chatSession.messages = messagesList;
+
+      await this.chatSessionRepository.save(chatSession);
+
+      // 4. Update status = 'closed' and closedAt on Firestore (No delete - grace period of 7 days)
+      await roomRef.update({
+        status: 'closed',
+        closedAt: new Date(),
+        assignedTo: adminId,
+        assignedName: adminName,
+      });
+
+      this.logger.log(`Archived chat room ${roomId} to Postgres successfully.`);
+      return { success: true, message: 'Đóng cuộc trò chuyện và lưu trữ lịch sử thành công.' };
+    } catch (error) {
+      this.logger.error(`Failed to archive chat room ${roomId}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async getChatHistoryFromPostgres(roomId: string): Promise<any> {
+    try {
+      const session = await this.chatSessionRepository.findOne({ where: { id: roomId } });
+      if (!session) {
+        return { messages: [] };
+      }
+      return {
+        id: session.id,
+        customerId: session.customerId,
+        customerName: session.customerName,
+        customerEmail: session.customerEmail,
+        assignedAdminId: session.assignedAdminId,
+        assignedAdminName: session.assignedAdminName,
+        startedAt: session.startedAt,
+        closedAt: session.closedAt,
+        messages: session.messages || [],
+      };
+    } catch (error) {
+      this.logger.error(`Failed to load chat history for room ${roomId}: ${error.message}`);
+      throw error;
+    }
   }
 }

@@ -2,6 +2,7 @@ import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { App, initializeApp, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { getFirestore, Firestore } from 'firebase-admin/firestore';
 
 @Injectable()
 export class FirebaseAdminService implements OnModuleInit {
@@ -44,6 +45,13 @@ export class FirebaseAdminService implements OnModuleInit {
       throw new Error('Firebase Admin SDK is not initialized. Please configure valid credentials.');
     }
     return getAuth(this.firebaseApp).createCustomToken(uid, additionalClaims);
+  }
+
+  getFirestore(): Firestore {
+    if (!this.firebaseApp) {
+      throw new Error('Firebase Admin SDK is not initialized. Please configure valid credentials.');
+    }
+    return getFirestore(this.firebaseApp);
   }
 }
 

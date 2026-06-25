@@ -10,6 +10,7 @@ CREATE DATABASE order_db;
 CREATE DATABASE payment_db;
 CREATE DATABASE inventory_db;
 CREATE DATABASE notification_db;
+CREATE DATABASE chat_db;
 
 -- Grant privileges
 GRANT ALL PRIVILEGES ON DATABASE auth_db TO postgres;
@@ -18,3 +19,4 @@ GRANT ALL PRIVILEGES ON DATABASE order_db TO postgres;
 GRANT ALL PRIVILEGES ON DATABASE payment_db TO postgres;
 GRANT ALL PRIVILEGES ON DATABASE inventory_db TO postgres;
 GRANT ALL PRIVILEGES ON DATABASE notification_db TO postgres;
+GRANT ALL PRIVILEGES ON DATABASE chat_db TO postgres;
