@@ -29,6 +29,7 @@ public class ProductResponse {
 
     private List<ProductVariantResponse> variants;
     private List<ToppingResponse> toppings;
+    private List<String> additionalImageUrls;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

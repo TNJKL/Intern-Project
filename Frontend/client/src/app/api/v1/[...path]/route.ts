@@ -139,10 +139,10 @@ async function proxyRequest(request: NextRequest, { params }: { params: Promise<
     const targetUrl = `${BACKEND_URL}/api/v1/${pathStr}${searchParams ? `?${searchParams}` : ''}`;
 
     // ── Đọc body gốc từ request (nếu có) ────────────────────────────────────
-    let body: string | undefined;
+    let body: ArrayBuffer | undefined;
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       try {
-        body = await request.text();
+        body = await request.arrayBuffer();
       } catch {
         body = undefined;
       }

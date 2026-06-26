@@ -64,6 +64,22 @@ export const useProductForm = (isOpen: boolean, editingRecord: any) => {
     }
   };
 
+  const handleUploadAdditional = async (options: any, fieldName: number) => {
+    const { file, onSuccess, onError } = options;
+    try {
+      const imageUrl = await fileService.uploadImage(file as File);
+      const additionalImageUrls = form.getFieldValue('additionalImageUrls') || [];
+      const updated = [...additionalImageUrls];
+      updated[fieldName] = imageUrl;
+      form.setFieldsValue({ additionalImageUrls: updated });
+      onSuccess("ok");
+      message.success('Tải ảnh phụ lên thành công!');
+    } catch (error) {
+      onError({ error });
+      message.error('Tải ảnh phụ lên thất bại!');
+    }
+  };
+
   const handleQuickAddTopping = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (!newToppingName || newToppingPrice < 0) {
@@ -102,6 +118,7 @@ export const useProductForm = (isOpen: boolean, editingRecord: any) => {
     newToppingPrice,
     setNewToppingPrice,
     handleUpload,
+    handleUploadAdditional,
     handleQuickAddTopping
   };
 };

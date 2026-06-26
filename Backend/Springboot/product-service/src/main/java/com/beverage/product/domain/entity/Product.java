@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -19,6 +20,7 @@ public class Product {
     private String slug;
     private String description;
     private String imageUrl;
+    private List<String> additionalImageUrls;
     private Boolean isAvailable;
     private Boolean isFeatured;
     private Short displayOrder;

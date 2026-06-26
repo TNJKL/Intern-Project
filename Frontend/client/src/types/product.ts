@@ -14,6 +14,7 @@ export interface Product {
   toppingIds?: string[];
   toppings?: any[];
   variants?: ProductVariant[];
+  additionalImageUrls?: string[];
 }
 
 export interface ProductVariant {

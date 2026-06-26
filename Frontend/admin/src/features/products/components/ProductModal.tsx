@@ -8,7 +8,7 @@ import {
 } from '@ant-design/icons';
 import type { Category } from '@/services/category.service';
 import { useProductForm } from '../hooks/useProductForm';
-import { ImageUploadSection, VariantSection } from './ProductFormParts';
+import { ImageUploadSection, VariantSection, AdditionalImagesSection } from './ProductFormParts';
 
 interface ProductModalProps {
   isOpen: boolean;
@@ -25,7 +25,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   const {
     form, isUploading, toppings, isFetchingToppings, isAddingTopping,
     newToppingName, setNewToppingName, newToppingPrice, setNewToppingPrice,
-    handleUpload, handleQuickAddTopping
+    handleUpload, handleUploadAdditional, handleQuickAddTopping
   } = useProductForm(isOpen, editingRecord);
 
   const imageUrl = Form.useWatch('imageUrl', form);
@@ -156,8 +156,9 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           {!editingRecord && <VariantSection />}
 
           {/* Phần hình ảnh - Để cuối cùng, thiết kế nhỏ gọn hơn */}
-          <div className="pt-6 border-t border-gray-100">
+          <div className="pt-6 border-t border-gray-100 space-y-6">
             <ImageUploadSection imageUrl={imageUrl} isUploading={isUploading} uploadProps={{ customRequest: handleUpload, showUploadList: false }} />
+            <AdditionalImagesSection form={form} handleUploadAdditional={handleUploadAdditional} />
           </div>
         </Space>
       </Form>

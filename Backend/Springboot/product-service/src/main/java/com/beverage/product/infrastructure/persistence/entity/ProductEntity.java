@@ -6,6 +6,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -71,5 +72,14 @@ public class ProductEntity {
 
     @Column(name = "updated_by", length = 128)
     private String updatedBy;
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+            name = "product_images",
+            joinColumns = @JoinColumn(name = "product_id")
+    )
+    @Column(name = "image_url")
+    @OrderColumn(name = "display_order")
+    private List<String> additionalImageUrls;
 }
 

@@ -7,6 +7,7 @@ export interface Product {
   slug: string;
   description?: string;
   imageUrl?: string;
+  additionalImageUrls?: string[];
   price: number;
   isAvailable: boolean;
   isFeatured: boolean;

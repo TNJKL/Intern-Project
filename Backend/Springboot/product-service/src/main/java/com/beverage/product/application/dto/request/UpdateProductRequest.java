@@ -26,6 +26,8 @@ public class UpdateProductRequest {
 
     private String imageUrl;
 
+    private List<String> additionalImageUrls;
+
     private Boolean isAvailable;
 
     private Boolean isFeatured;

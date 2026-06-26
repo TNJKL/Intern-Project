@@ -108,3 +108,13 @@
 
     -- DB cũ chưa có cột ảnh topping (bỏ comment và chạy một lần nếu cần):
     -- ALTER TABLE toppings ADD COLUMN IF NOT EXISTS image_url VARCHAR(500);
+
+    -- Bảng lưu trữ nhiều hình ảnh cho một sản phẩm (Thư viện ảnh)
+    CREATE TABLE IF NOT EXISTS product_images (
+        product_id      UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+        image_url       VARCHAR(500) NOT NULL,
+        display_order   INTEGER NOT NULL,
+        PRIMARY KEY (product_id, display_order)
+    );
+    CREATE INDEX IF NOT EXISTS idx_product_images_product ON product_images(product_id);
+
