@@ -16,6 +16,8 @@ interface CheckoutShippingFormProps {
   setAddress: (v: string) => void;
   note: string;
   setNote: (v: string) => void;
+  errors: Record<string, string>;
+  setErrors: React.Dispatch<React.SetStateAction<Record<string, string>>>;
 }
 
 export default function CheckoutShippingForm({
@@ -31,7 +33,36 @@ export default function CheckoutShippingForm({
   setAddress,
   note,
   setNote,
+  errors,
+  setErrors,
 }: CheckoutShippingFormProps) {
+
+  // Các hàm validate trường thông tin
+  const validateName = (val: string): string => {
+    if (!val.trim()) return "Họ và tên không được để trống";
+    if (val.trim().length < 2) return "Họ và tên phải có ít nhất 2 ký tự";
+    if (!/^[a-zA-ZÀ-ỹ\s]+$/.test(val.trim())) return "Họ và tên chỉ được chứa chữ cái và khoảng trắng";
+    return "";
+  };
+
+  const validatePhone = (val: string): string => {
+    if (!val.trim()) return "Số điện thoại không được để trống";
+    if (!/^(03|05|07|08|09)\d{8}$/.test(val.trim())) return "Số điện thoại không đúng định dạng (10 số, bắt đầu bằng 03, 05, 07, 08, 09)";
+    return "";
+  };
+
+  const validateEmail = (val: string): string => {
+    if (!val.trim()) return "Email không được để trống";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim())) return "Email không đúng định dạng";
+    return "";
+  };
+
+  const validateAddress = (val: string): string => {
+    if (!val.trim()) return "Địa chỉ nhận hàng không được để trống";
+    if (val.trim().length < 10) return "Địa chỉ nhận hàng quá ngắn (tối thiểu 10 ký tự)";
+    return "";
+  };
+
   return (
     <div className="bg-white rounded-3xl p-5 sm:p-6 md:p-8 shadow-[0_10px_30px_-12px_rgba(60,42,33,0.04)] border border-transparent hover:border-gray-100 transition-all">
       <div className="flex items-center gap-3 mb-6">
@@ -57,54 +88,104 @@ export default function CheckoutShippingForm({
           </div>
         )}
 
-        {isGuest && (
-          <>
-            <div className="space-y-1.5 md:col-span-2">
-              <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">Họ và tên</label>
-              <input
-                required
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Nhập họ và tên người nhận"
-                className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-4 py-3 text-sm outline-none focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all placeholder:text-gray-400"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">Số điện thoại</label>
-              <input
-                required
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="Nhập số điện thoại"
-                className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-4 py-3 text-sm outline-none focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all placeholder:text-gray-400"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">Địa chỉ Email</label>
-              <input
-                required
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Để nhận thông tin trạng thái đơn hàng"
-                className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-4 py-3 text-sm outline-none focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all placeholder:text-gray-400"
-              />
-            </div>
-          </>
-        )}
+        <div className="space-y-1.5 md:col-span-2">
+          <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">Họ và tên người nhận</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => {
+              const val = e.target.value;
+              setName(val);
+              const err = validateName(val);
+              setErrors((prev) => ({ ...prev, name: err }));
+            }}
+            onBlur={(e) => {
+              const val = e.target.value;
+              const err = validateName(val);
+              setErrors((prev) => ({ ...prev, name: err }));
+            }}
+            placeholder="Nhập họ và tên người nhận"
+            className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm outline-none focus:bg-white focus:ring-4 transition-all placeholder:text-gray-400 ${errors.name
+                ? "border-red-500 focus:border-red-500 focus:ring-red-500/10"
+                : "border-gray-200/60 focus:border-primary/50 focus:ring-primary/5"
+              }`}
+          />
+          {errors.name && <p className="text-red-500 text-xs font-semibold mt-1">{errors.name}</p>}
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">Số điện thoại liên hệ</label>
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => {
+              const val = e.target.value;
+              setPhone(val);
+              const err = validatePhone(val);
+              setErrors((prev) => ({ ...prev, phone: err }));
+            }}
+            onBlur={(e) => {
+              const val = e.target.value;
+              const err = validatePhone(val);
+              setErrors((prev) => ({ ...prev, phone: err }));
+            }}
+            placeholder="Nhập số điện thoại"
+            className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm outline-none focus:bg-white focus:ring-4 transition-all placeholder:text-gray-400 ${errors.phone
+                ? "border-red-500 focus:border-red-500 focus:ring-red-500/10"
+                : "border-gray-200/60 focus:border-primary/50 focus:ring-primary/5"
+              }`}
+          />
+          {errors.phone && <p className="text-red-500 text-xs font-semibold mt-1">{errors.phone}</p>}
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">Địa chỉ Email</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => {
+              const val = e.target.value;
+              setEmail(val);
+              const err = validateEmail(val);
+              setErrors((prev) => ({ ...prev, email: err }));
+            }}
+            onBlur={(e) => {
+              const val = e.target.value;
+              const err = validateEmail(val);
+              setErrors((prev) => ({ ...prev, email: err }));
+            }}
+            placeholder="Để nhận thông tin trạng thái đơn hàng"
+            className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm outline-none focus:bg-white focus:ring-4 transition-all placeholder:text-gray-400 ${errors.email
+                ? "border-red-500 focus:border-red-500 focus:ring-red-500/10"
+                : "border-gray-200/60 focus:border-primary/50 focus:ring-primary/5"
+              }`}
+          />
+          {errors.email && <p className="text-red-500 text-xs font-semibold mt-1">{errors.email}</p>}
+        </div>
 
         <div className="space-y-1.5 md:col-span-2">
           <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">Địa chỉ nhận hàng</label>
           <input
-            required
             type="text"
             value={address}
-            onChange={(e) => setAddress(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setAddress(val);
+              const err = validateAddress(val);
+              setErrors((prev) => ({ ...prev, address: err }));
+            }}
+            onBlur={(e) => {
+              const val = e.target.value;
+              const err = validateAddress(val);
+              setErrors((prev) => ({ ...prev, address: err }));
+            }}
             placeholder="Số nhà, tên đường, phường/xã, quận/huyện..."
-            className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-4 py-3 text-sm outline-none focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all placeholder:text-gray-400"
+            className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm outline-none focus:bg-white focus:ring-4 transition-all placeholder:text-gray-400 ${errors.address
+                ? "border-red-500 focus:border-red-500 focus:ring-red-500/10"
+                : "border-gray-200/60 focus:border-primary/50 focus:ring-primary/5"
+              }`}
           />
+          {errors.address && <p className="text-red-500 text-xs font-semibold mt-1">{errors.address}</p>}
         </div>
         <div className="space-y-1.5 md:col-span-2">
           <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">Ghi chú đơn hàng</label>

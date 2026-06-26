@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import type { Metadata } from "next";
 import OrdersClient from "./components/OrdersClient";
 import { getServerApi } from "@/lib/server-api";
+import { auth } from "@/auth";
 
 export const metadata: Metadata = {
   title: "Đơn hàng của bạn | Brewtra Coffee",
@@ -10,11 +11,16 @@ export const metadata: Metadata = {
 };
 
 export default async function OrdersPage() {
-  // Server-side auth check: kiểm tra sự tồn tại của token cookie
-  // LƯU Ý: refreshToken có Path=/api/v1/auth nên KHÔNG đọc được tại path /orders.
-  // Dùng accessToken (Path=/) hoặc lastRefreshedToken (Path=/) thay thế.
+  const session = await auth();
   const cookieStore = await cookies();
-  const hasSession = cookieStore.has('accessToken') || cookieStore.has('lastRefreshedToken');
+  
+  // Kiểm tra quyền truy cập của cả CUSTOMER và ADMIN
+  const hasSession = 
+    !!session?.accessToken || 
+    cookieStore.has('accessToken') || 
+    cookieStore.has('lastRefreshedToken') ||
+    cookieStore.has('adminAccessToken') || 
+    cookieStore.has('adminLastRefreshedToken');
 
   // Nếu không có session token, redirect sang trang tra cứu đơn hàng vãng lai
   if (!hasSession) {

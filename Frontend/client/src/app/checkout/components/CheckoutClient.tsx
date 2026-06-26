@@ -33,6 +33,7 @@ export default function CheckoutClient() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [createdOrderCode, setCreatedOrderCode] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [selectedVoucher, setSelectedVoucher] = useState<ValidateVoucherResult | null>(null);
@@ -58,7 +59,7 @@ export default function CheckoutClient() {
             }
             return true;
           });
- 
+
           const now = new Date();
           const validVouchers = filteredData.filter(v => {
             const validFrom = new Date(v.validFrom);
@@ -78,6 +79,15 @@ export default function CheckoutClient() {
       }
     };
     fetchVouchers();
+  }, [user]);
+
+  // Tự động điền thông tin thành viên khi component mount / thay đổi trạng thái user
+  useEffect(() => {
+    if (user) {
+      setName(user.fullName || "");
+      setEmail(user.email || "");
+      setPhone(user.phone || "");
+    }
   }, [user]);
 
   const checkVoucherEligibility = (code: string): { eligible: boolean; message?: string } => {
@@ -232,44 +242,63 @@ export default function CheckoutClient() {
       return;
     }
 
+    // Thực hiện Validate nghiêm ngặt các trường thông tin
+    const newErrors: Record<string, string> = {};
+
+    // Validate Họ tên
+    if (!name.trim()) {
+      newErrors.name = "Họ và tên không được để trống";
+    } else if (name.trim().length < 2) {
+      newErrors.name = "Họ và tên phải có ít nhất 2 ký tự";
+    } else if (!/^[a-zA-ZÀ-ỹ\s]+$/.test(name.trim())) {
+      newErrors.name = "Họ và tên chỉ được chứa chữ cái và khoảng trắng";
+    }
+
+    // Validate Số điện thoại
+    if (!phone.trim()) {
+      newErrors.phone = "Số điện thoại không được để trống";
+    } else if (!/^(03|05|07|08|09)\d{8}$/.test(phone.trim())) {
+      newErrors.phone = "Số điện thoại không đúng định dạng (10 số, bắt đầu bằng 03, 05, 07, 08, 09)";
+    }
+
+    // Validate Email
+    if (!email.trim()) {
+      newErrors.email = "Email không được để trống";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      newErrors.email = "Email không đúng định dạng";
+    }
+
+    // Validate Địa chỉ nhận hàng
+    if (!address.trim()) {
+      newErrors.address = "Địa chỉ nhận hàng không được để trống";
+    } else if (address.trim().length < 10) {
+      newErrors.address = "Địa chỉ nhận hàng quá ngắn (tối thiểu 10 ký tự)";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      toast.error("Vui lòng kiểm tra lại thông tin giao hàng!");
+      return;
+    }
+
+    setErrors({});
     setIsSubmitting(true);
     try {
-      const u = user as any;
-      const actualName = u?.fullName || u?.name || u?.userName || u?.user_name || "Thành viên";
-      const actualEmail = u?.email || u?.userEmail || u?.user_email || "khachhang@thanhvien.com";
-      const actualPhone = u?.phone || u?.userPhone || u?.user_phone || "0999999999";
-
-      const payload = user
-        ? {
-          userName: actualName,
-          userEmail: actualEmail,
-          userPhone: actualPhone,
-          deliveryAddress: address,
-          paymentMethod: paymentMethod,
-          note: note,
-          items: cartItems.map(item => ({
-            productId: item.productId,
-            variantId: item.variantId,
-            quantity: item.quantity,
-            toppingIds: item.toppingIds,
-          })),
-          voucherCode: selectedVoucher ? selectedVoucher.code : undefined
-        }
-        : {
-          userName: name,
-          userEmail: email,
-          userPhone: phone,
-          deliveryAddress: address,
-          paymentMethod: paymentMethod,
-          note: note,
-          items: cartItems.map(item => ({
-            productId: item.productId,
-            variantId: item.variantId,
-            quantity: item.quantity,
-            toppingIds: item.toppingIds,
-          })),
-          voucherCode: selectedVoucher ? selectedVoucher.code : undefined
-        };
+      const payload = {
+        userName: name,
+        userEmail: email,
+        userPhone: phone,
+        deliveryAddress: address,
+        paymentMethod: paymentMethod,
+        note: note,
+        items: cartItems.map(item => ({
+          productId: item.productId,
+          variantId: item.variantId,
+          quantity: item.quantity,
+          toppingIds: item.toppingIds,
+        })),
+        voucherCode: selectedVoucher ? selectedVoucher.code : undefined
+      };
 
       const res = await orderService.createOrder(payload as any);
       if (res && res.success && res.data) {
@@ -286,7 +315,7 @@ export default function CheckoutClient() {
         // Xử lý chuyển hướng nếu chọn VNPay
         if (paymentMethod === "vnpay") {
           toast.loading("Đang kết nối tới cổng thanh toán VNPay...", { id: "payment-redirect" });
-          
+
           let paymentUrl = "";
           for (let attempt = 1; attempt <= 3; attempt++) {
             try {
@@ -360,6 +389,8 @@ export default function CheckoutClient() {
                     setAddress={setAddress}
                     note={note}
                     setNote={setNote}
+                    errors={errors}
+                    setErrors={setErrors}
                   />
 
                   <CheckoutPaymentMethods
