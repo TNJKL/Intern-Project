@@ -23,7 +23,7 @@ export const ProductCard = ({ product, index, categories }: ProductCardProps) =>
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       className="bg-white rounded-[24px] p-3 shadow-sm border border-gray-100 hover:shadow-xl hover:shadow-primary/5 transition-all duration-500 group flex flex-col h-full cursor-pointer relative"
-      onClick={() => router.push(`/product/${product.id}`)}
+      onClick={() => router.push(`/product/${product.slug || product.id}`)}
     >
       <div className="relative aspect-square rounded-[20px] overflow-hidden mb-3 bg-gray-50">
         <SafeImage

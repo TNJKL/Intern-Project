@@ -153,7 +153,7 @@ export default function SuggestedProductsCarousel({
               key={item.id}
               className="group bg-[#fdf3eb] p-4 rounded-[24px] border border-transparent hover:border-[#4d362b]/5 hover:shadow-[0_10px_30px_-10px_rgba(60,42,33,0.08)] transition-all duration-300 flex flex-col justify-between shrink-0 w-[calc((100%-16px)/2)] sm:w-[calc((100%-32px)/3)] md:w-[calc((100%-60px)/4)] xl:w-[calc((100%-80px)/5)] h-auto select-none"
             >
-              <Link href={`/product/${item.id}`} className="flex flex-col h-full w-full min-w-0">
+              <Link href={`/product/${item.slug || item.id}`} className="flex flex-col h-full w-full min-w-0">
                 {/* Image area */}
                 <div className="relative aspect-square mb-3 rounded-2xl overflow-hidden bg-white flex items-center justify-center shrink-0 border border-gray-50 w-full">
                   <SafeImage

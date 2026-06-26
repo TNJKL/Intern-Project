@@ -1,6 +1,6 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import ProductDetailClient from "./components/ProductDetailClient";
 import ProductImageGallery from "./components/ProductImageGallery";
@@ -11,10 +11,16 @@ const formatPrice = (price: number) => {
   return new Intl.NumberFormat('vi-VN').format(price);
 };
 
+// Hàm kiểm tra định dạng UUIDv4
+const isUUID = (val: string) => {
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(val);
+};
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   try {
-    const res = await getServerApi(`/api/v1/products/${id}`);
+    const isUUIDParam = isUUID(id);
+    const res = await getServerApi(isUUIDParam ? `/api/v1/products/${id}` : `/api/v1/products/by-slug/${id}`);
     const product = res?.data;
     if (!product) return { title: "Không tìm thấy sản phẩm | Brewtra Coffee" };
     return {
@@ -28,30 +34,30 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const isUUIDParam = isUUID(id);
 
-  // 🎯 ĐÃ SỬA: Gọi thêm API lấy toàn bộ sản phẩm để đưa vào phần đề xuất
-  const [productRes, variantsRes, categoriesRes, toppingsRes, allProductsRes] = await Promise.all([
-    getServerApi(`/api/v1/products/${id}`),
-    getServerApi(`/api/v1/products/${id}/variants`),
+  // 🎯 TỐI ƯU HÓA: Chỉ gọi 3 API song song (lồng sẵn variants/toppings inside ProductResponse)
+  const [productRes, categoriesRes, allProductsRes] = await Promise.all([
+    getServerApi(isUUIDParam ? `/api/v1/products/${id}` : `/api/v1/products/by-slug/${id}`),
     getServerApi('/api/v1/categories'),
-    getServerApi('/api/v1/toppings'),
-    getServerApi('/api/v1/products') // Thêm luồng lấy danh sách tổng sản phẩm
+    getServerApi('/api/v1/products')
   ]);
 
   const product = productRes?.data;
-  const variants = variantsRes?.data || variantsRes || [];
-  const categories = categoriesRes?.data || [];
-  const allToppings = toppingsRes?.data || [];
-  const allProducts = allProductsRes?.data || []; // Gán mảng sản phẩm thật từ server
-
   if (!product) notFound();
+
+  // 🎯 TỰ ĐỘNG CHUYỂN HƯỚNG: Nếu truy cập bằng link UUID cũ, chuyển hướng sang Slug thân thiện
+  if (isUUIDParam && product.slug) {
+    redirect(`/product/${product.slug}`);
+  }
+
+  const categories = categoriesRes?.data || [];
+  const allProducts = allProductsRes?.data || [];
 
   const productWithVariants = {
     ...product,
-    variants: Array.isArray(variants) ? variants : [],
-    toppings: allToppings.filter((t: any) =>
-      product.toppingIds?.includes(t.id) || (product.toppings?.some((pt: any) => pt.id === t.id))
-    )
+    variants: Array.isArray(product.variants) ? product.variants : [],
+    toppings: Array.isArray(product.toppings) ? product.toppings : []
   };
 
   // 🎯 ĐÃ SỬA: Logic gợi ý sản phẩm phân cấp thông minh

@@ -73,7 +73,7 @@ export const MenuSearchBar = ({
                     onMouseDown={(e) => {
                       // Dùng onMouseDown để click trước khi blur xảy ra
                       e.preventDefault();
-                      router.push(`/product/${item.id}`);
+                      router.push(`/product/${item.slug || item.id}`);
                       setSuggestions([]);
                     }}
                     className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left border-b border-gray-50 last:border-none"
