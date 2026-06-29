@@ -48,18 +48,24 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
     private guestSessionService: GuestSessionService,
     private wsRateLimiter: WsRateLimiterService,
     private configService: ConfigService,
-  ) {}
+  ) { }
 
   afterInit() {
     this.notificationEmitter.registerHandler((notification: NotificationPayload) => {
+      // 1. Gửi cho Customer
       if (notification.userId) {
-        // Member đã đăng nhập → emit vào room user:{userId}
         this.emitToUser(notification.userId, notification);
       } else if (notification.data?.orderCode) {
-        // Guest → emit vào room order:{orderCode}
         this.emitToOrder(notification.data.orderCode, notification);
-      } else if (notification.referenceType === 'INGREDIENT') {
-        // Admin alert (low stock) → emit tới tất cả admin lắng nghe event 'admin:alerts'
+      }
+
+      // 2. Gửi thêm cho Admin nếu là thông báo liên quan đến đơn hàng
+      if (notification.referenceType === 'ORDER') {
+        this.emitToAdminOrders(notification);
+      }
+
+      // 3. Gửi cảnh báo tồn kho
+      if (notification.referenceType === 'INGREDIENT') {
         this.emitToAdminAlerts(notification);
       }
     });
@@ -131,16 +137,25 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
     }
 
     const userId = (client as any).user?.userId;
+    const role = (client as any).user?.role?.toUpperCase();
     if (userId) {
       client.join(`user:${userId}`);
       this.logger.log(`User ${userId} joined room user:${userId}`);
+
+      // Admin/Staff tự động join vào room admin:orders để nhận các update đơn hàng
+      const isAdmin = role === 'ADMIN' || role === 'STAFF';
+      if (isAdmin) {
+        client.join('admin:orders');
+        this.logger.log(`Admin/Staff ${userId} joined room admin:orders`);
+      }
+
       // Phát trực tiếp sự kiện về client để hiển thị trên Postman (không cần Ack)
       client.emit('joined', { room: `user:${userId}`, success: true });
       this.checkAndEmitPendingRepayment(client, { userId });
-      return { event: 'joined', room: `user:${userId}`, success: true };
+      return { success: true };
     }
     client.emit('error', { message: 'User not authenticated', success: false });
-    return { event: 'error', message: 'User not authenticated', success: false };
+    return { success: false, message: 'User not authenticated' };
   }
 
   @SubscribeMessage('leave')
@@ -150,15 +165,23 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
     @MessageBody() payload: any,
   ) {
     const userId = (client as any).user?.userId;
+    const role = (client as any).user?.role?.toUpperCase();
     if (userId) {
       client.leave(`user:${userId}`);
       this.logger.log(`User ${userId} left room user:${userId}`);
+
+      const isAdmin = role === 'ADMIN' || role === 'STAFF';
+      if (isAdmin) {
+        client.leave('admin:orders');
+        this.logger.log(`Admin/Staff ${userId} left room admin:orders`);
+      }
+
       // Phát trực tiếp sự kiện về client
       client.emit('left', { room: `user:${userId}`, success: true });
-      return { event: 'left', room: `user:${userId}`, success: true };
+      return { success: true };
     }
     client.emit('error', { message: 'User not authenticated', success: false });
-    return { event: 'error', message: 'User not authenticated', success: false };
+    return { success: false, message: 'User not authenticated' };
   }
 
   @SubscribeMessage('check-pending-repayment')
@@ -264,6 +287,43 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
       timestamp: new Date().toISOString(),
     });
     this.logger.debug(`Emitted notification to order:${orderCode}`);
+  }
+
+  /** Emit notification tới room admin:orders cho tất cả admin online. */
+  emitToAdminOrders(notification: any) {
+    let adminTitle = notification.title;
+    let adminBody = notification.body;
+
+    const orderCode = notification.data?.orderCode;
+    const customerName = notification.data?.customerName || 'Khách hàng';
+
+    // Nhận diện và tùy biến thông báo phù hợp cho Admin
+    if (notification.title?.includes('đã được tạo') || notification.data?.status === 'CREATED') {
+      adminTitle = 'Có đơn hàng mới!';
+      adminBody = `Khách hàng ${customerName} vừa đặt đơn hàng #${orderCode}.`;
+    } else if (notification.title?.includes('hoàn thành') || notification.title?.includes('COMPLETED')) {
+      adminTitle = 'Đơn hàng hoàn thành';
+      adminBody = `Đơn hàng #${orderCode} của ${customerName} đã hoàn thành và giao thành công.`;
+    } else if (notification.title?.includes('đã bị hủy') || notification.title?.includes('CANCELLED')) {
+      const reason = notification.data?.reason || 'Yêu cầu hủy';
+      adminTitle = 'Đơn hàng đã bị hủy';
+      adminBody = `Đơn hàng #${orderCode} của ${customerName} đã bị hủy (${reason}).`;
+    } else if (notification.data?.currentStatus) {
+      const statusLabel = notification.data.currentStatus;
+      adminTitle = `Cập nhật đơn hàng #${orderCode}`;
+      adminBody = `Đơn hàng chuyển sang trạng thái: ${statusLabel}.`;
+    }
+
+    this.server.to('admin:orders').emit('notification', {
+      event: 'notification',
+      data: {
+        ...notification,
+        title: adminTitle,
+        body: adminBody,
+      },
+      timestamp: new Date().toISOString(),
+    });
+    this.logger.debug(`Emitted customized notification to admin:orders for #${orderCode}`);
   }
 
   emitToMultipleUsers(userIds: string[], notification: any) {
