@@ -130,7 +130,13 @@ public class OrderController {
             summary = "Hủy đơn (chỉ PENDING)",
             security = @SecurityRequirement(name = "bearerAuth")
     )
-    public ResponseEntity<ApiResponse<OrderDetailResponse>> cancel(@PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.success(orderUseCase.cancelOrder(id), "Hủy đơn thành công"));
+    public ResponseEntity<ApiResponse<OrderDetailResponse>> cancel(
+            @PathVariable UUID id,
+            @RequestBody(required = false) java.util.Map<String, String> body
+    ) {
+        String reason = (body != null && body.get("reason") != null && !body.get("reason").isBlank())
+                ? body.get("reason")
+                : "Khách hủy đơn";
+        return ResponseEntity.ok(ApiResponse.success(orderUseCase.cancelOrder(id, reason), "Hủy đơn thành công"));
     }
 }

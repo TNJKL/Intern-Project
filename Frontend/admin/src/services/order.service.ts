@@ -39,6 +39,7 @@ export interface OrderDetail extends Order {
   deliveryAddress: string;
   paymentMethod: string;
   note?: string;
+  cancellationReason?: string;
   updatedAt: string;
   items: OrderDetailItem[];
 }

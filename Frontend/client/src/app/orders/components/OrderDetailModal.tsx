@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { X, MapPin, Coffee, CreditCard, Loader2, Clock, CheckCircle2, Package, Truck, User, Phone, DollarSign, FileText } from "lucide-react";
+import { X, MapPin, Coffee, CreditCard, Loader2, Clock, CheckCircle2, Package, Truck, User, Phone, DollarSign, FileText, XCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import { OrderDetail } from "@/services/order.service";
 import { paymentService } from "@/services/payment.service";
@@ -78,7 +78,7 @@ export function OrderDetailModal({
                 initial={{ opacity: 0, scale: 0.96, y: 30 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.96, y: 60 }}
-                className="relative w-full max-w-2xl bg-white rounded-t-[32px] sm:rounded-[28px] overflow-hidden shadow-2xl z-10 max-h-[92vh] flex flex-col border border-gray-100"
+                className="relative w-full max-w-2xl bg-white rounded-t-xl sm:rounded-xl overflow-hidden shadow-2xl z-10 max-h-[92vh] flex flex-col border border-gray-100"
             >
                 {/* Tiêu đề Form - Chữ to, đậm đà */}
                 <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-white shrink-0">
@@ -116,7 +116,7 @@ export function OrderDetailModal({
                         <>
                             {/* Banner cảnh báo VNPay chưa thanh toán xong */}
                             {orderDetail.status?.toUpperCase() === 'PENDING' && orderDetail.paymentMethod?.toUpperCase() === 'VNPAY' && (
-                                <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-2xl flex items-center justify-between gap-3 shadow-xs">
+                                <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-xl flex items-center justify-between gap-3 shadow-xs">
                                     <div>
                                         <p className="font-bold text-sm">Đơn hàng chưa thanh toán xong!</p>
                                         <p className="text-xs text-amber-700 font-medium">Vui lòng thanh toán trong vòng 15 phút để tránh đơn hàng bị tự động hủy.</p>
@@ -134,14 +134,14 @@ export function OrderDetailModal({
 
                             {/* Khối hiển thị Tổng quan 2 Cột */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="flex flex-col justify-center bg-primary/5 p-4 rounded-2xl border border-primary/15">
+                                <div className="flex flex-col justify-center bg-primary/5 p-4 rounded-xl border border-primary/15">
                                     <span className="text-gray-600 font-extrabold text-xs uppercase tracking-wider mb-1">Mã đơn hàng</span>
                                     <span className="text-primary font-black text-lg sm:text-xl tracking-wide select-all">
                                         {orderDetail.orderCode || orderDetail.id.slice(0, 8).toUpperCase()}
                                     </span>
                                 </div>
 
-                                <div className={`p-4 rounded-2xl border flex items-center gap-4 ${getStatusDisplay(orderDetail.status).bg}`}>
+                                <div className={`p-4 rounded-xl border flex items-center gap-4 ${getStatusDisplay(orderDetail.status).bg}`}>
                                     <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-white shrink-0 shadow-sm">
                                         {(() => {
                                             const Icon = getStatusDisplay(orderDetail.status).icon;
@@ -160,6 +160,19 @@ export function OrderDetailModal({
                                 </div>
                             </div>
 
+                            {/* Banner hiển thị Lý do hủy đơn nếu đơn bị hủy */}
+                            {orderDetail.status?.toUpperCase() === 'CANCELLED' && orderDetail.cancellationReason && (
+                                <div className="bg-red-50 border border-red-200 text-red-950 px-5 py-4 rounded-xl flex items-start gap-3 shadow-xs">
+                                    <XCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="font-extrabold text-sm uppercase tracking-wider text-red-800 mb-1">Lý do hủy đơn</p>
+                                        <p className="text-xs sm:text-sm text-red-700 font-semibold leading-relaxed">
+                                            {orderDetail.cancellationReason}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Thông tin giao nhận & Thanh toán */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
@@ -168,7 +181,7 @@ export function OrderDetailModal({
                                     <h4 className="font-black text-gray-900 uppercase tracking-wider text-xs flex items-center gap-2">
                                         <MapPin className="w-4 h-4 text-primary" /> Thông tin nhận hàng
                                     </h4>
-                                    <div className="bg-gray-50/80 rounded-2xl p-5 space-y-4 text-sm border border-gray-200/60 flex-1">
+                                    <div className="bg-gray-50/80 rounded-xl p-5 space-y-4 text-sm border border-gray-200/60 flex-1">
                                         <div>
                                             <p className="text-xs text-gray-500 font-black uppercase mb-1 flex items-center gap-1.5">
                                                 <User className="w-3.5 h-3.5 text-gray-600" /> Người nhận
@@ -209,7 +222,7 @@ export function OrderDetailModal({
                                     <h4 className="font-black text-gray-900 uppercase tracking-wider text-xs flex items-center gap-2">
                                         <CreditCard className="w-4 h-4 text-primary" /> Trạng thái & Giá trị đơn
                                     </h4>
-                                    <div className="bg-gray-50/80 rounded-2xl p-5 flex flex-col justify-between text-sm border border-gray-200/60 flex-1 min-h-[180px]">
+                                    <div className="bg-gray-50/80 rounded-xl p-5 flex flex-col justify-between text-sm border border-gray-200/60 flex-1 min-h-[180px]">
                                         <div>
                                             <p className="text-xs text-gray-500 font-black uppercase mb-1">Hình thức áp dụng</p>
                                             <p className="font-bold text-gray-900 text-sm bg-white border border-gray-200 px-3 py-2 rounded-xl shadow-xs inline-block w-full">

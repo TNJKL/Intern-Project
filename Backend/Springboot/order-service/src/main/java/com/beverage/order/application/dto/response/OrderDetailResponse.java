@@ -35,6 +35,7 @@ public class OrderDetailResponse {
     private Instant updatedAt;
     private List<OrderItemResponse> items;
     private List<OrderStatusHistoryResponse> statusHistory;
+    private String cancellationReason;
     /**
      * Chỉ có giá trị khi đơn được tạo bởi Guest (userId = null).
      * FE dùng để kết nối WebSocket theo dõi trạng thái realtime mà không cần JWT.

@@ -276,7 +276,7 @@ public class OrderUseCase {
     }
 
     @Transactional
-    public OrderDetailResponse cancelOrder(UUID orderId) {
+    public OrderDetailResponse cancelOrder(UUID orderId, String reason) {
         JwtUserPrincipal actor = orderActorResolver.requirePrincipal();
         OrderEntity order = findAccessibleOrder(orderId, actor);
 
@@ -286,19 +286,24 @@ public class OrderUseCase {
 
         order.setStatus(OrderStatus.CANCELLED);
         order.setCancelledAt(Instant.now());
-        order.setCancellationReason("Khách hủy đơn");
+        order.setCancellationReason(reason);
         orderJpaRepository.save(order);
 
         if (order.getVoucherId() != null) {
             voucherService.releaseVoucher(order.getVoucherId(), order.getId());
         }
 
-        appendStatusHistory(orderId, OrderStatus.CANCELLED, "Khách hủy đơn");
+        appendStatusHistory(orderId, OrderStatus.CANCELLED, reason);
 
-        applicationEventPublisher.publishEvent(new OrderApplicationEvent.OrderCancelled(this, order, "Khách hủy đơn"));
+        applicationEventPublisher.publishEvent(new OrderApplicationEvent.OrderCancelled(this, order, reason));
 
         orderDetailCacheService.evict(orderId);
         return loadDetail(orderId, actor);
+    }
+
+    @Transactional
+    public OrderDetailResponse cancelOrder(UUID orderId) {
+        return cancelOrder(orderId, "Khách hủy đơn");
     }
 
     @Transactional

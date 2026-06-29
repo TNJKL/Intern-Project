@@ -51,6 +51,7 @@ export interface OrderDetail {
   deliveryAddress: string;
   paymentMethod: string;
   note?: string;
+  cancellationReason?: string;
   updatedAt: string;
   items: OrderDetailItem[];
 }
@@ -70,8 +71,8 @@ export const orderService = {
     const response = await apiClient.get(`/orders/${id}`);
     return response.data;
   },
-  cancelOrder: async (id: string) => {
-    const response = await apiClient.post(`/orders/${id}/cancel`);
+  cancelOrder: async (id: string, reason?: string) => {
+    const response = await apiClient.post(`/orders/${id}/cancel`, { reason });
     return response.data;
   },
   trackOrder: async (orderCode: string, userPhone?: string): Promise<OrderDetailResponse> => {

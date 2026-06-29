@@ -56,6 +56,9 @@ export default function OrdersClient({ initialOrders, isServerError }: OrdersCli
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
   const [repayingOrderId, setRepayingOrderId] = useState<string | null>(null);
+  const [cancelConfirmOrder, setCancelConfirmOrder] = useState<OrderSummary | OrderDetail | null>(null);
+  const [cancelReasonOption, setCancelReasonOption] = useState<string>("");
+  const [customCancelReason, setCustomCancelReason] = useState<string>("");
 
   const handleRepay = async (orderId: string) => {
     setRepayingOrderId(orderId);
@@ -167,14 +170,37 @@ export default function OrdersClient({ initialOrders, isServerError }: OrdersCli
   };
 
   const handleCancelOrder = (id: string) => {
+    const targetOrder = orders.find((o) => o.id === id) || (orderDetail?.id === id ? orderDetail : null);
+    setCancelConfirmOrder(targetOrder);
     setCancelConfirmId(id);
+    setCancelReasonOption("");
+    setCustomCancelReason("");
   };
 
   const executeCancelOrder = async () => {
     if (!cancelConfirmId) return;
+
+    let finalReason = "Khách hủy đơn";
+    const status = cancelConfirmOrder?.status?.toUpperCase();
+    if (status === "CONFIRMED") {
+      if (!cancelReasonOption) {
+        alert("Vui lòng chọn lý do hủy đơn hàng");
+        return;
+      }
+      if (cancelReasonOption === "Khác") {
+        if (!customCancelReason.trim()) {
+          alert("Vui lòng nhập lý do hủy đơn hàng");
+          return;
+        }
+        finalReason = customCancelReason.trim();
+      } else {
+        finalReason = cancelReasonOption;
+      }
+    }
+
     setIsCancelling(true);
     try {
-      const res = await orderService.cancelOrder(cancelConfirmId);
+      const res = await orderService.cancelOrder(cancelConfirmId, finalReason);
       if (res.success) {
         // Cập nhật trạng thái local state ngay lập tức sang CANCELLED
         setOrders((prev) =>
@@ -186,6 +212,7 @@ export default function OrdersClient({ initialOrders, isServerError }: OrdersCli
           if (detailData?.success && detailData?.data) setOrderDetail(detailData.data);
         }
         setCancelConfirmId(null);
+        setCancelConfirmOrder(null);
         router.refresh();
       } else {
         alert(res.message || "Lỗi khi hủy đơn hàng");
@@ -252,7 +279,7 @@ export default function OrdersClient({ initialOrders, isServerError }: OrdersCli
         </div>
 
         {/* Tabs */}
-        <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-primary/5 mb-6 md:mb-8">
+        <div className="flex bg-white p-1 rounded-xl shadow-sm border border-primary/5 mb-6 md:mb-8">
           {ORDER_TABS.map((tab) => (
             <button
               key={tab.id}
@@ -273,7 +300,7 @@ export default function OrdersClient({ initialOrders, isServerError }: OrdersCli
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="bg-white rounded-2xl sm:rounded-3xl p-8 sm:p-12 text-center shadow-sm border border-primary/5 flex flex-col items-center"
+                className="bg-white rounded-xl p-8 sm:p-12 text-center shadow-sm border border-primary/5 flex flex-col items-center"
               >
                 <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
                   <Package className="w-8 h-8 sm:w-10 sm:h-10 text-gray-300" />
@@ -298,74 +325,81 @@ export default function OrdersClient({ initialOrders, isServerError }: OrdersCli
                   return (
                     <div
                       key={order.id}
-                      className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border border-primary/5 hover:shadow-md transition-all duration-300"
+                      className="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 overflow-hidden flex flex-col"
                     >
-                      {/* Order Item Header */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 border-b border-gray-100 pb-4">
-                        <div className="flex items-start sm:items-center justify-between sm:justify-start gap-3">
-                          <div>
-                            <div className="flex flex-wrap items-center gap-2 mb-1">
-                              <span className="font-extrabold text-gray-800 text-base sm:text-lg">{order.orderCode || order.id}</span>
+                      {/* Phần trên: Thông tin đơn hàng & Trạng thái & Timeline */}
+                      <div className="p-5 flex-1 bg-white">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                          <div className="space-y-1.5">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-black text-gray-900 text-base sm:text-lg select-all">
+                                #{order.orderCode || order.id.slice(0, 8).toUpperCase()}
+                              </span>
+
+                              {/* Badge Trạng thái */}
                               <span className={`px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold inline-flex items-center gap-1 ${StatusInfo.bg} ${StatusInfo.color}`}>
                                 <StatusIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                                 {StatusInfo.label}
                               </span>
                             </div>
-                            <p className="text-[11px] sm:text-xs text-gray-400 font-medium">Đặt lúc: {new Date(order.createdAt).toLocaleString('vi-VN')}</p>
+                            <p className="text-[11px] sm:text-xs text-gray-400 font-semibold tracking-wide">
+                              Đặt lúc: {new Date(order.createdAt).toLocaleString('vi-VN')}
+                            </p>
                           </div>
                         </div>
 
-                        <div className="flex sm:flex-col justify-between sm:justify-start items-center sm:items-end bg-gray-50 sm:bg-transparent p-2 sm:p-0 rounded-xl">
-                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider sm:mb-0.5 pl-2 sm:pl-0">Tổng tiền</p>
-                          <p className="text-base sm:text-xl font-black text-primary pr-2 sm:pr-0">{order.totalAmount?.toLocaleString("vi-VN") ?? 0}đ</p>
-                        </div>
+                        {/* Timeline */}
+                        {activeTab === "active" && order.status?.toLowerCase() !== "cancelled" && (
+                          <div className="mt-4 overflow-x-auto scrollbar-none py-1">
+                            <div className="w-full">
+                              <RenderTimelineComponent currentStatus={order.status} />
+                            </div>
+                          </div>
+                        )}
                       </div>
 
-                      {/* Timeline */}
-                      {activeTab === "active" && order.status?.toLowerCase() !== "cancelled" && (
-                        <div className="mb-6 overflow-x-auto scrollbar-none py-1">
-                          <div className="w-full">
-                            <RenderTimelineComponent currentStatus={order.status} />
-                          </div>
+                      {/* Phần dưới: Tổng tiền & Các nút Action */}
+                      <div className="px-5 py-4 bg-gray-50/50 border-t border-dashed border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div className="flex items-baseline gap-1.5 shrink-0">
+                          <span className="text-[10px] text-gray-400 font-black uppercase tracking-wider">Tổng tiền:</span>
+                          <span className="text-lg sm:text-xl font-black text-primary">
+                            {order.totalAmount?.toLocaleString("vi-VN") ?? 0}đ
+                          </span>
                         </div>
-                      )}
 
-                      {/* Action buttons */}
-                      <div className="flex justify-end gap-2 mt-2 w-full sm:w-auto">
-                        {["pending", "confirmed"].includes(order.status?.toLowerCase()) && (
+                        {/* Nhóm button actions */}
+                        <div className="flex gap-2 w-full sm:w-auto justify-end">
+                          {["pending", "confirmed"].includes(order.status?.toLowerCase()) && (
+                            <button
+                              onClick={() => handleCancelOrder(order.id)}
+                              className="flex-1 sm:flex-initial px-4.5 py-2.5 bg-red-50 hover:bg-red-100 active:scale-98 text-red-700 rounded-xl font-extrabold transition-all text-xs uppercase tracking-wider border border-red-100 text-center"
+                            >
+                              Hủy đơn
+                            </button>
+                          )}
+                          {order.status?.toLowerCase() === "completed" && (
+                            <button className="flex-1 sm:flex-initial px-4.5 py-2.5 bg-primary/5 text-primary rounded-xl font-extrabold hover:bg-primary/10 transition-all text-xs uppercase tracking-wider text-center">
+                              Đánh giá
+                            </button>
+                          )}
+                          {order.status?.toUpperCase() === "PENDING" && order.paymentMethod?.toUpperCase() === "VNPAY" && (
+                            <button
+                              onClick={() => handleRepay(order.id)}
+                              disabled={repayingOrderId !== null}
+                              className="flex-1 sm:flex-initial px-4.5 py-2.5 bg-amber-500 text-white rounded-xl font-extrabold hover:bg-amber-600 active:scale-98 transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-50"
+                            >
+                              {repayingOrderId === order.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                              Thanh toán ngay
+                            </button>
+                          )}
                           <button
-                            onClick={() => handleCancelOrder(order.id)}
-                            className="flex-1 sm:flex-initial px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl font-extrabold transition-colors text-xs uppercase tracking-wider border border-red-200 text-center"
+                            onClick={() => handleViewDetail(order.id)}
+                            className="flex-1 sm:flex-initial justify-center px-5 py-2.5 bg-primary text-white rounded-xl font-extrabold hover:bg-primary/95 active:scale-98 transition-all text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-sm"
                           >
-                            Hủy đơn
+                            Xem chi tiết
+                            <ArrowRight className="w-3.5 h-3.5" />
                           </button>
-                        )}
-                        {order.status?.toLowerCase() === "completed" && (
-                          <button className="flex-1 sm:flex-initial px-4 py-2.5 bg-primary/5 text-primary rounded-xl font-extrabold hover:bg-primary/10 transition-colors text-xs uppercase tracking-wider">
-                            Đánh giá
-                          </button>
-                        )}
-                        {order.status?.toUpperCase() === "PENDING" && order.paymentMethod?.toUpperCase() === "VNPAY" && (
-                          <button
-                            onClick={() => handleRepay(order.id)}
-                            disabled={repayingOrderId !== null}
-                            className="flex-1 sm:flex-initial px-4 py-2.5 bg-amber-500 text-white rounded-xl font-extrabold hover:bg-amber-600 transition-colors text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-sm disabled:opacity-50"
-                          >
-                            {repayingOrderId === order.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                            Thanh toán ngay
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleViewDetail(order.id)}
-                          className={`${
-                            ["pending", "confirmed", "completed"].includes(order.status?.toLowerCase())
-                              ? "flex-1 sm:flex-initial"
-                              : "w-full"
-                          } sm:w-auto justify-center px-5 py-2.5 bg-primary text-white rounded-xl font-extrabold hover:bg-primary/90 transition-colors text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-sm`}
-                        >
-                          {order.status?.toLowerCase() === "completed" || order.status?.toLowerCase() === "cancelled" ? "Mua lại đơn này" : "Xem chi tiết"}
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -376,7 +410,7 @@ export default function OrdersClient({ initialOrders, isServerError }: OrdersCli
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-8 bg-white p-4 rounded-2xl shadow-sm border border-primary/5">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-8 bg-white p-4 rounded-xl shadow-sm border border-primary/5">
               <span className="text-xs sm:text-sm font-medium text-gray-500 text-center md:text-left">
                 Hiển thị <strong className="text-primary font-black">{filteredOrders.length > 0 ? (adjustedPage - 1) * itemsPerPage + 1 : 0} - {Math.min(adjustedPage * itemsPerPage, filteredOrders.length)}</strong> / <strong className="text-primary font-black">{filteredOrders.length}</strong> đơn
               </span>
@@ -417,18 +451,79 @@ export default function OrdersClient({ initialOrders, isServerError }: OrdersCli
 
       {/* Confirmation Modal Hủy Đơn */}
       <AnimatePresence>
-        {cancelConfirmId && (
+        {cancelConfirmId && cancelConfirmOrder && (
           <div style={{ zIndex: 9999 }} className="fixed inset-0 flex items-center justify-center p-4">
-            <motion.div key="cancel-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => !isCancelling && setCancelConfirmId(null)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-            <motion.div key="cancel-modal" initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-sm bg-white rounded-3xl overflow-hidden shadow-2xl z-10 p-6 text-center">
+            <motion.div
+              key="cancel-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => !isCancelling && (setCancelConfirmId(null), setCancelConfirmOrder(null))}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              key="cancel-modal"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-white rounded-3xl overflow-hidden shadow-2xl z-10 p-6"
+            >
               <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Package className="w-7 h-7 text-red-500" />
               </div>
-              <h3 className="text-lg sm:text-xl font-black text-gray-800 mb-1">Hủy đơn hàng?</h3>
-              <p className="text-gray-500 text-xs sm:text-sm mb-6 leading-relaxed">Bạn có chắc chắn muốn hủy đơn hàng này không? Hành động này không thể hoàn tác.</p>
+              <h3 className="text-lg sm:text-xl font-black text-gray-800 mb-1 text-center">Hủy đơn hàng?</h3>
+              <p className="text-gray-500 text-xs sm:text-sm mb-4 leading-relaxed text-center">
+                Bạn có chắc chắn muốn hủy đơn hàng này không? Hành động này không thể hoàn tác.
+              </p>
+
+              {/* Yêu cầu lý do hủy đối với đơn CONFIRMED */}
+              {cancelConfirmOrder.status?.toUpperCase() === "CONFIRMED" && (
+                <div className="mb-5 text-left">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
+                    Lý do hủy đơn hàng <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={cancelReasonOption}
+                    onChange={(e) => setCancelReasonOption(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm font-semibold text-gray-800 focus:outline-none focus:border-primary focus:bg-white transition-all mb-3"
+                  >
+                    <option value="">-- Chọn lý do hủy đơn --</option>
+                    <option value="Tôi đặt nhầm món">Tôi đặt nhầm món</option>
+                    <option value="Tôi muốn thay đổi địa chỉ giao hàng">Tôi muốn thay đổi địa chỉ giao hàng</option>
+                    <option value="Tôi tìm được chỗ khác">Tôi tìm được chỗ khác</option>
+                    <option value="Đổi phương thức thanh toán">Đổi phương thức thanh toán</option>
+                    <option value="Khác">Khác (Nhập lý do khác)</option>
+                  </select>
+
+                  {cancelReasonOption === "Khác" && (
+                    <textarea
+                      placeholder="Nhập lý do chi tiết của bạn..."
+                      value={customCancelReason}
+                      onChange={(e) => setCustomCancelReason(e.target.value)}
+                      rows={3}
+                      className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm font-semibold text-gray-800 focus:outline-none focus:border-primary focus:bg-white transition-all placeholder:text-gray-400 placeholder:font-semibold"
+                    />
+                  )}
+                </div>
+              )}
+
               <div className="flex gap-3">
-                <button onClick={() => setCancelConfirmId(null)} disabled={isCancelling} className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors uppercase tracking-wider text-xs disabled:opacity-50">Không</button>
-                <button onClick={executeCancelOrder} disabled={isCancelling} className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors uppercase tracking-wider text-xs disabled:opacity-50 flex items-center justify-center gap-1.5">
+                <button
+                  onClick={() => (setCancelConfirmId(null), setCancelConfirmOrder(null))}
+                  disabled={isCancelling}
+                  className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors uppercase tracking-wider text-xs disabled:opacity-50"
+                >
+                  Không
+                </button>
+                <button
+                  onClick={executeCancelOrder}
+                  disabled={
+                    isCancelling ||
+                    (cancelConfirmOrder.status?.toUpperCase() === "CONFIRMED" &&
+                      (!cancelReasonOption || (cancelReasonOption === "Khác" && !customCancelReason.trim())))
+                  }
+                  className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors uppercase tracking-wider text-xs disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
                   {isCancelling && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Đồng ý
                 </button>
               </div>

@@ -151,6 +151,13 @@ const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({ orderId, isOpen, 
               <Descriptions.Item label="Số điện thoại" span={2}>{order.userPhone}</Descriptions.Item>
               <Descriptions.Item label="Địa chỉ giao hàng" span={2}>{order.deliveryAddress}</Descriptions.Item>
               <Descriptions.Item label="Ghi chú" span={2}>{order.note || <Text type="secondary">Không có</Text>}</Descriptions.Item>
+              {order.status === 'CANCELLED' && order.cancellationReason && (
+                <Descriptions.Item label="Lý do hủy đơn" span={2}>
+                  <Text className="font-extrabold text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-1.5 inline-block w-full">
+                    {order.cancellationReason}
+                  </Text>
+                </Descriptions.Item>
+              )}
             </Descriptions>
           </div>
 
@@ -160,61 +167,105 @@ const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({ orderId, isOpen, 
             {isPaymentsLoading ? (
               <Spin size="small" />
             ) : payment ? (
-              <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3 shadow-sm">
-                <Descriptions column={2} size="small" bordered className="bg-white">
-                  <Descriptions.Item label="Phương thức" span={1}>
-                    <Tag className="font-extrabold text-[10px] rounded-lg border-none px-2.5 py-0.5" color={payment.paymentMethod === 'VNPAY' ? 'blue' : 'orange'}>
-                      {payment.paymentMethod}
-                    </Tag>
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Trạng thái" span={1}>
-                    {(() => {
-                      let color = '';
-                      let label = payment.status as string;
-                      switch (payment.status) {
-                        case 'SUCCESS':
-                          color = 'bg-emerald-50 text-emerald-700';
-                          label = 'THÀNH CÔNG';
-                          break;
-                        case 'PENDING':
-                          color = 'bg-amber-50 text-amber-700';
-                          label = 'CHỜ THANH TOÁN';
-                          break;
-                        case 'FAILED':
-                          color = 'bg-rose-50 text-rose-700';
-                          label = 'THẤT BẠI';
-                          break;
-                        case 'EXPIRED':
-                          color = 'bg-gray-100 text-gray-500';
-                          label = 'QUÁ HẠN';
-                          break;
-                      }
-                      return (
-                        <Tag className={`font-extrabold rounded-lg px-2.5 py-0.5 text-[10px] border-none ${color}`}>
-                          {label}
-                        </Tag>
-                      );
-                    })()}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Số tiền giao dịch" span={1}>
-                    <Text strong>{payment.amount?.toLocaleString()}đ</Text>
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Đã hoàn trả" span={1}>
-                    <Text className={totalRefunded > 0 ? "text-rose-600 font-bold" : "text-gray-500"}>
-                      {totalRefunded?.toLocaleString()}đ
-                    </Text>
-                  </Descriptions.Item>
-                  {payment.transactionId && (
-                    <Descriptions.Item label="Mã giao dịch" span={2}>
-                      <Text code className="text-xs">{payment.transactionId}</Text>
-                    </Descriptions.Item>
-                  )}
-                  {payment.paidAt && (
-                    <Descriptions.Item label="Thời gian thanh toán" span={2}>
-                      {dayjs(payment.paidAt).format('DD/MM/YYYY HH:mm')}
-                    </Descriptions.Item>
-                  )}
-                </Descriptions>
+              <div className="space-y-3">
+                <div className="border border-black rounded-xl overflow-hidden bg-white shadow-xs">
+                  <div className="grid grid-cols-2">
+                    {/* Ô 1: Phương thức thanh toán */}
+                    <div className="col-span-2 sm:col-span-1 bg-gray-50/20 border-r border-b border-black p-3.5 flex flex-col justify-center">
+                      <span className="text-[10px] text-gray-400 font-black uppercase tracking-wider mb-1">Phương thức thanh toán</span>
+                      <span className="font-bold text-gray-800 text-sm">
+                        {payment.paymentMethod === 'VNPAY' ? '💳 VNPay (Cổng thanh toán)' : '💵 Tiền mặt khi nhận hàng (COD)'}
+                      </span>
+                    </div>
+
+                    {/* Ô 2: Trạng thái thanh toán */}
+                    <div className="col-span-2 sm:col-span-1 bg-gray-50/20 border-b border-black p-3.5 flex flex-col justify-center">
+                      <span className="text-[10px] text-gray-400 font-black uppercase tracking-wider mb-1">Trạng thái thanh toán</span>
+                      {(() => {
+                        let color = '';
+                        let label = payment.status as string;
+                        switch (payment.status) {
+                          case 'SUCCESS':
+                            color = 'bg-emerald-50 text-emerald-700 border border-emerald-100';
+                            label = 'THÀNH CÔNG';
+                            break;
+                          case 'PENDING':
+                            color = 'bg-amber-50 text-amber-700 border border-amber-100';
+                            label = 'CHỜ THANH TOÁN';
+                            break;
+                          case 'FAILED':
+                            color = 'bg-rose-50 text-rose-700 border border-rose-100';
+                            label = 'THẤT BẠI';
+                            break;
+                          case 'EXPIRED':
+                            color = 'bg-gray-100 text-gray-500 border border-gray-200';
+                            label = 'QUÁ HẠN';
+                            break;
+                        }
+                        return (
+                          <span className={`font-extrabold rounded-lg px-2.5 py-0.5 text-xs text-center inline-block w-fit ${color}`}>
+                            {label}
+                          </span>
+                        );
+                      })()}
+                    </div>
+
+                    {/* Ô 3: Số tiền giao dịch */}
+                    <div className="col-span-2 sm:col-span-1 bg-gray-50/20 border-r border-b border-black p-3.5 flex flex-col justify-center">
+                      <span className="text-[10px] text-gray-400 font-black uppercase tracking-wider mb-1">Số tiền giao dịch</span>
+                      <span className="text-base font-black text-gray-800">{payment.amount?.toLocaleString()}đ</span>
+                    </div>
+
+                    {/* Ô 4: Thời gian thanh toán */}
+                    <div className="col-span-2 sm:col-span-1 bg-gray-50/20 border-b border-black p-3.5 flex flex-col justify-center">
+                      <span className="text-[10px] text-gray-400 font-black uppercase tracking-wider mb-1">Thời gian thanh toán</span>
+                      <span className="text-xs font-semibold text-gray-700">
+                        {payment.paidAt ? dayjs(payment.paidAt).format('DD/MM/YYYY HH:mm') : <span className="text-gray-400 italic">Chưa thanh toán</span>}
+                      </span>
+                    </div>
+
+                    {/* Ô 5: Mã giao dịch (nếu có) */}
+                    {payment.transactionId && (
+                      <div className="col-span-2 bg-gray-50/20 border-b border-black p-3.5 flex flex-col justify-center">
+                        <span className="text-[10px] text-gray-400 font-black uppercase tracking-wider mb-1">Mã giao dịch</span>
+                        <Text code copyable className="text-xs w-fit bg-white border border-gray-100 px-2 py-0.5 rounded">{payment.transactionId}</Text>
+                      </div>
+                    )}
+
+                    {/* Ô 6: Trạng thái hoàn tiền (chỉ hiển thị cho đơn VNPAY) */}
+                    {payment.paymentMethod === 'VNPAY' && (
+                      <div className="col-span-2 bg-gray-50/20 p-3.5 flex flex-col gap-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] text-gray-400 font-black uppercase tracking-wider">Trạng thái hoàn trả</span>
+                          {(() => {
+                            let statusColor = 'text-gray-500 bg-gray-100 border border-gray-200';
+                            let statusLabel = 'CHƯA HOÀN TIỀN';
+                            if (totalRefunded > 0) {
+                              if (remainingRefundable === 0) {
+                                statusColor = 'text-rose-700 bg-rose-50 border border-rose-100';
+                                statusLabel = 'ĐÃ HOÀN ĐỦ TIỀN';
+                              } else {
+                                statusColor = 'text-amber-700 bg-amber-50 border-amber-100';
+                                statusLabel = 'ĐÃ HOÀN TIỀN MỘT PHẦN';
+                              }
+                            }
+                            return (
+                              <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black border ${statusColor}`}>
+                                {statusLabel}
+                              </span>
+                            );
+                          })()}
+                        </div>
+                        {totalRefunded > 0 && (
+                          <div className="flex justify-between items-center text-xs pt-1.5 border-t border-dashed border-gray-200/80">
+                            <span className="font-semibold text-gray-500">Số tiền đã hoàn:</span>
+                            <span className="font-black text-rose-600">-{totalRefunded?.toLocaleString()}đ</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
 
                 {/* Nút Hoàn tiền */}
                 {payment.status === 'SUCCESS' && payment.paymentMethod === 'VNPAY' && (

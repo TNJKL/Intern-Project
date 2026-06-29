@@ -61,6 +61,7 @@ public class OrderDtoMapper {
                 .deliveryAddress(entity.getDeliveryAddress())
                 .paymentMethod(entity.getPaymentMethod())
                 .note(entity.getNote())
+                .cancellationReason(entity.getCancellationReason())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .items(entity.getItems().stream().map(this::toItem).toList())
