@@ -4,6 +4,7 @@ import com.beverage.order.application.dto.response.OrderTrackingResponse;
 import com.beverage.order.application.mapper.OrderDtoMapper;
 import com.beverage.order.domain.exception.ResourceNotFoundException;
 import com.beverage.order.domain.exception.TooManyRequestsException;
+import com.beverage.order.infrastructure.cache.GuestSessionCacheService;
 import com.beverage.order.infrastructure.persistence.entity.OrderEntity;
 import com.beverage.order.infrastructure.persistence.entity.OrderStatusHistoryEntity;
 import com.beverage.order.infrastructure.persistence.repository.OrderJpaRepository;
@@ -23,13 +24,14 @@ import java.util.List;
 public class OrderTrackingService {
 
     private static final String RATE_LIMIT_KEY_PREFIX = "order-track-rate:";
-    private static final int MAX_REQUESTS_PER_MINUTE = 5;
+    private static final int MAX_REQUESTS_PER_MINUTE = 20;
     private static final Duration RATE_LIMIT_WINDOW = Duration.ofMinutes(1);
 
     private final OrderJpaRepository orderJpaRepository;
     private final OrderStatusHistoryJpaRepository statusHistoryJpaRepository;
     private final OrderDtoMapper orderDtoMapper;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final GuestSessionCacheService guestSessionCacheService;
 
     @Transactional(readOnly = true)
     public OrderTrackingResponse trackOrder(String orderCode, String phone, String clientIp) {
@@ -42,10 +44,18 @@ public class OrderTrackingService {
             throw new ResourceNotFoundException("Đơn hàng", "orderCode", orderCode);
         }
 
-        List<OrderStatusHistoryEntity> history =
-                statusHistoryJpaRepository.findByOrderIdOrderByCreatedAtAsc(order.getId());
+        List<OrderStatusHistoryEntity> history = statusHistoryJpaRepository
+                .findByOrderIdOrderByCreatedAtAsc(order.getId());
 
-        return orderDtoMapper.toTracking(order, history);
+        String guestSessionId = null;
+        if (order.getUserId() == null) {
+            guestSessionId = guestSessionCacheService.getGuestSessionId(order.getOrderCode());
+            if (guestSessionId == null) {
+                guestSessionId = guestSessionCacheService.create(order.getOrderCode());
+            }
+        }
+
+        return orderDtoMapper.toTracking(order, history, guestSessionId);
     }
 
     private void checkRateLimit(String clientIp) {

@@ -38,6 +38,7 @@ public class SecurityConfig {
                                 "/actuator/**",
                                 "/api/v1/vouchers/validate/**",
                                 "/api/v1/orders/track",
+                                "/api/v1/orders/*/guest-cancel",
                                 "/api/v1/internal/**"
                         ).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/orders").permitAll()

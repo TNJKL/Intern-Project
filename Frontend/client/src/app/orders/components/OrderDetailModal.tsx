@@ -5,6 +5,10 @@ import { X, MapPin, Coffee, CreditCard, Loader2, Clock, CheckCircle2, Package, T
 import { motion } from "framer-motion";
 import { OrderDetail } from "@/services/order.service";
 import { paymentService } from "@/services/payment.service";
+import { useRouter } from "next/navigation";
+import { useCartStore } from "@/store/zustand/useCartStore";
+import toast from "react-hot-toast";
+import { apiClient } from "@/lib/api";
 
 interface OrderDetailModalProps {
     isOpen: boolean;
@@ -13,6 +17,7 @@ interface OrderDetailModalProps {
     isLoading: boolean;
     isCancelling: boolean;
     onCancelOrder: (id: string) => void;
+    guestPhone?: string;
 }
 
 const getStatusDisplay = (status: string) => {
@@ -36,10 +41,12 @@ export function OrderDetailModal({
     isLoading,
     isCancelling,
     onCancelOrder,
+    guestPhone,
 }: OrderDetailModalProps) {
     if (!isOpen) return null;
 
     const [isRepaying, setIsRepaying] = React.useState(false);
+    const [isReordering, setIsReordering] = React.useState(false);
 
     const handleRepay = async () => {
         if (!orderDetail) return;
@@ -57,6 +64,95 @@ export function OrderDetailModal({
             alert(errorMsg);
         } finally {
             setIsRepaying(false);
+        }
+    };
+
+    const router = useRouter();
+    const { addItem, clearCart } = useCartStore();
+
+    const handleReorder = async () => {
+        if (!orderDetail || !orderDetail.items) return;
+
+        setIsReordering(true);
+        try {
+            // 1. Lấy thông tin ảnh và danh mục của từng sản phẩm song song từ API (S3 URL)
+            const productsInfo = await Promise.all(
+                orderDetail.items.map(async (item) => {
+                    if (!item.productId) return { productId: item.id, image: "/images/cat-cappuccino.png", category: "Đồ uống" };
+                    try {
+                        const res = await apiClient.get(`/products/${item.productId}`);
+                        return {
+                            productId: item.productId,
+                            image: res.data?.data?.imageUrl || "/images/cat-cappuccino.png",
+                            category: res.data?.data?.categoryName || "Đồ uống"
+                        };
+                    } catch (e) {
+                        console.warn("Failed to fetch product detail for image mapping", e);
+                        return {
+                            productId: item.productId,
+                            image: "/images/cat-cappuccino.png",
+                            category: "Đồ uống"
+                        };
+                    }
+                })
+            );
+
+            const productMap = new Map(productsInfo.map(p => [p.productId, p]));
+
+            // 2. Xóa sạch giỏ hàng hiện tại
+            clearCart();
+
+            // 3. Thêm từng item từ đơn hàng cũ vào giỏ hàng
+            orderDetail.items.forEach((item) => {
+                if (!item.productId || !item.variantId) return;
+
+                const cartToppings = (item.toppings || []).map((t) => ({
+                    id: t.toppingId,
+                    name: t.name,
+                    price: t.unitPrice,
+                }));
+
+                const toppingIds = (item.toppings || []).map((t) => t.toppingId);
+
+                const info = productMap.get(item.productId);
+
+                addItem({
+                    productId: item.productId,
+                    variantId: item.variantId,
+                    quantity: item.quantity,
+                    toppingIds: toppingIds,
+                    name: item.productName,
+                    image: info?.image || "/images/cat-cappuccino.png", // URL ảnh AWS S3 thực tế từ DB
+                    category: info?.category || "Đồ uống",
+                    sizeLabel: item.variantLabel,
+                    toppings: cartToppings,
+                    unitPrice: item.unitPrice,
+                });
+            });
+
+            // 4. Lưu thông tin giao hàng của đơn cũ vào localStorage
+            const shippingPhone = (guestPhone && !guestPhone.includes("*"))
+                ? guestPhone
+                : (orderDetail.userPhone || "");
+
+            const shippingInfo = {
+                name: orderDetail.userName || "",
+                phone: shippingPhone,
+                email: orderDetail.userEmail || "",
+                address: orderDetail.deliveryAddress || "",
+                note: orderDetail.note || "",
+            };
+            localStorage.setItem("brewtra_reorder_shipping", JSON.stringify(shippingInfo));
+
+            // 5. Đóng modal và chuyển hướng về trang checkout
+            onClose();
+            toast.success("Đã nạp sản phẩm đơn cũ vào giỏ hàng. Đang chuyển đến trang thanh toán!");
+            router.push("/checkout");
+        } catch (error) {
+            console.error("Reorder failed:", error);
+            toast.error("Đã xảy ra lỗi khi mua lại đơn hàng.");
+        } finally {
+            setIsReordering(false);
         }
     };
 
@@ -311,8 +407,13 @@ export function OrderDetailModal({
                         </div>
 
                         <div className="flex items-center gap-3 w-full sm:w-auto">
-                            {orderDetail.status?.toUpperCase() === "COMPLETED" && (
-                                <button className="flex-1 sm:flex-initial px-6 py-3.5 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 active:scale-98 transition-all uppercase tracking-wider text-sm shadow-md">
+                            {["COMPLETED", "CANCELLED"].includes(orderDetail.status?.toUpperCase()) && (
+                                <button
+                                    onClick={handleReorder}
+                                    disabled={isReordering}
+                                    className="flex-1 sm:flex-initial px-6 py-3.5 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 active:scale-98 transition-all uppercase tracking-wider text-sm shadow-md flex items-center justify-center gap-1.5 disabled:opacity-50"
+                                >
+                                    {isReordering && <Loader2 className="w-4 h-4 animate-spin" />}
                                     Mua lại đơn này
                                 </button>
                             )}

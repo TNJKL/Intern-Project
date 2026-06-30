@@ -7,13 +7,18 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 @Data
 @Builder
 public class OrderTrackingResponse {
+    private UUID id;
+    private String guestSessionId;
     private String orderCode;
     private OrderStatus status;
+    private String cancellationReason;
     private String userName;
+    private String userEmail;
     private String userPhone;
     private String deliveryAddress;
     private String paymentMethod;

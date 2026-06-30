@@ -139,4 +139,23 @@ public class OrderController {
                 : "Khách hủy đơn";
         return ResponseEntity.ok(ApiResponse.success(orderUseCase.cancelOrder(id, reason), "Hủy đơn thành công"));
     }
+
+    @PostMapping("/{id}/guest-cancel")
+    @Operation(summary = "Khách vãng lai hủy đơn hàng (không cần token, xác thực qua SĐT)")
+    public ResponseEntity<ApiResponse<OrderDetailResponse>> guestCancel(
+            @PathVariable UUID id,
+            @RequestBody java.util.Map<String, String> body
+    ) {
+        String phone = body != null ? body.get("phone") : null;
+        if (phone == null || phone.isBlank()) {
+            throw new com.beverage.order.domain.exception.BadRequestException("Số điện thoại không được bỏ trống");
+        }
+        String reason = (body != null && body.get("reason") != null && !body.get("reason").isBlank())
+                ? body.get("reason")
+                : "Khách vãng lai hủy đơn";
+        return ResponseEntity.ok(ApiResponse.success(
+                orderUseCase.guestCancelOrder(id, phone, reason),
+                "Hủy đơn hàng thành công"
+        ));
+    }
 }

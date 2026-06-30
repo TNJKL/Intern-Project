@@ -88,6 +88,33 @@ export default function CheckoutClient() {
       setEmail(user.email || "");
       setPhone(user.phone || "");
     }
+
+    // Tự động điền thông tin mua lại đơn hàng cũ nếu có
+    const reorderShipping = localStorage.getItem("brewtra_reorder_shipping");
+    if (reorderShipping) {
+      try {
+        const info = JSON.parse(reorderShipping);
+        
+        if (user) {
+          // Đối với thành viên: Giữ nguyên Tên, SĐT, Email của tài khoản, chỉ ghi đè địa chỉ & ghi chú
+          if (info.address) setAddress(info.address);
+          if (info.note) setNote(info.note);
+        } else {
+          // Đối với khách vãng lai: Ghi đè toàn bộ thông tin giao nhận cũ
+          if (info.name) setName(info.name);
+          if (info.email) setEmail(info.email);
+          if (info.phone) setPhone(info.phone);
+          if (info.address) setAddress(info.address);
+          if (info.note) setNote(info.note);
+        }
+        
+        // Sau khi sử dụng xong, xóa khỏi localStorage để không ảnh hưởng các đơn đặt hàng sau
+        localStorage.removeItem("brewtra_reorder_shipping");
+        toast.success("Đã tự động điền thông tin giao hàng từ đơn hàng cũ!");
+      } catch (e) {
+        console.error("Failed to parse reorder shipping info", e);
+      }
+    }
   }, [user]);
 
   const checkVoucherEligibility = (code: string): { eligible: boolean; message?: string } => {
@@ -309,6 +336,7 @@ export default function CheckoutClient() {
           const { guestSessionId, orderCode } = res.data;
           localStorage.setItem('brewtra_guest_session_id', guestSessionId);
           localStorage.setItem('brewtra_guest_order_code', orderCode);
+          localStorage.setItem('brewtra_guest_phone', phone);
           joinGuestRoom(guestSessionId);
         }
 

@@ -126,7 +126,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
 
       const innerData = notifData?.data || notifData;
       const notifOrderCode = innerData?.orderCode || payload?.orderCode || notifData?.orderCode;
-      const notifStatus = innerData?.currentStatus || innerData?.status || payload?.status || notifData?.status;
+      const notifStatus = innerData?.currentStatus || innerData?.status || payload?.status;
 
       // Xử lý đồng bộ realtime trạng thái đơn hàng khi nhận được bất kỳ cập nhật nào liên quan đến đơn hàng
       if (notifOrderCode) {

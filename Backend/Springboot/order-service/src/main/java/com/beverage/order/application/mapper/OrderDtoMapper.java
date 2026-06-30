@@ -94,7 +94,8 @@ public class OrderDtoMapper {
 
     public OrderTrackingResponse toTracking(
             OrderEntity entity,
-            List<OrderStatusHistoryEntity> history
+            List<OrderStatusHistoryEntity> history,
+            String guestSessionId
     ) {
         String maskedPhone = maskPhone(entity.getUserPhone());
 
@@ -105,9 +106,13 @@ public class OrderDtoMapper {
                 : null;
 
         return OrderTrackingResponse.builder()
+                .id(entity.getId())
+                .guestSessionId(guestSessionId)
                 .orderCode(entity.getOrderCode())
                 .status(entity.getStatus())
+                .cancellationReason(entity.getCancellationReason())
                 .userName(entity.getUserName())
+                .userEmail(entity.getUserEmail())
                 .userPhone(maskedPhone)
                 .deliveryAddress(entity.getDeliveryAddress())
                 .paymentMethod(entity.getPaymentMethod())

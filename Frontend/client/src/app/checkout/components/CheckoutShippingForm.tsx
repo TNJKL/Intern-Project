@@ -106,8 +106,8 @@ export default function CheckoutShippingForm({
             }}
             placeholder="Nhập họ và tên người nhận"
             className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm outline-none focus:bg-white focus:ring-4 transition-all placeholder:text-gray-400 ${errors.name
-                ? "border-red-500 focus:border-red-500 focus:ring-red-500/10"
-                : "border-gray-200/60 focus:border-primary/50 focus:ring-primary/5"
+              ? "border-red-500 focus:border-red-500 focus:ring-red-500/10"
+              : "border-gray-200/60 focus:border-primary/50 focus:ring-primary/5"
               }`}
           />
           {errors.name && <p className="text-red-500 text-xs font-semibold mt-1">{errors.name}</p>}
@@ -131,8 +131,8 @@ export default function CheckoutShippingForm({
             }}
             placeholder="Nhập số điện thoại"
             className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm outline-none focus:bg-white focus:ring-4 transition-all placeholder:text-gray-400 ${errors.phone
-                ? "border-red-500 focus:border-red-500 focus:ring-red-500/10"
-                : "border-gray-200/60 focus:border-primary/50 focus:ring-primary/5"
+              ? "border-red-500 focus:border-red-500 focus:ring-red-500/10"
+              : "border-gray-200/60 focus:border-primary/50 focus:ring-primary/5"
               }`}
           />
           {errors.phone && <p className="text-red-500 text-xs font-semibold mt-1">{errors.phone}</p>}
@@ -156,8 +156,8 @@ export default function CheckoutShippingForm({
             }}
             placeholder="Để nhận thông tin trạng thái đơn hàng"
             className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm outline-none focus:bg-white focus:ring-4 transition-all placeholder:text-gray-400 ${errors.email
-                ? "border-red-500 focus:border-red-500 focus:ring-red-500/10"
-                : "border-gray-200/60 focus:border-primary/50 focus:ring-primary/5"
+              ? "border-red-500 focus:border-red-500 focus:ring-red-500/10"
+              : "border-gray-200/60 focus:border-primary/50 focus:ring-primary/5"
               }`}
           />
           {errors.email && <p className="text-red-500 text-xs font-semibold mt-1">{errors.email}</p>}
@@ -181,8 +181,8 @@ export default function CheckoutShippingForm({
             }}
             placeholder="Số nhà, tên đường, phường/xã, quận/huyện..."
             className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm outline-none focus:bg-white focus:ring-4 transition-all placeholder:text-gray-400 ${errors.address
-                ? "border-red-500 focus:border-red-500 focus:ring-red-500/10"
-                : "border-gray-200/60 focus:border-primary/50 focus:ring-primary/5"
+              ? "border-red-500 focus:border-red-500 focus:ring-red-500/10"
+              : "border-gray-200/60 focus:border-primary/50 focus:ring-primary/5"
               }`}
           />
           {errors.address && <p className="text-red-500 text-xs font-semibold mt-1">{errors.address}</p>}

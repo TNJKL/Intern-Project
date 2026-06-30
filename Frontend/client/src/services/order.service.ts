@@ -19,13 +19,15 @@ export interface CreateOrderRequest {
 }
 
 export interface OrderTopping {
-  id: string;
+  toppingId: string;
   name: string;
   unitPrice: number;
 }
 
 export interface OrderDetailItem {
   id: string;
+  productId: string;
+  variantId: string;
   productName: string;
   variantLabel: string;
   quantity: number;
@@ -73,6 +75,10 @@ export const orderService = {
   },
   cancelOrder: async (id: string, reason?: string) => {
     const response = await apiClient.post(`/orders/${id}/cancel`, { reason });
+    return response.data;
+  },
+  guestCancelOrder: async (id: string, phone: string, reason?: string) => {
+    const response = await apiClient.post(`/orders/${id}/guest-cancel`, { phone, reason });
     return response.data;
   },
   trackOrder: async (orderCode: string, userPhone?: string): Promise<OrderDetailResponse> => {

@@ -63,6 +63,19 @@ public class GuestSessionCacheService {
     }
 
     /**
+     * Lấy guestSessionId từ orderCode.
+     * @param orderCode mã đơn hàng
+     * @return guestSessionId nếu tồn tại, ngược lại null
+     */
+    public String getGuestSessionId(String orderCode) {
+        Object value = redisTemplate.opsForValue().get("guest:order:" + orderCode);
+        if (value instanceof String guestSessionId) {
+            return guestSessionId;
+        }
+        return null;
+    }
+
+    /**
      * Revoke (thu hồi) guest session — dùng khi đơn hàng hoàn thành hoặc bị hủy.
      */
     public void revoke(String guestSessionId) {

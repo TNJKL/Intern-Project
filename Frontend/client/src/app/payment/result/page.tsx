@@ -5,9 +5,12 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2, XCircle, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
+import { useAuthStore } from "@/store/zustand/useAuthStore";
 
 function PaymentResultContent() {
   const searchParams = useSearchParams();
+  const { user } = useAuthStore();
+  const [guestPhone, setGuestPhone] = useState<string>("");
   const [isSuccess, setIsSuccess] = useState<boolean | null>(null);
   const [orderCode, setOrderCode] = useState<string>("");
   const [amount, setAmount] = useState<string>("");
@@ -33,6 +36,12 @@ function PaymentResultContent() {
       setAmount(realAmount.toLocaleString("vi-VN") + "đ");
     }
     if (vnpBank) setBankCode(vnpBank);
+
+    // Lấy số điện thoại guest từ localStorage
+    const savedPhone = localStorage.getItem("brewtra_guest_phone");
+    if (savedPhone) {
+      setGuestPhone(savedPhone);
+    }
   }, [searchParams]);
 
   if (isSuccess === null) {
@@ -94,12 +103,21 @@ function PaymentResultContent() {
         </div>
 
         <div className="space-y-3">
-          <Link
-            href="/orders"
-            className="block w-full bg-primary text-white py-4 rounded-xl font-bold hover:bg-primary/90 transition-all text-sm text-center shadow-md shadow-primary/10"
-          >
-            Lịch sử mua hàng
-          </Link>
+          {user ? (
+            <Link
+              href="/orders"
+              className="block w-full bg-primary text-white py-4 rounded-xl font-bold hover:bg-primary/90 transition-all text-sm text-center shadow-md shadow-primary/10"
+            >
+              Lịch sử mua hàng
+            </Link>
+          ) : (
+            <Link
+              href={guestPhone ? `/orders/track?code=${orderCode}&phone=${guestPhone}` : `/orders/track?code=${orderCode}`}
+              className="block w-full bg-primary text-white py-4 rounded-xl font-bold hover:bg-primary/90 transition-all text-sm text-center shadow-md shadow-primary/10"
+            >
+              Theo dõi đơn hàng
+            </Link>
+          )}
           <Link
             href="/"
             className="block w-full bg-gray-50 text-gray-600 py-4 rounded-xl font-bold hover:bg-gray-100 transition-colors border border-gray-200 text-sm text-center flex items-center justify-center gap-2"

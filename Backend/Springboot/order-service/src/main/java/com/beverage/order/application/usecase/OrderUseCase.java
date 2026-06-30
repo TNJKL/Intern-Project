@@ -307,6 +307,45 @@ public class OrderUseCase {
     }
 
     @Transactional
+    public OrderDetailResponse guestCancelOrder(UUID orderId, String phone, String reason) {
+        OrderEntity order = orderJpaRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Đơn hàng", "id", orderId));
+
+        if (order.getUserId() != null) {
+            throw new ForbiddenException("Đơn hàng này thuộc về thành viên. Vui lòng đăng nhập để thực hiện.");
+        }
+        if (!phone.equals(order.getUserPhone())) {
+            throw new ForbiddenException("Thông tin số điện thoại xác thực không khớp với đơn hàng.");
+        }
+
+        if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.CONFIRMED) {
+            throw new ConflictException("Chỉ có thể hủy đơn ở trạng thái PENDING hoặc CONFIRMED");
+        }
+
+        // Bắt buộc phải có lý do cụ thể khi hủy đơn CONFIRMED
+        if (order.getStatus() == OrderStatus.CONFIRMED) {
+            if (reason == null || reason.isBlank() || "Khách vãng lai hủy đơn".equals(reason) || "Khách hủy đơn".equals(reason)) {
+                throw new BadRequestException("Đơn hàng đã xác nhận bắt buộc phải có lý do hủy cụ thể.");
+            }
+        }
+
+        order.setStatus(OrderStatus.CANCELLED);
+        order.setCancelledAt(Instant.now());
+        order.setCancellationReason(reason);
+        orderJpaRepository.save(order);
+
+        if (order.getVoucherId() != null) {
+            voucherService.releaseVoucher(order.getVoucherId(), order.getId());
+        }
+
+        appendStatusHistory(orderId, OrderStatus.CANCELLED, reason);
+        applicationEventPublisher.publishEvent(new OrderApplicationEvent.OrderCancelled(this, order, reason));
+        orderDetailCacheService.evict(orderId);
+
+        return loadDetailForGuest(orderId);
+    }
+
+    @Transactional
     public void cancelOrderFromInventory(UUID orderId, String reason) {
         OrderEntity order = orderJpaRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Đơn hàng", "id", orderId));

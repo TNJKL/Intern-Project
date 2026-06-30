@@ -339,6 +339,7 @@ export class EventsService {
       data: {
         orderCode: payload.orderCode,
         customerName,
+        currentStatus: 'COMPLETED',
         totalAmount: payload.totalAmount,
       },
     });
