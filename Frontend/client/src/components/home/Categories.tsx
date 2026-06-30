@@ -11,7 +11,7 @@ export function Categories({ categories }: CategoriesProps) {
   const displayCategories = categories.length > 0 ? categories : [];
 
   return (
-    <section id="home-categories" className="bg-[#fdfaf5] py-12 scroll-mt-24">
+    <section id="home-categories" className="bg-background py-12 scroll-mt-24">
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-2xl font-black text-coffee-dark uppercase tracking-tight">Danh mục</h2>
@@ -27,7 +27,7 @@ export function Categories({ categories }: CategoriesProps) {
                 <Link
                   key={cat.id}
                   href={`/menu?category=${cat.id}`}
-                  className="group flex flex-col items-center p-6 bg-[#fdf3eb] rounded-[32px] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500"
+                  className="group flex flex-col items-center p-6 bg-secondary rounded-[32px] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500"
                 >
                   {/* Image Container */}
                   <div className="w-20 h-20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-500 overflow-hidden">

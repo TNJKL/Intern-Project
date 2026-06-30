@@ -40,7 +40,7 @@ export function FeaturedProductList({ products = [], categories = [] }: Featured
                 className="group h-full"
               >
                 <Link href={`/product/${product.slug || product.id}`} className="block h-full">
-                  <div className="bg-[#fdf3eb] p-3 md:p-4 rounded-[28px] hover:shadow-[0_10px_30px_-10px_rgba(60,42,33,0.08)] transition-all duration-500 border border-transparent hover:border-primary/5 relative flex flex-col h-full">
+                  <div className="bg-secondary p-3 md:p-4 rounded-[28px] hover:shadow-[0_10px_30px_-10px_rgba(60,42,33,0.08)] transition-all duration-500 border border-transparent hover:border-primary/5 relative flex flex-col h-full">
                     <div className="relative aspect-square mb-4 rounded-2xl overflow-hidden bg-white flex items-center justify-center shrink-0 border border-gray-50">
                       <SafeImage
                         src={product.imageUrl || ""}
