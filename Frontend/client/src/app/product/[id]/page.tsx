@@ -94,7 +94,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   ].slice(0, 15);
 
   return (
-    <div className="min-h-screen bg-[#fdfaf5]">
+    <div className="min-h-screen bg-background">
       {/* Top nav */}
       <div className="px-8 lg:px-16 pt-6 pb-2">
         <Link
@@ -108,7 +108,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
       {/* Main layout */}
       <div className="px-4 sm:px-8 lg:px-16 py-6 pb-28">
-        <div className="bg-[#fdfaf5] p-4 sm:p-8 flex flex-col lg:flex-row gap-8 lg:gap-10 xl:gap-16 lg:items-stretch items-start">
+        <div className="bg-background p-4 sm:p-8 flex flex-col lg:flex-row gap-8 lg:gap-10 xl:gap-16 lg:items-stretch items-start">
 
           {/* Hình ảnh (Trái) */}
           <div className="w-full lg:w-[380px] xl:w-[450px] shrink-0 flex flex-col">

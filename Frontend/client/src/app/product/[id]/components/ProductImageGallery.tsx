@@ -101,7 +101,7 @@ export default function ProductImageGallery({
         {/* Zoom Overlay on Hover */}
         <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
           <div className="bg-white/90 backdrop-blur-sm p-3 rounded-full shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
-            <ZoomIn className="w-6 h-6 text-[#4d362b]" />
+            <ZoomIn className="w-6 h-6 text-coffee-dark" />
           </div>
         </div>
       </div>
@@ -118,8 +118,8 @@ export default function ProductImageGallery({
                 onClick={() => setActiveImage(imgUrl)}
                 className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden border transition-all duration-300 shadow-sm ${
                   isActive
-                    ? "border-2 border-[#4d362b] scale-105 shadow-md z-10 opacity-100"
-                    : "border-gray-200/60 opacity-60 hover:opacity-100 hover:border-[#4d362b]/40 bg-stone-50/40"
+                    ? "border-2 border-coffee-dark scale-105 shadow-md z-10 opacity-100"
+                    : "border-gray-200/60 opacity-60 hover:opacity-100 hover:border-coffee-dark/40 bg-stone-50/40"
                 }`}
               >
                 <SafeImage
@@ -130,7 +130,7 @@ export default function ProductImageGallery({
                   sizes="80px"
                 />
                 {isActive && (
-                  <div className="absolute inset-0 bg-[#4d362b]/5 pointer-events-none" />
+                  <div className="absolute inset-0 bg-coffee-dark/5 pointer-events-none" />
                 )}
               </button>
             );

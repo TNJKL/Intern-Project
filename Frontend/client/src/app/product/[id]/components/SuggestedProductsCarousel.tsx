@@ -83,7 +83,7 @@ export default function SuggestedProductsCarousel({
               Sản phẩm gợi ý cho bạn
             </h2>
           </div>
-          <Link href="/menu" className="text-xs font-bold text-[#4d362b] hover:underline">
+          <Link href="/menu" className="text-xs font-bold text-coffee-dark hover:underline">
             Xem tất cả
           </Link>
         </div>
@@ -114,7 +114,7 @@ export default function SuggestedProductsCarousel({
             <button
               type="button"
               onClick={handlePrev}
-              className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-stone-50 hover:border-gray-300 text-[#4d362b] transition-all duration-200 active:scale-95 shadow-sm flex items-center justify-center cursor-pointer"
+              className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-stone-50 hover:border-gray-300 text-coffee-dark transition-all duration-200 active:scale-95 shadow-sm flex items-center justify-center cursor-pointer"
               title="Xem sản phẩm trước"
             >
               <ChevronLeft size={16} />
@@ -122,13 +122,13 @@ export default function SuggestedProductsCarousel({
             <button
               type="button"
               onClick={handleNext}
-              className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-stone-50 hover:border-gray-300 text-[#4d362b] transition-all duration-200 active:scale-95 shadow-sm flex items-center justify-center cursor-pointer"
+              className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-stone-50 hover:border-gray-300 text-coffee-dark transition-all duration-200 active:scale-95 shadow-sm flex items-center justify-center cursor-pointer"
               title="Xem sản phẩm kế tiếp"
             >
               <ChevronRight size={16} />
             </button>
           </div>
-          <Link href="/menu" className="text-xs font-bold text-[#4d362b] hover:underline">
+          <Link href="/menu" className="text-xs font-bold text-coffee-dark hover:underline">
             Xem tất cả
           </Link>
         </div>
@@ -151,7 +151,7 @@ export default function SuggestedProductsCarousel({
           return (
             <div
               key={item.id}
-              className="group bg-[#fdf3eb] p-4 rounded-[24px] border border-transparent hover:border-[#4d362b]/5 hover:shadow-[0_10px_30px_-10px_rgba(60,42,33,0.08)] transition-all duration-300 flex flex-col justify-between shrink-0 w-[calc((100%-16px)/2)] sm:w-[calc((100%-32px)/3)] md:w-[calc((100%-60px)/4)] xl:w-[calc((100%-80px)/5)] h-auto select-none"
+              className="group bg-secondary p-4 rounded-[24px] border border-transparent hover:border-coffee-dark/5 hover:shadow-[0_10px_30px_-10px_rgba(60,42,33,0.08)] transition-all duration-300 flex flex-col justify-between shrink-0 w-[calc((100%-16px)/2)] sm:w-[calc((100%-32px)/3)] md:w-[calc((100%-60px)/4)] xl:w-[calc((100%-80px)/5)] h-auto select-none"
             >
               <Link href={`/product/${item.slug || item.id}`} className="flex flex-col h-full w-full min-w-0">
                 {/* Image area */}
@@ -178,10 +178,10 @@ export default function SuggestedProductsCarousel({
                 {/* Text content */}
                 <div className="flex-1 flex flex-col justify-between min-w-0 space-y-1">
                   <div className="min-w-0">
-                    <p className="text-[9px] text-[#4d362b]/60 font-black uppercase tracking-widest truncate">
+                    <p className="text-[9px] text-coffee-dark/60 font-black uppercase tracking-widest truncate">
                       {categoryName}
                     </p>
-                    <h3 className="font-black text-gray-800 group-hover:text-[#4d362b] transition-colors truncate uppercase text-xs md:text-sm">
+                    <h3 className="font-black text-gray-800 group-hover:text-primary transition-colors truncate uppercase text-xs md:text-sm">
                       {item.name}
                     </h3>
                     <p className="text-[11px] text-gray-500 line-clamp-2 leading-relaxed pt-0.5">
@@ -191,10 +191,10 @@ export default function SuggestedProductsCarousel({
 
                   {/* Price & Cart icon */}
                   <div className="flex items-center justify-between pt-2 border-t border-gray-100/50 mt-auto min-w-0">
-                    <span className="font-black text-[#4d362b] text-xs sm:text-sm whitespace-nowrap truncate pr-1">
+                    <span className="font-black text-coffee-dark text-xs sm:text-sm whitespace-nowrap truncate pr-1">
                       {formatPrice(minItemPrice)}đ
                     </span>
-                    <div className="bg-[#4d362b] text-white p-2 rounded-xl shadow-md hover:bg-gray-800 transition-colors shrink-0">
+                    <div className="bg-coffee-dark text-white p-2 rounded-xl shadow-md hover:bg-primary transition-colors shrink-0">
                       <ShoppingCart size={12} />
                     </div>
                   </div>

@@ -94,8 +94,8 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
         </div>
 
         {/* VÙNG GIÁ BÁN */}
-        <div className="bg-[#fdf3eb] p-4 sm:p-6 rounded-2xl flex items-center justify-center sm:justify-start shadow-sm border border-[#4d362b]/5">
-          <div className="flex flex-row flex-wrap items-baseline justify-center sm:justify-start gap-1 text-[#4d362b] w-full">
+        <div className="bg-secondary p-4 sm:p-6 rounded-2xl flex items-center justify-center sm:justify-start shadow-sm border border-coffee-dark/5">
+          <div className="flex flex-row flex-wrap items-baseline justify-center sm:justify-start gap-1 text-coffee-dark w-full">
             <span className="text-xs sm:text-sm font-bold">₫</span>
             <span className="text-xl sm:text-3xl font-extrabold tracking-tight">
               {formatPrice(displayMinPrice)}
@@ -125,8 +125,8 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                     type="button"
                     onClick={() => setSelectedSize(v.id)}
                     className={`flex-1 sm:flex-initial text-center px-5 py-2.5 border rounded-xl transition-all text-xs font-bold whitespace-nowrap min-w-[85px] ${selectedSize === v.id
-                      ? "border-2 border-[#4d362b] bg-[#fdf3eb] text-[#4d362b] font-extrabold shadow-sm scale-[1.02]"
-                      : "border-gray-200 text-gray-700 hover:border-[#4d362b]/40 hover:bg-stone-50/50 bg-white"
+                      ? "border-2 border-coffee-dark bg-secondary text-coffee-dark font-extrabold shadow-sm scale-[1.02]"
+                      : "border-gray-200 text-gray-700 hover:border-coffee-dark/40 hover:bg-stone-50/50 bg-white"
                       }`}
                   >
                     Size {v.sizeLabel}
@@ -144,7 +144,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                 <button
                   type="button"
                   onClick={() => setIsToppingDropdownOpen(!isToppingDropdownOpen)}
-                  className="w-full flex items-center justify-between px-4 py-3.5 bg-[#fdfaf5] border border-[#4d362b] rounded-xl focus:outline-none text-xs font-bold text-gray-700 shadow-sm"
+                  className="w-full flex items-center justify-between px-4 py-3.5 bg-background border border-coffee-dark rounded-xl focus:outline-none text-xs font-bold text-gray-700 shadow-sm"
                 >
                   <span className="truncate pr-4 text-left">
                     {selectedToppings.length === 0 ? "Chọn Topping của bạn..." : `Đã chọn ${selectedToppings.length} loại topping...`}
@@ -153,7 +153,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                 </button>
 
                 {isToppingDropdownOpen && (
-                  <div className="absolute left-0 right-0 mt-1.5 bg-[#fdfaf5] border border-[#4d362b]/30 rounded-xl shadow-xl z-50 py-1.5 max-h-60 overflow-y-auto w-full">
+                  <div className="absolute left-0 right-0 mt-1.5 bg-background border border-coffee-dark/30 rounded-xl shadow-xl z-50 py-1.5 max-h-60 overflow-y-auto w-full">
                     {product.toppings.map((t: any) => {
                       const isSelected = selectedToppings.includes(t.id);
                       return (
@@ -163,10 +163,10 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                           onClick={() => {
                             setSelectedToppings((prev: string[]) => isSelected ? prev.filter((id: string) => id !== t.id) : [...prev, t.id]);
                           }}
-                          className={`w-full flex items-center justify-between px-4 py-3 text-left text-xs font-semibold ${isSelected ? 'text-[#4d362b] bg-[#fdf3eb]' : 'text-gray-700'}`}
+                          className={`w-full flex items-center justify-between px-4 py-3 text-left text-xs font-semibold ${isSelected ? 'text-coffee-dark bg-secondary' : 'text-gray-700'}`}
                         >
                           <div className="flex items-center gap-2.5 w-3/4">
-                            <div className={`w-4 h-4 border flex items-center justify-center shrink-0 rounded ${isSelected ? 'border-[#4d362b] bg-[#4d362b] text-white' : 'border-[#4d362b]/30'}`}>
+                            <div className={`w-4 h-4 border flex items-center justify-center shrink-0 rounded ${isSelected ? 'border-coffee-dark bg-coffee-dark text-white' : 'border-coffee-dark/30'}`}>
                               {isSelected && <Check className="w-2.5 h-2.5" />}
                             </div>
                             <span className="truncate">{t.name}</span>
@@ -184,7 +184,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                     selectedToppingObjs.map((t: any) => (
                       <div
                         key={t.id}
-                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#fdf3eb] text-[#4d362b] text-[10px] font-extrabold uppercase rounded-full border border-[#4d362b]/15 shadow-sm"
+                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-secondary text-coffee-dark text-[10px] font-extrabold uppercase rounded-full border border-coffee-dark/15 shadow-sm"
                       >
                         <span>{t.name}</span>
                         <button
@@ -212,11 +212,11 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
           {/* Số lượng */}
           <div className="flex flex-col sm:grid sm:grid-cols-[110px_1fr] items-start sm:items-center gap-2 sm:gap-4 text-sm">
             <span className="text-gray-400 sm:text-gray-500 font-bold sm:font-normal uppercase text-xs sm:text-sm tracking-wider">Số lượng</span>
-            <div className="flex items-center border border-[#4d362b]/20 rounded-xl overflow-hidden bg-white shadow-sm">
+            <div className="flex items-center border border-coffee-dark/20 rounded-xl overflow-hidden bg-white shadow-sm">
               <button
                 type="button"
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                className="w-9 h-9 border-r border-[#4d362b]/10 bg-[#fdf3eb] text-[#4d362b] hover:bg-[#fae6d6] text-xl font-bold transition-all duration-200 flex items-center justify-center"
+                className="w-9 h-9 border-r border-coffee-dark/10 bg-secondary text-coffee-dark hover:bg-secondary/80 text-xl font-bold transition-all duration-200 flex items-center justify-center"
               >
                 -
               </button>
@@ -224,12 +224,12 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                 type="text"
                 value={quantity}
                 readOnly
-                className="w-14 h-9 text-center border-none outline-none text-sm font-extrabold text-[#4d362b] bg-transparent"
+                className="w-14 h-9 text-center border-none outline-none text-sm font-extrabold text-coffee-dark bg-transparent"
               />
               <button
                 type="button"
                 onClick={() => setQuantity((q) => q + 1)}
-                className="w-9 h-9 border-l border-[#4d362b]/10 bg-[#fdf3eb] text-[#4d362b] hover:bg-[#fae6d6] text-xl font-bold transition-all duration-200 flex items-center justify-center"
+                className="w-9 h-9 border-l border-coffee-dark/10 bg-secondary text-coffee-dark hover:bg-secondary/80 text-xl font-bold transition-all duration-200 flex items-center justify-center"
               >
                 +
               </button>
@@ -240,7 +240,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
           <div className="flex flex-col sm:grid sm:grid-cols-[110px_1fr] items-start gap-1.5 sm:gap-4 text-sm border-t border-gray-50 pt-5 mt-2">
             <span className="text-gray-400 sm:text-gray-500 font-bold sm:font-normal uppercase text-xs sm:text-sm tracking-wider pt-0.5">Mô tả</span>
             <p className="text-gray-600 leading-relaxed italic">
-              {product.description || "Hương vị nguyên bản, đậm đà từ những nguyên liệu tốt nhất được chọn lọc kỹ lưỡng."}
+              {product.description || "Hương vị nguyên bản, đậm đà từ những nguyên liệu tốt nhất được chọn lọc kỹ lưuỡng."}
             </p>
           </div>
         </div>
@@ -251,14 +251,14 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
         <button
           type="button"
           onClick={handleAddToCart}
-          className="w-full sm:w-auto px-8 py-3.5 border border-[#4d362b] bg-[#fdf3eb] text-[#4d362b] rounded-xl flex items-center justify-center gap-2 font-bold text-sm shrink-0 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] hover:shadow-md hover:bg-[#fae6d6]"
+          className="w-full sm:w-auto px-8 py-3.5 border border-coffee-dark bg-secondary text-coffee-dark rounded-xl flex items-center justify-center gap-2 font-bold text-sm shrink-0 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] hover:shadow-md hover:bg-secondary/80"
         >
           <ShoppingCart size={20} /> Thêm Vào Giỏ Hàng
         </button>
         <button
           type="button"
           onClick={handleBuyNow}
-          className="w-full sm:w-auto sm:flex-1 py-3.5 bg-[#4d362b] text-white rounded-xl font-bold text-sm text-center transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] hover:shadow-md hover:bg-[#3c2a21]"
+          className="w-full sm:w-auto sm:flex-1 py-3.5 bg-coffee-dark text-white rounded-xl font-bold text-sm text-center transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] hover:shadow-md hover:bg-coffee-dark/90"
         >
           {isExactPrice ? `Mua Ngay - ₫${formatPrice(displayMinPrice)}` : "Mua Ngay"}
         </button>
