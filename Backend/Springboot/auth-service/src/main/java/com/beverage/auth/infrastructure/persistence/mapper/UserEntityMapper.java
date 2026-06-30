@@ -26,6 +26,7 @@ public class UserEntityMapper {
                 .avatarUrl(entity.getAvatarUrl())
                 .role(entity.getRole())
                 .isActive(entity.getIsActive())
+                .addresses(entity.getAddresses())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();
@@ -43,6 +44,7 @@ public class UserEntityMapper {
                 .avatarUrl(user.getAvatarUrl())
                 .role(user.getRole())
                 .isActive(user.getIsActive())
+                .addresses(user.getAddresses())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build();

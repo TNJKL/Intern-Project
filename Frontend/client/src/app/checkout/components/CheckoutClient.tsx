@@ -87,6 +87,12 @@ export default function CheckoutClient() {
       setName(user.fullName || "");
       setEmail(user.email || "");
       setPhone(user.phone || "");
+      
+      // Tự động điền địa chỉ mặc định của thành viên nếu có
+      const defaultAddr = user.addresses?.find((a: any) => a.isDefault);
+      if (defaultAddr && !address) {
+        setAddress(defaultAddr.detailAddress);
+      }
     }
 
     // Tự động điền thông tin mua lại đơn hàng cũ nếu có

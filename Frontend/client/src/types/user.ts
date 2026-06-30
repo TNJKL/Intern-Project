@@ -1,3 +1,10 @@
+export interface UserAddress {
+  id: string;
+  label: string;
+  detailAddress: string;
+  isDefault: boolean;
+}
+
 export interface User {
   id: string;
   _id?: string;
@@ -8,6 +15,7 @@ export interface User {
   role: string;
   tier?: 'MEMBER' | 'VIP' | string;
   isActive: boolean;
+  addresses?: UserAddress[];
   createdAt: string;
   updatedAt: string;
 }

@@ -1,12 +1,15 @@
 package com.beverage.auth.domain.entity;
 
 import com.beverage.auth.domain.enums.UserRole;
+import com.beverage.auth.domain.model.UserAddress;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -27,6 +30,9 @@ public class User {
     private String avatarUrl;
     private UserRole role;
     private Boolean isActive;
+
+    @Builder.Default
+    private List<UserAddress> addresses = new ArrayList<>();
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

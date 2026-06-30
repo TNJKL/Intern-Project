@@ -186,6 +186,29 @@ export default function CheckoutShippingForm({
               }`}
           />
           {errors.address && <p className="text-red-500 text-xs font-semibold mt-1">{errors.address}</p>}
+
+          {/* Chọn địa chỉ đã lưu của thành viên */}
+          {!isGuest && user?.addresses && user.addresses.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              <span className="text-[10px] font-bold text-gray-400 self-center uppercase mr-1">Chọn nhanh địa chỉ:</span>
+              {user.addresses.map((addr: any) => (
+                <button
+                  key={addr.id}
+                  type="button"
+                  onClick={() => {
+                    setAddress(addr.detailAddress);
+                    setErrors((prev) => ({ ...prev, address: "" }));
+                  }}
+                  className={`px-2.5 py-1 rounded-lg border text-[10px] sm:text-xs font-bold transition-all ${address === addr.detailAddress
+                    ? "bg-primary text-white border-primary shadow-xs"
+                    : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300"
+                    }`}
+                >
+                  {addr.isDefault ? `🏠 ${addr.label} (Mặc định)` : addr.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <div className="space-y-1.5 md:col-span-2">
           <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">Ghi chú đơn hàng</label>

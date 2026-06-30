@@ -5,6 +5,7 @@ export interface UpdateProfileData {
   email?: string;
   phone?: string;
   avatarUrl?: string;
+  addresses?: any[];
 }
 
 export interface ChangePasswordData {
@@ -13,9 +14,9 @@ export interface ChangePasswordData {
 }
 
 export const userService = {
-  // Get own profile info via GET /auth/me (read-only)
+  // Get own profile info via GET /users/me (read-only)
   getProfile: async () => {
-    const response = await apiClient.get('/auth/me');
+    const response = await apiClient.get('/users/me');
     return response.data;
   },
 

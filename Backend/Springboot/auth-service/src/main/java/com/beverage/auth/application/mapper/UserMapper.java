@@ -26,6 +26,7 @@ public class UserMapper {
                 .avatarUrl(user.getAvatarUrl())
                 .role(user.getRole())
                 .isActive(user.getIsActive())
+                .addresses(user.getAddresses())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build();
@@ -70,6 +71,9 @@ public class UserMapper {
         }
         if (request.getIsActive() != null) {
             user.setIsActive(request.getIsActive());
+        }
+        if (request.getAddresses() != null) {
+            user.setAddresses(request.getAddresses());
         }
         user.setUpdatedAt(LocalDateTime.now());
     }

@@ -23,6 +23,7 @@ interface CustomerLayoutProps {
 export function CustomerLayout({ children, initialUser }: CustomerLayoutProps) {
   const pathname = usePathname();
   const { setUser, clearUser } = useAuthStore();
+  const _hasHydrated = useAuthStore((s) => s._hasHydrated);
   const clearCart = useCartStore((s) => s.clearCart);
   const dispatch = useAppDispatch();
   const { data: session, status } = useSession();
@@ -31,15 +32,22 @@ export function CustomerLayout({ children, initialUser }: CustomerLayoutProps) {
 
   // Đồng bộ dữ liệu NextAuth session xuống Redux và Zustand store
   useEffect(() => {
+    if (!_hasHydrated) return; // Đợi hydrate xong từ sessionStorage
+
     if (status === "authenticated" && session) {
       const customUser = session.user as any;
-      dispatch(setCredentials({ user: customUser, accessToken: session.accessToken }));
-      setUser(customUser);
+      const currentStoreUser = useAuthStore.getState().user;
+      
+      // Chỉ đồng bộ nếu store chưa có user hoặc tài khoản đăng nhập khác đi
+      if (!currentStoreUser || currentStoreUser.email !== customUser.email) {
+        dispatch(setCredentials({ user: customUser, accessToken: session.accessToken }));
+        setUser(customUser);
+      }
     } else if (status === "unauthenticated") {
       dispatch(clearCredentials());
       clearUser();
     }
-  }, [session, status, dispatch, setUser, clearUser]);
+  }, [session, status, dispatch, setUser, clearUser, _hasHydrated]);
 
   // NOTE: Silent Refresh đã được xử lý tự động bởi Middleware (proxy.ts).
   // KHÔNG gọi refresh ở đây để tránh RTR (Refresh Token Rotation) conflict.

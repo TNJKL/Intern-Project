@@ -19,7 +19,7 @@ export default async function ProfilePage() {
   const hasSession = cookieStore.has("accessToken") || cookieStore.has("lastRefreshedToken");
 
   try {
-    const response = await getServerApi("/api/v1/auth/me");
+    const response = await getServerApi("/api/v1/users/me");
     if (response?.success && response?.data) {
       user = response.data;
     } else if (response === null) {

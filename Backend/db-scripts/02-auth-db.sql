@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS users (
     role            VARCHAR(20) NOT NULL DEFAULT 'CUSTOMER'
                     CHECK (role IN ('CUSTOMER', 'ADMIN', 'STAFF')),
     is_active       BOOLEAN NOT NULL DEFAULT TRUE,
+    addresses       JSONB NOT NULL DEFAULT '[]'::jsonb,
     created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );

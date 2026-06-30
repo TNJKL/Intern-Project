@@ -156,7 +156,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
           console.warn("[Socket.IO] Token hết hạn/không hợp lệ. Đang tự động làm mới token và tái kết nối...");
           try {
             // Gọi thử một API qua apiClient để kích hoạt Axios interceptor làm mới token nếu cần
-            await apiClient.get("/auth/me").catch(() => {});
+            await apiClient.get("/users/me").catch(() => {});
             
             // Cập nhật lại NextAuth session
             if (typeof update === "function") {
