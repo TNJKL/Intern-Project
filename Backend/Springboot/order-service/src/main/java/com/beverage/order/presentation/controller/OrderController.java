@@ -4,6 +4,7 @@ import com.beverage.order.application.dto.request.CreateOrderRequest;
 import com.beverage.order.application.dto.request.UpdateOrderStatusRequest;
 import com.beverage.order.application.dto.response.OrderDetailResponse;
 import com.beverage.order.application.dto.response.OrderSummaryResponse;
+import com.beverage.order.application.dto.response.CustomerTierResponse;
 import com.beverage.order.application.service.IdempotencyService;
 import com.beverage.order.application.usecase.OrderUseCase;
 import com.beverage.order.common.ApiResponse;
@@ -156,6 +157,18 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.success(
                 orderUseCase.guestCancelOrder(id, phone, reason),
                 "Hủy đơn hàng thành công"
+        ));
+    }
+
+    @GetMapping("/me/tier")
+    @Operation(
+            summary = "Lấy thông tin hạng thành viên và thống kê chi tiêu của tôi",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<ApiResponse<CustomerTierResponse>> getMyTier() {
+        return ResponseEntity.ok(ApiResponse.success(
+                orderUseCase.getMyTierInfo(),
+                "Lấy thông tin hạng thành viên thành công"
         ));
     }
 }

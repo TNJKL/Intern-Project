@@ -10,6 +10,7 @@ import type { User as UserType } from "@/types/user";
 import { apiClient } from "@/lib/api";
 import { useAuthStore } from "@/store/zustand/useAuthStore";
 import toast from "react-hot-toast";
+import { orderService } from "@/services/order.service";
 
 interface ProfileClientProps {
   initialUser: UserType | null;
@@ -32,9 +33,17 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
   const [addressIsDefault, setAddressIsDefault] = useState(false);
   const [isUpdatingAddress, setIsUpdatingAddress] = useState(false);
   const [selectedPresetLabel, setSelectedPresetLabel] = useState<string>("Nhà riêng");
-  
+
   // Custom Delete Confirm States
   const [addressToDeleteId, setAddressToDeleteId] = useState<string | null>(null);
+
+  // Stats States
+  const [stats, setStats] = useState<{
+    tier: "GUEST" | "MEMBER" | "VIP";
+    totalSpent: number;
+    totalOrders: number;
+  } | null>(null);
+  const [isStatsLoading, setIsStatsLoading] = useState(true);
 
   const getAvatarInitials = (name: string) => {
     if (!name) return "?";
@@ -49,7 +58,7 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
       setAddressLabel(address.label);
       setAddressDetail(address.detailAddress);
       setAddressIsDefault(address.isDefault);
-      
+
       if (["Nhà riêng", "Công ty", "Trường học"].includes(address.label)) {
         setSelectedPresetLabel(address.label);
       } else {
@@ -75,7 +84,7 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
     setIsUpdatingAddress(true);
     try {
       let currentAddresses = user.addresses ? [...user.addresses] : [];
-      
+
       if (editingAddress) {
         currentAddresses = currentAddresses.map(addr => {
           if (addr.id === editingAddress.id) {
@@ -179,6 +188,29 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
     }
   }, [isServerError, user]);
 
+  useEffect(() => {
+    if (user) {
+      const fetchStats = async () => {
+        setIsStatsLoading(true);
+        try {
+          const res = await orderService.getMyTier();
+          if (res?.success && res?.data) {
+            setStats({
+              tier: res.data.tier,
+              totalSpent: res.data.totalSpent,
+              totalOrders: res.data.totalOrders,
+            });
+          }
+        } catch (err) {
+          console.error("Lỗi khi lấy thông tin hạng thành viên:", err);
+        } finally {
+          setIsStatsLoading(false);
+        }
+      };
+      fetchStats();
+    }
+  }, [user]);
+
   if (isLoading || !user) {
     return (
       <div className="min-h-screen bg-secondary/30 flex items-center justify-center">
@@ -191,7 +223,7 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
   }
 
   return (
-    <div className="min-h-screen bg-secondary/30 pt-24 sm:pt-28 md:pt-32 pb-16 px-4 sm:px-6 font-sans">
+    <div className="min-h-screen bg-secondary/30 pt-16 sm:pt-20 md:pt-8 pb-16 px-4 sm:px-6 font-sans">
       <div className="max-w-5xl mx-auto">
 
         {/* Tiêu đề trang ẩn gọn gàng */}
@@ -217,8 +249,9 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
                   {user.avatarUrl ? (
                     <Image src={user.avatarUrl} alt="Avatar" fill className="object-cover" />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-primary to-amber-500 flex items-center justify-center text-white text-3xl font-black tracking-wider">
-                      {getAvatarInitials(user.fullName)}
+                    <div className={`w-full h-full bg-gradient-to-br ${getAvatarGradient(user.email)} flex items-center justify-center text-white text-3xl font-black tracking-wider relative overflow-hidden`}>
+                      <User className="absolute w-24 h-24 text-white/15 -bottom-2 -right-2 transform rotate-12 pointer-events-none" />
+                      <span className="relative z-10">{getAvatarInitials(user.fullName)}</span>
                     </div>
                   )}
                   {/* Lớp phủ khi Hover thay ảnh */}
@@ -227,21 +260,31 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
                   </div>
                 </div>
               </div>
-              <div className="absolute -bottom-1 -right-1 bg-primary text-white p-2 rounded-lg border-2 border-white shadow-xs">
-                <Sparkles size={12} />
-              </div>
             </div>
 
             {/* Thông tin cơ bản */}
-            <h1 className="text-2xl font-black text-gray-900 tracking-tight mb-2">{user.fullName}</h1>
-            <div className="flex flex-col items-center gap-3 mb-8 w-full">
-              <span className="px-3.5 py-1 rounded bg-primary/10 border border-primary/20 text-primary text-[9px] font-black uppercase tracking-widest">
-                {user.role || "Thành viên"}
-              </span>
-              <div className="flex items-center gap-1.5 text-green-600 text-[10px] font-bold uppercase tracking-wider bg-green-50 px-3 py-1 rounded">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                Trực tuyến
-              </div>
+            <h1 className="text-2xl font-black text-gray-900 tracking-tight mb-4">{user.fullName}</h1>
+            <div className="flex flex-col items-center gap-3 mb-6 w-full">
+              {/* Hạng thành viên Badge */}
+              {stats && (
+                <div className="flex items-center justify-center">
+                  {stats.tier === "VIP" && (
+                    <span className="px-2.5 py-1 rounded-md bg-gradient-to-r from-yellow-500/10 via-amber-500/10 to-yellow-600/10 border border-yellow-500/30 text-yellow-600 text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1 shadow-xs animate-pulse">
+                      👑 Khách VIP
+                    </span>
+                  )}
+                  {stats.tier === "MEMBER" && (
+                    <span className="px-2.5 py-1 rounded-md bg-gradient-to-r from-slate-100 to-slate-200 border border-slate-300 text-slate-700 text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1 shadow-xs">
+                      🥈 Khách hàng thân thiết
+                    </span>
+                  )}
+                  {stats.tier === "GUEST" && (
+                    <span className="px-2.5 py-1 rounded-md bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 text-amber-700 text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1 shadow-xs">
+                      🥉 Khách hàng
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="w-full border-t border-gray-100 my-2" />
@@ -295,6 +338,81 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
                 }) : "---"}
               />
 
+              {/* Thống kê chi tiêu & Thăng hạng */}
+              {stats && (
+                <div className="sm:col-span-2 space-y-4 border-t border-gray-150 pt-6">
+                  <h4 className="text-sm font-black text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles size={16} className="text-primary" /> Thống kê chi tiêu & Thăng hạng
+                  </h4>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-4 rounded-lg bg-gray-50 border border-gray-200 flex flex-col justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Hạng hiện tại</span>
+                      <span className="text-xs sm:text-sm font-extrabold text-gray-800 mt-2 block">
+                        {stats.tier === "VIP" ? "👑 VIP" : stats.tier === "MEMBER" ? "🥈 MEMBER" : "🥉 GUEST"}
+                      </span>
+                    </div>
+                    <div className="p-4 rounded-lg bg-gray-50 border border-gray-200 flex flex-col justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Đơn hàng thành công</span>
+                      <span className="text-sm sm:text-base font-black text-gray-800 mt-2 block">{stats.totalOrders} Đơn</span>
+                    </div>
+                    <div className="p-4 rounded-lg bg-gray-50 border border-gray-200 flex flex-col justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Tổng chi tiêu tích lũy</span>
+                      <span className="text-sm sm:text-base font-black text-primary mt-2 block">
+                        {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(stats.totalSpent)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Tính toán Progress thăng hạng */}
+                  {(() => {
+                    if (stats.tier === "VIP") {
+                      return (
+                        <div className="p-4 rounded-lg bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 space-y-2">
+                          <div className="flex justify-between text-xs font-bold text-yellow-800">
+                            <span>Tiến trình thăng hạng</span>
+                            <span>100%</span>
+                          </div>
+                          <div className="w-full bg-yellow-200/50 rounded-full h-2">
+                            <div className="bg-yellow-500 h-2 rounded-full" style={{ width: "100%" }} />
+                          </div>
+                          <p className="text-[11px] text-yellow-800 font-semibold flex items-center gap-1">
+                            🎉 Bạn đã đạt hạng thành viên cao nhất tại Brewtra Coffee! Cảm ơn sự tin yêu của bạn.
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    const isMember = stats.tier === "MEMBER";
+                    const targetSpent = isMember ? 3000000 : 500000;
+                    const targetOrders = isMember ? 20 : 5;
+                    const nextTierName = isMember ? "Khách VIP" : "Khách hàng thân thiết";
+
+                    const spentPercent = Math.min(100, (stats.totalSpent / targetSpent) * 100);
+                    const ordersPercent = Math.min(100, (stats.totalOrders / targetOrders) * 100);
+                    const progress = Math.max(spentPercent, ordersPercent);
+
+                    const remSpent = Math.max(0, targetSpent - stats.totalSpent);
+                    const remOrders = Math.max(0, targetOrders - stats.totalOrders);
+
+                    return (
+                      <div className="p-4 rounded-lg bg-gray-50 border border-gray-200 space-y-2">
+                        <div className="flex justify-between text-xs font-bold text-gray-700">
+                          <span>Tiến trình lên hạng {nextTierName}</span>
+                          <span>{Math.round(progress)}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div className="bg-primary h-2 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+                        </div>
+                        <p className="text-[11px] text-gray-500 font-semibold leading-relaxed">
+                          💡 Chỉ cần hoàn thành thêm <strong className="text-gray-800">{remOrders} đơn hàng</strong> hoặc chi tiêu thêm <strong className="text-primary">{new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(remSpent)}</strong> để nâng cấp lên hạng <strong className="text-gray-800">{nextTierName}</strong>!
+                        </p>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
               <div className="sm:col-span-2 border-t border-gray-150 my-4" />
 
               {/* Sổ địa chỉ cá nhân */}
@@ -320,11 +438,10 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
                     {user.addresses.map((addr) => (
                       <div
                         key={addr.id}
-                        className={`p-3.5 rounded-lg border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 ${
-                          addr.isDefault 
-                            ? "bg-primary/[0.01] border-primary/30 shadow-xs" 
-                            : "bg-white border-gray-200 hover:border-gray-300"
-                        }`}
+                        className={`p-3.5 rounded-lg border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 ${addr.isDefault
+                          ? "bg-primary/[0.01] border-primary/30 shadow-xs"
+                          : "bg-white border-gray-200 hover:border-gray-300"
+                          }`}
                       >
                         <div className="flex-1 min-w-0 flex items-start gap-2.5">
                           <span className="shrink-0 mt-0.5 px-2 py-0.5 rounded bg-gray-100 text-gray-700 text-[10px] font-black uppercase tracking-wider">
@@ -392,7 +509,7 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
                 <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-2">
                   Tên gợi nhớ (Nhãn) <span className="text-red-500">*</span>
                 </label>
-                
+
                 {/* Chọn nhanh Label Preset */}
                 <div className="flex flex-wrap gap-2 mb-2.5">
                   {["Nhà riêng", "Công ty", "Trường học", "Khác"].map((preset) => (
@@ -407,11 +524,10 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
                           setAddressLabel("");
                         }
                       }}
-                      className={`px-2.5 py-1.5 rounded-lg border text-[10px] sm:text-xs font-bold transition-all ${
-                        selectedPresetLabel === preset
-                          ? "bg-primary text-white border-primary shadow-xs"
-                          : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300"
-                      }`}
+                      className={`px-2.5 py-1.5 rounded-lg border text-[10px] sm:text-xs font-bold transition-all ${selectedPresetLabel === preset
+                        ? "bg-primary text-white border-primary shadow-xs"
+                        : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300"
+                        }`}
                     >
                       {preset === "Nhà riêng" ? "🏠 Nhà riêng" : preset === "Công ty" ? "🏢 Công ty" : preset === "Trường học" ? "🏫 Trường học" : "📍 Khác"}
                     </button>
@@ -531,9 +647,40 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
   );
 }
 
+const getAvatarGradient = (email: string) => {
+  const gradients = [
+    "from-amber-600 to-amber-800", // Caramel Blend
+    "from-emerald-600 to-teal-700", // Matcha Green
+    "from-orange-500 to-amber-600", // Honey Peach
+    "from-stone-600 to-stone-800",  // Mocha Dark
+    "from-rose-700 to-red-800",     // Berry Tea
+    "from-primary to-amber-500"     // Brewtra Signature
+  ];
+  if (!email) return gradients[5];
+  let hash = 0;
+  for (let i = 0; i < email.length; i++) {
+    hash = email.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % gradients.length;
+  return gradients[index];
+};
+
 function InfoRow({ icon, label, value }: { icon: React.ReactNode, label: string, value: string }) {
+  const handleCopy = () => {
+    if (!value || value === "Chưa cập nhật") return;
+    navigator.clipboard.writeText(value);
+    toast.success(`Đã sao chép ${label.toLowerCase()}!`);
+  };
+
+  const isCopyable = value && value !== "Chưa cập nhật";
+
   return (
-    <div className="flex items-center gap-4 p-3 rounded-lg hover:bg-primary/5 transition-colors duration-200 group">
+    <div
+      onClick={handleCopy}
+      title={isCopyable ? `${value} (Click để sao chép)` : ""}
+      className={`flex items-center gap-4 p-3 rounded-lg hover:bg-primary/5 transition-all duration-200 group ${isCopyable ? "cursor-pointer active:scale-[0.98]" : ""
+        }`}
+    >
       <div className="w-11 h-11 rounded bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300 shrink-0">
         {React.cloneElement(icon as any, { size: 18 })}
       </div>

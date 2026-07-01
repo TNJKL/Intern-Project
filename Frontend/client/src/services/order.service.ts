@@ -64,6 +64,18 @@ export interface OrderDetailResponse {
   data: OrderDetail;
 }
 
+export interface CustomerTierResponse {
+  success: boolean;
+  message: string;
+  data: {
+    userId: string;
+    tier: "GUEST" | "MEMBER" | "VIP";
+    totalSpent: number;
+    totalOrders: number;
+    tierUpdatedAt?: string;
+  };
+}
+
 export const orderService = {
   createOrder: async (data: CreateOrderRequest) => {
     const response = await apiClient.post('/orders', data);
@@ -83,6 +95,10 @@ export const orderService = {
   },
   trackOrder: async (orderCode: string, userPhone?: string): Promise<OrderDetailResponse> => {
     const response = await apiClient.post(`/orders/track?code=${encodeURIComponent(orderCode)}&phone=${encodeURIComponent(userPhone || '')}`);
+    return response.data;
+  },
+  getMyTier: async (): Promise<CustomerTierResponse> => {
+    const response = await apiClient.get('/orders/me/tier');
     return response.data;
   },
 };

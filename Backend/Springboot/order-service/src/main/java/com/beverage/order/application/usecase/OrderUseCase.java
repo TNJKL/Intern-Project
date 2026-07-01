@@ -9,6 +9,8 @@ import com.beverage.order.application.mapper.OrderDtoMapper;
 import com.beverage.order.application.service.IdempotencyService;
 import com.beverage.order.application.service.OrderPricingService;
 import com.beverage.order.application.service.VoucherService;
+import com.beverage.order.application.service.CustomerTierService;
+import com.beverage.order.application.dto.response.CustomerTierResponse;
 import com.beverage.order.domain.exception.ConflictException;
 import com.beverage.order.domain.exception.ForbiddenException;
 import com.beverage.order.domain.exception.BusinessException;
@@ -69,6 +71,7 @@ public class OrderUseCase {
     private final VoucherUsageJpaRepository voucherUsageRepository;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final InventoryServiceClient inventoryServiceClient;
+    private final CustomerTierService customerTierService;
 
     @Transactional
     public OrderDetailResponse createOrder(CreateOrderRequest request) {
@@ -478,5 +481,11 @@ public class OrderUseCase {
                 .status(status)
                 .note(note)
                 .build());
+    }
+
+    @Transactional(readOnly = true)
+    public CustomerTierResponse getMyTierInfo() {
+        JwtUserPrincipal actor = orderActorResolver.requirePrincipal();
+        return customerTierService.getTierInfo(actor.getUserId());
     }
 }
