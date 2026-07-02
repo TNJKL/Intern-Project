@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { User, Mail, Phone, Calendar, MapPin, Camera, Lock, Edit3, Plus, Trash2, Check } from "lucide-react";
+import { User, Mail, Phone, Calendar, MapPin, Camera, Lock, Edit3, Plus, Trash2, Check, Sparkles } from "lucide-react";
 import Image from "next/image";
 import EditProfileModal from "./EditProfileModal";
 import ChangePasswordModal from "./ChangePasswordModal";
