@@ -8,7 +8,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { orderService, OrderDetail } from "@/services/order.service";
 import { OrderDetailModal } from "./OrderDetailModal";
 import { apiClient } from "@/lib/api";
-import { paymentService } from "@/services/payment.service";
+import { paymentService, PaymentDetail } from "@/services/payment.service";
+import toast from "react-hot-toast";
 
 interface OrderSummary {
   id: string;
@@ -22,11 +23,13 @@ interface OrderSummary {
 interface OrdersClientProps {
   initialOrders: OrderSummary[];
   isServerError?: boolean;
+  initialTab?: string;
 }
 
 const ORDER_TABS = [
   { id: "active", label: "Đang giao" },
   { id: "history", label: "Lịch sử mua hàng" },
+  { id: "transactions", label: "Lịch sử thanh toán VNPAY" },
 ];
 
 const getStatusDisplay = (status: string) => {
@@ -43,12 +46,18 @@ const getStatusDisplay = (status: string) => {
   }
 };
 
-export default function OrdersClient({ initialOrders, isServerError }: OrdersClientProps) {
+export default function OrdersClient({ initialOrders, isServerError, initialTab = "active" }: OrdersClientProps) {
   const [orders, setOrders] = useState<OrderSummary[]>(initialOrders);
   const [isLoading, setIsLoading] = useState(isServerError && initialOrders.length === 0);
-  const [activeTab, setActiveTab] = useState("active");
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [currentPage, setCurrentPage] = useState(1);
   const router = useRouter();
+
+  // Payment States
+  const [payments, setPayments] = useState<PaymentDetail[]>([]);
+  const [isPaymentsLoading, setIsPaymentsLoading] = useState(false);
+  const [paymentPage, setPaymentPage] = useState(0);
+  const [paymentTotalPages, setPaymentTotalPages] = useState(0);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [orderDetail, setOrderDetail] = useState<OrderDetail | null>(null);
@@ -123,6 +132,32 @@ export default function OrdersClient({ initialOrders, isServerError }: OrdersCli
       window.removeEventListener("order-status-updated", handleStatusUpdate);
     };
   }, []);
+
+  // Tải lịch sử thanh toán trực tuyến VNPAY
+  const fetchPaymentHistory = async (page = 0) => {
+    setIsPaymentsLoading(true);
+    try {
+      const res = await paymentService.getPaymentHistory(page, 10);
+      if (res?.success && res?.data) {
+        setPayments(res.data);
+        if (res.page) {
+          setPaymentTotalPages(res.page.totalPages);
+          setPaymentPage(res.page.number);
+        }
+      }
+    } catch (err) {
+      console.error("Lỗi khi tải lịch sử thanh toán:", err);
+      toast.error("Không thể tải lịch sử thanh toán");
+    } finally {
+      setIsPaymentsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "transactions") {
+      fetchPaymentHistory(paymentPage);
+    }
+  }, [activeTab, paymentPage]);
 
   if (isLoading) {
     return (
@@ -294,7 +329,142 @@ export default function OrdersClient({ initialOrders, isServerError }: OrdersCli
         {/* Orders List */}
         <div className="space-y-4 sm:space-y-6">
           <AnimatePresence mode="wait">
-            {filteredOrders.length === 0 ? (
+            {activeTab === "transactions" ? (
+              isPaymentsLoading && payments.length === 0 ? (
+                <motion.div
+                  key="loading-payments"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="py-20 flex flex-col items-center justify-center gap-3 bg-white rounded-xl shadow-sm border border-primary/5"
+                >
+                  <div className="w-8 h-8 border-3 border-primary/20 border-t-primary rounded-full animate-spin" />
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Đang tải lịch sử giao dịch...</span>
+                </motion.div>
+              ) : payments.length === 0 ? (
+                <motion.div
+                  key="empty-payments"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="bg-white rounded-xl p-8 sm:p-12 text-center shadow-sm border border-primary/5 flex flex-col items-center"
+                >
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                    <svg className="w-8 h-8 sm:w-10 sm:h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-1">Chưa có giao dịch VNPAY</h3>
+                  <p className="text-gray-500 mb-6 text-xs sm:text-sm">Bạn chưa có giao dịch thanh toán trực tuyến nào trên hệ thống.</p>
+                  <Link href="/menu" className="bg-primary text-white px-6 py-3 rounded-xl font-bold hover:bg-primary/90 transition-colors uppercase tracking-wider text-xs sm:text-sm">
+                    Đặt hàng ngay
+                  </Link>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="list-payments"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="space-y-6"
+                >
+                  <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider bg-white p-4 rounded-xl border border-primary/5 shadow-xs">
+                    <span>💡 Lịch sử giao dịch trực tuyến qua cổng VNPAY của bạn tại Brewtra Coffee.</span>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-xl border border-gray-100 shadow-sm bg-white">
+                    <table className="min-w-full divide-y divide-gray-200 text-left text-xs sm:text-sm">
+                      <thead className="bg-gray-50 text-[10px] font-black uppercase tracking-wider text-gray-400 whitespace-nowrap">
+                        <tr>
+                          <th className="px-6 py-4">Đơn hàng</th>
+                          <th className="px-6 py-4">Ngày giao dịch</th>
+                          <th className="px-6 py-4">Số tiền</th>
+                          <th className="px-6 py-4">Trạng thái</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
+                        {payments.map((p) => (
+                          <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
+                            <td className="px-6 py-4.5 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <a
+                                  href={`/orders/track?code=${p.orderCode}`}
+                                  className="px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-primary text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all shadow-xs"
+                                >
+                                  #{p.orderCode}
+                                </a>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4.5 text-gray-500 font-semibold whitespace-nowrap">
+                              {(() => {
+                                const d = new Date(p.createdAt);
+                                const pad = (n: number) => n.toString().padStart(2, '0');
+                                const timeStr = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                                const dateStr = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+                                return `${timeStr} - ${dateStr}`;
+                              })()}
+                            </td>
+                            <td className="px-6 py-4.5 font-black text-gray-900 text-sm whitespace-nowrap">
+                              {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(p.amount)}
+                            </td>
+                            <td className="px-6 py-4.5 whitespace-nowrap">
+                              {p.status === 'SUCCESS' && (
+                                <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-green-50 text-green-700 border border-green-200 whitespace-nowrap">
+                                  Thành công
+                                </span>
+                              )}
+                              {p.status === 'PENDING' && (
+                                <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">
+                                  Chờ xử lý
+                                </span>
+                              )}
+                              {p.status === 'FAILED' && (
+                                <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-red-50 text-red-700 border border-red-200 whitespace-nowrap">
+                                  Thất bại
+                                </span>
+                              )}
+                              {p.status === 'EXPIRED' && (
+                                <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-gray-50 text-gray-500 border border-gray-200 whitespace-nowrap">
+                                  Hết hạn
+                                </span>
+                              )}
+                              {p.status === 'REFUNDED' && (
+                                <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-slate-50 text-slate-700 border border-slate-200 whitespace-nowrap">
+                                  Đã hoàn tiền
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Pagination */}
+                  {paymentTotalPages > 1 && (
+                    <div className="flex items-center justify-between border-t border-gray-150 pt-4 px-2">
+                      <button
+                        onClick={() => setPaymentPage(p => Math.max(0, p - 1))}
+                        disabled={paymentPage === 0 || isPaymentsLoading}
+                        className="px-4 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-white transition-all shadow-xs"
+                      >
+                        Trang trước
+                      </button>
+                      <span className="text-xs font-black text-gray-400 uppercase tracking-widest">
+                        Trang {paymentPage + 1} / {paymentTotalPages}
+                      </span>
+                      <button
+                        onClick={() => setPaymentPage(p => Math.min(paymentTotalPages - 1, p + 1))}
+                        disabled={paymentPage === paymentTotalPages - 1 || isPaymentsLoading}
+                        className="px-4 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-white transition-all shadow-xs"
+                      >
+                        Trang sau
+                      </button>
+                    </div>
+                  )}
+                </motion.div>
+              )
+            ) : filteredOrders.length === 0 ? (
               <motion.div
                 key="empty"
                 initial={{ opacity: 0, y: 10 }}

@@ -30,15 +30,15 @@ public class OrderEventConsumer {
     public void listen(OrderEventWrapper event,
             @Header(KafkaHeaders.RECEIVED_KEY) String key,
             @Header(KafkaHeaders.RECEIVED_PARTITION) int partition,
-            @Header(KafkaHeaders.OFFSET) long offset) {
+            @Header(KafkaHeaders.OFFSET) long offset,
+            @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
 
-        log.info("Received Kafka event type={} key={} partition={} offset={}", event.getEventType(), key, partition,
-                offset);
+        log.info("Received Kafka event type={} key={} partition={} offset={} topic={}", event.getEventType(), key, partition,
+                offset, topic);
 
-        // Chúng ta tạo eventId duy nhất từ key + offset hoặc dùng key chính là orderId
-        // Ở đây eventId có thể lấy từ key làm định danh duy nhất (ví dụ: orderId) hoặc
-        // eventId có sẵn
-        String eventId = event.getEventType() + "_" + key;
+        // Chúng ta tạo eventId duy nhất từ coordinates của Kafka tin nhắn (topic:partition:offset)
+        // để tránh tình trạng trùng lặp key khi cùng một đơn hàng thay đổi trạng thái nhiều lần.
+        String eventId = topic + ":" + partition + ":" + offset;
 
         if (processedEventRepository.existsById(eventId)) {
             log.warn("Event {} already processed. Skipping.", eventId);

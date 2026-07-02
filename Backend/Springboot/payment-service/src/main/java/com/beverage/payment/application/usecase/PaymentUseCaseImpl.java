@@ -362,6 +362,13 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
         if (payment != null) {
             payment.setOrderStatus(orderStatus);
             
+            // Nếu đơn hàng bị hủy (CANCELLED), chuyển trạng thái các thanh toán chưa hoàn tất sang FAILED
+            if ("CANCELLED".equals(orderStatus)) {
+                if (payment.getStatus() == PaymentStatus.PENDING || payment.getStatus() == PaymentStatus.PROCESSING) {
+                    payment.setStatus(PaymentStatus.FAILED);
+                    log.info("Order is CANCELLED. Updated payment status to FAILED for payment id={}", payment.getId());
+                }
+            }
             // Nếu đơn hàng COD chuyển sang COMPLETED và thanh toán đang PENDING -> cập nhật thành SUCCESS
             if ("COMPLETED".equals(orderStatus) 
                     && payment.getPaymentMethod() == PaymentMethod.COD 
@@ -490,7 +497,7 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
     @Transactional(readOnly = true)
     public Page<PaymentDetailResponse> getPaymentHistory(UUID userId, Pageable pageable) {
         log.info("Fetching payment history for userId={}", userId);
-        return paymentRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
+        return paymentRepository.findByUserIdAndPaymentMethodNotOrderByCreatedAtDesc(userId, PaymentMethod.COD, pageable)
                 .map(this::mapToDetailResponse);
     }
 

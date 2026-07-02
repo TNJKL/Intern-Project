@@ -315,10 +315,9 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
             transition={{ delay: 0.1 }}
             className="w-full max-w-xl md:max-w-3xl mx-auto xl:max-w-none xl:col-span-2 bg-white rounded-xl p-8 md:p-10 shadow-xs border border-primary/10"
           >
-            <div className="flex items-center gap-3 mb-8">
-              <div className="w-1 h-5 bg-primary rounded" />
-              <h3 className="text-base font-black text-gray-900 uppercase tracking-wider">Thông tin chi tiết</h3>
-            </div>
+            <h3 className="text-base sm:text-lg font-black text-gray-800 uppercase tracking-tight mb-6 md:mb-8 pb-4 border-b border-gray-100 flex items-center gap-2">
+              <Sparkles size={18} className="text-primary" /> Thông tin tài khoản chi tiết
+            </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
               <InfoRow icon={<User />} label="Họ và tên" value={user.fullName} />

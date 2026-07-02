@@ -10,7 +10,11 @@ export const metadata: Metadata = {
   description: "Theo dõi và quản lý các đơn hàng cà phê của bạn tại Brewtra.",
 };
 
-export default async function OrdersPage() {
+export default async function OrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const session = await auth();
   const cookieStore = await cookies();
   
@@ -42,5 +46,8 @@ export default async function OrdersPage() {
     isServerError = true;
   }
 
-  return <OrdersClient initialOrders={orders} isServerError={isServerError} />;
+  const resolvedParams = await searchParams;
+  const tab = typeof resolvedParams.tab === "string" ? resolvedParams.tab : "active";
+
+  return <OrdersClient initialOrders={orders} isServerError={isServerError} initialTab={tab} />;
 }
