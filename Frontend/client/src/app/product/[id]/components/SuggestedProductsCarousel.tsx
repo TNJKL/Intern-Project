@@ -155,7 +155,7 @@ export default function SuggestedProductsCarousel({
             >
               <Link href={`/product/${item.slug || item.id}`} className="flex flex-col h-full w-full min-w-0">
                 {/* Image area */}
-                <div className="relative aspect-square mb-3 rounded-2xl overflow-hidden bg-white flex items-center justify-center shrink-0 border border-gray-50 w-full">
+                <div className="relative aspect-square mb-3 rounded-2xl overflow-hidden flex items-center justify-center shrink-0 w-full">
                   <SafeImage
                     src={item.imageUrl || ""}
                     alt={item.name}
