@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, Row, Col, List, Avatar, Input, Button, Badge, Spin, Typography, Segmented, DatePicker } from 'antd';
-import { SendOutlined, UserOutlined, MessageOutlined, CalendarOutlined } from '@ant-design/icons';
+import { SendOutlined, UserOutlined, MessageOutlined, CalendarOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { apiClient } from '../../lib/api';
 import { auth, db } from '../../lib/firebase';
 import { signInWithCustomToken } from 'firebase/auth';
@@ -75,6 +75,7 @@ const ChatWindow: React.FC = () => {
   const prevUnreadCountsRef = useRef<Record<string, number>>({});
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const quickRepliesRef = useRef<HTMLDivElement>(null);
   const adminTypingTimeoutRef = useRef<any>(null);
   const isLocalTypingRef = useRef(false);
 
@@ -413,6 +414,16 @@ const ChatWindow: React.FC = () => {
     }
   };
 
+  const scrollQuickReplies = (direction: 'left' | 'right') => {
+    if (quickRepliesRef.current) {
+      const scrollAmount = 200;
+      quickRepliesRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
+
   // Get active selected room metadata
   const activeRoom = chatRooms.find((r) => r.id === activeRoomId);
 
@@ -529,8 +540,12 @@ const ChatWindow: React.FC = () => {
   })();
 
   return (
-    <div className="h-[calc(100vh-160px)] flex flex-col">
-      <h2 className="text-2xl font-black text-gray-800 uppercase tracking-tight mb-6">Trung tâm Hỗ trợ Chat</h2>
+    <div className="h-full min-h-[500px] flex flex-col">
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
 
       <Row gutter={16} className="flex-1 overflow-hidden">
         {/* User List Panel */}
@@ -584,7 +599,7 @@ const ChatWindow: React.FC = () => {
             ]}
           />
 
-          <Card variant="borderless" className="flex-1 shadow-sm overflow-auto" styles={{ body: { padding: 0 } }}>
+          <Card variant="borderless" className="flex-1 shadow-sm overflow-y-auto overflow-x-hidden" styles={{ body: { padding: 0 } }}>
             {loadingRooms ? (
               <div className="flex items-center justify-center p-8">
                 <Spin tip="Đang tải danh sách phòng chat..." />
@@ -613,26 +628,26 @@ const ChatWindow: React.FC = () => {
                       <List.Item.Meta
                         avatar={<Avatar icon={<UserOutlined />} className="bg-[#8c6239]" />}
                         title={
-                          <div className="flex justify-between items-center pr-4">
-                            <span className="font-bold text-gray-800">
+                          <div className="flex items-center gap-1.5 w-full min-w-0 pr-4">
+                            <span className="font-bold text-gray-800 truncate" title={getDisplayName(room.customerName, room.customerEmail)}>
                               {getDisplayName(room.customerName, room.customerEmail)}
-                              {room.status === 'assigned' && (
-                                <span className="text-[10px] font-normal text-gray-400 ml-2">
-                                  ({room.assignedTo === currentAdminId ? 'Của tôi' : room.assignedName || 'Admin khác'})
-                                </span>
-                              )}
-                              {room.status === 'closed' && (
-                                <span className="text-[10px] font-bold text-red-500 ml-2">
-                                  (Đã đóng)
-                                </span>
-                              )}
                             </span>
-                            <span className="text-[10px] text-gray-400">{timeString}</span>
+                            {room.status === 'assigned' && (
+                              <span className="text-[10px] font-normal text-gray-400 shrink-0">
+                                ({room.assignedTo === currentAdminId ? 'Của tôi' : room.assignedName || 'Admin khác'})
+                              </span>
+                            )}
+                            {room.status === 'closed' && (
+                              <span className="text-[10px] font-bold text-red-500 shrink-0">
+                                (Đã đóng)
+                              </span>
+                            )}
+                            <span className="text-[10px] text-gray-400 shrink-0 ml-auto">{timeString}</span>
                           </div>
                         }
                         description={
-                          <div className="flex justify-between items-center mt-1 pr-4">
-                            <span className="text-xs text-gray-500 truncate w-40">{room.lastMessage || 'Bắt đầu trò chuyện...'}</span>
+                          <div className="flex items-center justify-between mt-1 min-w-0 w-full pr-4">
+                            <span className="text-xs text-gray-500 truncate pr-2 flex-1 min-w-0">{room.lastMessage || 'Bắt đầu trò chuyện...'}</span>
                             {room.unreadCount !== undefined && room.unreadCount > 0 && (
                               <Badge count={room.unreadCount} className="shrink-0" />
                             )}
@@ -652,7 +667,7 @@ const ChatWindow: React.FC = () => {
           {activeRoomId && activeRoom ? (
             <>
               {/* Chat Header inside Area */}
-              <div className="bg-white px-6 py-4 border-b border-gray-100 flex items-center justify-between shadow-sm rounded-t-2xl">
+              <div className="bg-white px-6 py-2.5 border-b border-gray-100 flex items-center justify-between shadow-sm rounded-t-2xl">
                 <div>
                   <h4 className="font-bold text-gray-800 text-sm">
                     {activeRoom.customerName.startsWith('Guest (') ? 'Khách vãng lai' : activeRoom.customerName}
@@ -672,7 +687,7 @@ const ChatWindow: React.FC = () => {
               </div>
 
               {/* Chat Body */}
-              <Card variant="borderless" className="flex-1 shadow-sm mb-4 overflow-auto bg-[#fdfaf5]/30">
+              <Card variant="borderless" className="flex-1 shadow-sm mb-2 overflow-y-auto overflow-x-hidden bg-[#fdfaf5]/30">
                 <div className="flex flex-col gap-4">
                   {allMessages.length === 0 ? (
                     <div className="text-center text-gray-400 font-medium py-8">
@@ -750,18 +765,40 @@ const ChatWindow: React.FC = () => {
                   </div>
                 </Card>
               ) : activeRoom.status === 'assigned' && activeRoom.assignedTo === currentAdminId ? (
-                <Card variant="borderless" className="shadow-sm rounded-b-2xl" styles={{ body: { padding: 12 } }}>
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {quickReplies.map((reply, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => setReplyText(reply)}
-                        className="text-[10px] bg-orange-50/50 hover:bg-orange-100 text-[#8c6239] border border-orange-100 px-2.5 py-0.5 rounded-full transition-colors cursor-pointer"
-                      >
-                        {reply}
-                      </button>
-                    ))}
+                <Card variant="borderless" className="shadow-sm rounded-b-2xl" styles={{ body: { padding: 10 } }}>
+                  <div className="flex items-center gap-1.5 mb-2 w-full">
+                    <Button 
+                      type="text" 
+                      size="small" 
+                      style={{ padding: 0, width: 20, height: 20 }}
+                      icon={<LeftOutlined style={{ fontSize: 9 }} />} 
+                      onClick={() => scrollQuickReplies('left')}
+                      className="flex items-center justify-center shrink-0 border border-orange-100/40 hover:bg-orange-50/50 text-[#8c6239]"
+                    />
+                    <div 
+                      ref={quickRepliesRef}
+                      className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-nowrap pb-1 flex-1"
+                      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                    >
+                      {quickReplies.map((reply, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setReplyText(reply)}
+                          className="text-[10px] bg-orange-50/50 hover:bg-orange-100 text-[#8c6239] border border-orange-100 px-2.5 py-0.5 rounded-full transition-colors cursor-pointer shrink-0 whitespace-nowrap"
+                        >
+                          {reply}
+                        </button>
+                      ))}
+                    </div>
+                    <Button 
+                      type="text" 
+                      size="small" 
+                      style={{ padding: 0, width: 20, height: 20 }}
+                      icon={<RightOutlined style={{ fontSize: 9 }} />} 
+                      onClick={() => scrollQuickReplies('right')}
+                      className="flex items-center justify-center shrink-0 border border-orange-100/40 hover:bg-orange-50/50 text-[#8c6239]"
+                    />
                   </div>
                   <form onSubmit={handleSend} className="flex gap-2">
                     <Input

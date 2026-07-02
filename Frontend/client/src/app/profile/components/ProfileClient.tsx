@@ -2,15 +2,18 @@
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { User, Mail, Phone, Calendar, MapPin, Camera, Sparkles, Lock, Edit3, Plus, Trash2, Check } from "lucide-react";
+import { User, Mail, Phone, Calendar, MapPin, Camera, Lock, Edit3, Plus, Trash2, Check } from "lucide-react";
 import Image from "next/image";
 import EditProfileModal from "./EditProfileModal";
 import ChangePasswordModal from "./ChangePasswordModal";
 import type { User as UserType } from "@/types/user";
 import { apiClient } from "@/lib/api";
 import { useAuthStore } from "@/store/zustand/useAuthStore";
-import toast from "react-hot-toast";
 import { orderService } from "@/services/order.service";
+import { InfoRow } from "./InfoRow";
+import { StatsSection } from "./StatsSection";
+import { AddressModal } from "./AddressModal";
+import { AddressDeleteConfirmModal } from "./AddressDeleteConfirmModal";
 
 interface ProfileClientProps {
   initialUser: UserType | null;
@@ -25,14 +28,9 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
 
   const { setUser: setAuthUser } = useAuthStore();
 
-  // Address CRUD States
+  // Address Modal States
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [editingAddress, setEditingAddress] = useState<any | null>(null);
-  const [addressLabel, setAddressLabel] = useState("");
-  const [addressDetail, setAddressDetail] = useState("");
-  const [addressIsDefault, setAddressIsDefault] = useState(false);
-  const [isUpdatingAddress, setIsUpdatingAddress] = useState(false);
-  const [selectedPresetLabel, setSelectedPresetLabel] = useState<string>("Nhà riêng");
 
   // Custom Delete Confirm States
   const [addressToDeleteId, setAddressToDeleteId] = useState<string | null>(null);
@@ -53,109 +51,13 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
   };
 
   const handleOpenAddressModal = (address: any = null) => {
-    if (address) {
-      setEditingAddress(address);
-      setAddressLabel(address.label);
-      setAddressDetail(address.detailAddress);
-      setAddressIsDefault(address.isDefault);
-
-      if (["Nhà riêng", "Công ty", "Trường học"].includes(address.label)) {
-        setSelectedPresetLabel(address.label);
-      } else {
-        setSelectedPresetLabel("Khác");
-      }
-    } else {
-      setEditingAddress(null);
-      setAddressLabel("Nhà riêng");
-      setAddressDetail("");
-      setAddressIsDefault(!user?.addresses || user.addresses.length === 0);
-      setSelectedPresetLabel("Nhà riêng");
-    }
+    setEditingAddress(address);
     setIsAddressModalOpen(true);
   };
 
-  const handleSaveAddress = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!addressLabel.trim() || !addressDetail.trim() || !user) {
-      toast.error("Vui lòng điền đầy đủ thông tin");
-      return;
-    }
-
-    setIsUpdatingAddress(true);
-    try {
-      let currentAddresses = user.addresses ? [...user.addresses] : [];
-
-      if (editingAddress) {
-        currentAddresses = currentAddresses.map(addr => {
-          if (addr.id === editingAddress.id) {
-            return {
-              ...addr,
-              label: addressLabel.trim(),
-              detailAddress: addressDetail.trim(),
-              isDefault: addressIsDefault
-            };
-          }
-          return addressIsDefault ? { ...addr, isDefault: false } : addr;
-        });
-      } else {
-        const newAddr = {
-          id: typeof window !== "undefined" && window.crypto?.randomUUID ? window.crypto.randomUUID() : Math.random().toString(36).substring(2, 9),
-          label: addressLabel.trim(),
-          detailAddress: addressDetail.trim(),
-          isDefault: addressIsDefault
-        };
-
-        if (addressIsDefault) {
-          currentAddresses = currentAddresses.map(addr => ({ ...addr, isDefault: false }));
-        }
-        currentAddresses.push(newAddr);
-      }
-
-      const res = await apiClient.put("/users/me", { addresses: currentAddresses });
-      if (res.data?.success && res.data?.data) {
-        setUser(res.data.data);
-        setAuthUser(res.data.data);
-        setIsAddressModalOpen(false);
-        toast.success("Đã cập nhật địa chỉ thành công!");
-      } else {
-        toast.error(res.data?.message || "Lỗi khi cập nhật địa chỉ");
-      }
-    } catch (err) {
-      console.error("Save address error:", err);
-      toast.error("Đã xảy ra lỗi khi lưu địa chỉ");
-    } finally {
-      setIsUpdatingAddress(false);
-    }
-  };
-
-  const handleDeleteAddress = async () => {
-    if (!user || !addressToDeleteId) return;
-
-    setIsUpdatingAddress(true);
-    try {
-      let currentAddresses = user.addresses ? [...user.addresses] : [];
-      const addressToDelete = currentAddresses.find(a => a.id === addressToDeleteId);
-      currentAddresses = currentAddresses.filter(a => a.id !== addressToDeleteId);
-
-      if (addressToDelete?.isDefault && currentAddresses.length > 0) {
-        currentAddresses[0].isDefault = true;
-      }
-
-      const res = await apiClient.put("/users/me", { addresses: currentAddresses });
-      if (res.data?.success && res.data?.data) {
-        setUser(res.data.data);
-        setAuthUser(res.data.data);
-        setAddressToDeleteId(null);
-        toast.success("Đã xóa địa chỉ thành công!");
-      } else {
-        toast.error(res.data?.message || "Lỗi khi xóa địa chỉ");
-      }
-    } catch (err) {
-      console.error("Delete address error:", err);
-      toast.error("Đã xảy ra lỗi khi xóa địa chỉ");
-    } finally {
-      setIsUpdatingAddress(false);
-    }
+  const handleUserUpdate = (updatedUser: UserType) => {
+    setUser(updatedUser);
+    setAuthUser(updatedUser);
   };
 
   useEffect(() => {
@@ -250,7 +152,6 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
                     <Image src={user.avatarUrl} alt="Avatar" fill className="object-cover" />
                   ) : (
                     <div className={`w-full h-full bg-gradient-to-br ${getAvatarGradient(user.email)} flex items-center justify-center text-white text-3xl font-black tracking-wider relative overflow-hidden`}>
-                      <User className="absolute w-24 h-24 text-white/15 -bottom-2 -right-2 transform rotate-12 pointer-events-none" />
                       <span className="relative z-10">{getAvatarInitials(user.fullName)}</span>
                     </div>
                   )}
@@ -338,80 +239,7 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
                 }) : "---"}
               />
 
-              {/* Thống kê chi tiêu & Thăng hạng */}
-              {stats && (
-                <div className="sm:col-span-2 space-y-4 border-t border-gray-150 pt-6">
-                  <h4 className="text-sm font-black text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
-                    <Sparkles size={16} className="text-primary" /> Thống kê chi tiêu & Thăng hạng
-                  </h4>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="p-4 rounded-lg bg-gray-50 border border-gray-200 flex flex-col justify-between">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Hạng hiện tại</span>
-                      <span className="text-xs sm:text-sm font-extrabold text-gray-800 mt-2 block">
-                        {stats.tier === "VIP" ? "👑 VIP" : stats.tier === "MEMBER" ? "🥈 MEMBER" : "🥉 GUEST"}
-                      </span>
-                    </div>
-                    <div className="p-4 rounded-lg bg-gray-50 border border-gray-200 flex flex-col justify-between">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Đơn hàng thành công</span>
-                      <span className="text-sm sm:text-base font-black text-gray-800 mt-2 block">{stats.totalOrders} Đơn</span>
-                    </div>
-                    <div className="p-4 rounded-lg bg-gray-50 border border-gray-200 flex flex-col justify-between">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Tổng chi tiêu tích lũy</span>
-                      <span className="text-sm sm:text-base font-black text-primary mt-2 block">
-                        {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(stats.totalSpent)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Tính toán Progress thăng hạng */}
-                  {(() => {
-                    if (stats.tier === "VIP") {
-                      return (
-                        <div className="p-4 rounded-lg bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 space-y-2">
-                          <div className="flex justify-between text-xs font-bold text-yellow-800">
-                            <span>Tiến trình thăng hạng</span>
-                            <span>100%</span>
-                          </div>
-                          <div className="w-full bg-yellow-200/50 rounded-full h-2">
-                            <div className="bg-yellow-500 h-2 rounded-full" style={{ width: "100%" }} />
-                          </div>
-                          <p className="text-[11px] text-yellow-800 font-semibold flex items-center gap-1">
-                            🎉 Bạn đã đạt hạng thành viên cao nhất tại Brewtra Coffee! Cảm ơn sự tin yêu của bạn.
-                          </p>
-                        </div>
-                      );
-                    }
-
-                    const isMember = stats.tier === "MEMBER";
-                    const targetSpent = isMember ? 3000000 : 500000;
-                    const targetOrders = isMember ? 20 : 5;
-                    const nextTierName = isMember ? "Khách VIP" : "Khách hàng thân thiết";
-
-                    const spentPercent = Math.min(100, (stats.totalSpent / targetSpent) * 100);
-                    const ordersPercent = Math.min(100, (stats.totalOrders / targetOrders) * 100);
-                    const progress = Math.max(spentPercent, ordersPercent);
-
-                    const remSpent = Math.max(0, targetSpent - stats.totalSpent);
-                    const remOrders = Math.max(0, targetOrders - stats.totalOrders);
-
-                    return (
-                      <div className="p-4 rounded-lg bg-gray-50 border border-gray-200 space-y-2">
-                        <div className="flex justify-between text-xs font-bold text-gray-700">
-                          <span>Tiến trình lên hạng {nextTierName}</span>
-                          <span>{Math.round(progress)}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div className="bg-primary h-2 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
-                        </div>
-                        <p className="text-[11px] text-gray-500 font-semibold leading-relaxed">
-                          💡 Chỉ cần hoàn thành thêm <strong className="text-gray-800">{remOrders} đơn hàng</strong> hoặc chi tiêu thêm <strong className="text-primary">{new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(remSpent)}</strong> để nâng cấp lên hạng <strong className="text-gray-800">{nextTierName}</strong>!
-                        </p>
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
+              <StatsSection stats={stats} />
 
               <div className="sm:col-span-2 border-t border-gray-150 my-4" />
 
@@ -490,159 +318,22 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
       <ChangePasswordModal open={isPasswordModalOpen} onClose={() => setIsPasswordModalOpen(false)} />
 
       {/* Modal Thêm/Sửa Địa chỉ */}
-      {isAddressModalOpen && user && (
-        <div style={{ zIndex: 9999 }} className="fixed inset-0 flex items-center justify-center p-4">
-          <div
-            onClick={() => !isUpdatingAddress && setIsAddressModalOpen(false)}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="relative w-full max-w-md bg-white rounded-xl overflow-hidden shadow-2xl z-10 p-6 sm:p-8"
-          >
-            <h3 className="text-lg sm:text-xl font-black text-gray-900 mb-6 flex items-center gap-1.5 uppercase tracking-wide">
-              {editingAddress ? "Chỉnh sửa địa chỉ" : "Thêm địa chỉ nhận hàng"}
-            </h3>
-            <form onSubmit={handleSaveAddress} className="space-y-5">
-              <div>
-                <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-2">
-                  Tên gợi nhớ (Nhãn) <span className="text-red-500">*</span>
-                </label>
-
-                {/* Chọn nhanh Label Preset */}
-                <div className="flex flex-wrap gap-2 mb-2.5">
-                  {["Nhà riêng", "Công ty", "Trường học", "Khác"].map((preset) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => {
-                        setSelectedPresetLabel(preset);
-                        if (preset !== "Khác") {
-                          setAddressLabel(preset);
-                        } else {
-                          setAddressLabel("");
-                        }
-                      }}
-                      className={`px-2.5 py-1.5 rounded-lg border text-[10px] sm:text-xs font-bold transition-all ${selectedPresetLabel === preset
-                        ? "bg-primary text-white border-primary shadow-xs"
-                        : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300"
-                        }`}
-                    >
-                      {preset === "Nhà riêng" ? "🏠 Nhà riêng" : preset === "Công ty" ? "🏢 Công ty" : preset === "Trường học" ? "🏫 Trường học" : "📍 Khác"}
-                    </button>
-                  ))}
-                </div>
-
-                {selectedPresetLabel === "Khác" && (
-                  <input
-                    type="text"
-                    placeholder="Nhập tên gợi nhớ tùy chỉnh (ví dụ: Nhà bạn bè, Cửa hàng...)"
-                    value={addressLabel}
-                    onChange={(e) => setAddressLabel(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs sm:text-sm font-semibold text-gray-800 focus:outline-none focus:border-black transition-all outline-none"
-                    required
-                  />
-                )}
-              </div>
-
-              <div>
-                <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-2">
-                  Địa chỉ chi tiết <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  placeholder="Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành phố..."
-                  value={addressDetail}
-                  onChange={(e) => setAddressDetail(e.target.value)}
-                  rows={3}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-xs sm:text-sm font-semibold text-gray-800 focus:outline-none focus:border-black transition-all outline-none resize-none"
-                  required
-                />
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="defaultAddressCheckbox"
-                  checked={addressIsDefault}
-                  disabled={!editingAddress && (!user.addresses || user.addresses.length === 0)}
-                  onChange={(e) => setAddressIsDefault(e.target.checked)}
-                  className="w-4 h-4 text-primary focus:ring-primary border-gray-300 rounded"
-                />
-                <label htmlFor="defaultAddressCheckbox" className="text-xs sm:text-sm font-semibold text-gray-700 select-none cursor-pointer">
-                  Đặt làm địa chỉ mặc định
-                </label>
-              </div>
-
-              <div className="flex gap-3 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setIsAddressModalOpen(false)}
-                  disabled={isUpdatingAddress}
-                  className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-lg font-bold hover:bg-gray-200 transition-colors uppercase tracking-wider text-xs border border-gray-200/50"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  disabled={isUpdatingAddress}
-                  className="flex-1 py-3 bg-primary text-white rounded-lg font-bold hover:bg-primary/90 transition-colors uppercase tracking-wider text-xs flex items-center justify-center gap-1.5 shadow-xs"
-                >
-                  Lưu lại
-                </button>
-              </div>
-            </form>
-          </motion.div>
-        </div>
-      )}
+      <AddressModal
+        open={isAddressModalOpen}
+        onClose={() => setIsAddressModalOpen(false)}
+        user={user}
+        editingAddress={editingAddress}
+        onSaveSuccess={handleUserUpdate}
+      />
 
       {/* Custom Delete Confirmation Modal */}
-      {addressToDeleteId && (
-        <div style={{ zIndex: 9999 }} className="fixed inset-0 flex items-center justify-center p-4">
-          <div
-            onClick={() => !isUpdatingAddress && setAddressToDeleteId(null)}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="relative w-full max-w-sm bg-white rounded-xl overflow-hidden shadow-2xl z-10 p-6 sm:p-8 border border-gray-150"
-          >
-            <div className="text-center space-y-4">
-              <div className="w-12 h-12 rounded-full bg-red-50 text-red-500 flex items-center justify-center mx-auto">
-                <Trash2 size={24} />
-              </div>
-              <div className="space-y-1.5">
-                <h3 className="text-base font-black text-gray-900 uppercase tracking-wide">
-                  Xác nhận xóa địa chỉ
-                </h3>
-                <p className="text-xs sm:text-sm text-gray-500 font-semibold leading-relaxed">
-                  Bạn có chắc chắn muốn xóa địa chỉ này khỏi sổ địa chỉ của mình? Hành động này không thể hoàn tác.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-3 pt-6">
-              <button
-                type="button"
-                onClick={() => setAddressToDeleteId(null)}
-                disabled={isUpdatingAddress}
-                className="flex-1 py-2.5 bg-gray-100 text-gray-600 rounded-lg font-bold hover:bg-gray-200 transition-colors uppercase tracking-wider text-xs border border-gray-200/50"
-              >
-                Hủy
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteAddress}
-                disabled={isUpdatingAddress}
-                className="flex-1 py-2.5 bg-red-500 text-white rounded-lg font-bold hover:bg-red-600 transition-colors uppercase tracking-wider text-xs flex items-center justify-center gap-1.5 shadow-xs"
-              >
-                {isUpdatingAddress ? "Đang xóa..." : "Xác nhận xóa"}
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+      <AddressDeleteConfirmModal
+        open={!!addressToDeleteId}
+        onClose={() => setAddressToDeleteId(null)}
+        user={user}
+        addressToDeleteId={addressToDeleteId}
+        onDeleteSuccess={handleUserUpdate}
+      />
     </div>
   );
 }
@@ -664,30 +355,3 @@ const getAvatarGradient = (email: string) => {
   const index = Math.abs(hash) % gradients.length;
   return gradients[index];
 };
-
-function InfoRow({ icon, label, value }: { icon: React.ReactNode, label: string, value: string }) {
-  const handleCopy = () => {
-    if (!value || value === "Chưa cập nhật") return;
-    navigator.clipboard.writeText(value);
-    toast.success(`Đã sao chép ${label.toLowerCase()}!`);
-  };
-
-  const isCopyable = value && value !== "Chưa cập nhật";
-
-  return (
-    <div
-      onClick={handleCopy}
-      title={isCopyable ? `${value} (Click để sao chép)` : ""}
-      className={`flex items-center gap-4 p-3 rounded-lg hover:bg-primary/5 transition-all duration-200 group ${isCopyable ? "cursor-pointer active:scale-[0.98]" : ""
-        }`}
-    >
-      <div className="w-11 h-11 rounded bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300 shrink-0">
-        {React.cloneElement(icon as any, { size: 18 })}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-0.5">{label}</p>
-        <p className="text-base font-bold text-gray-800 truncate">{value}</p>
-      </div>
-    </div>
-  );
-}
