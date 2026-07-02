@@ -4,6 +4,8 @@ import com.beverage.order.application.dto.response.CustomerTierResponse;
 import com.beverage.order.domain.model.CustomerTier;
 import com.beverage.order.infrastructure.persistence.entity.CustomerTierEntity;
 import com.beverage.order.infrastructure.persistence.repository.CustomerTierJpaRepository;
+import com.beverage.order.application.event.UserTierUpgradedEvent;
+import com.beverage.order.infrastructure.event.OrderEventPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,6 +21,7 @@ import java.util.UUID;
 public class CustomerTierService {
 
     private final CustomerTierJpaRepository tierRepository;
+    private final OrderEventPublisher orderEventPublisher;
 
     @Transactional(readOnly = true)
     public CustomerTier getTier(UUID userId) {
@@ -57,7 +60,7 @@ public class CustomerTierService {
     }
 
     @Transactional
-    public void onOrderCompleted(UUID userId, BigDecimal orderAmount) {
+    public void onOrderCompleted(UUID userId, BigDecimal orderAmount, String userEmail, String userName) {
         if (userId == null || orderAmount == null) {
             return;
         }
@@ -90,6 +93,18 @@ public class CustomerTierService {
             tier.setTierUpdatedAt(Instant.now());
             log.info("User {} upgraded from {} to {}. Spent: {}, Orders: {}",
                     userId, oldTier, newTier, tier.getTotalSpent(), tier.getTotalOrders());
+
+            // Gửi sự kiện thăng hạng lên Kafka
+            UserTierUpgradedEvent upgradeEvent = UserTierUpgradedEvent.builder()
+                    .userId(userId)
+                    .userEmail(userEmail)
+                    .userName(userName)
+                    .tier(newTier.name())
+                    .totalSpent(tier.getTotalSpent())
+                    .totalOrders(tier.getTotalOrders())
+                    .build();
+            upgradeEvent.setOccurredAt(Instant.now());
+            orderEventPublisher.publish(upgradeEvent);
         }
 
         tierRepository.save(tier);

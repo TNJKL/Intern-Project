@@ -449,22 +449,34 @@ export class EventsService {
     const userId = payload.userId;
     const userEmail = payload.userEmail;
     const customerName = payload.userName || payload.customerName || 'Khách hàng';
-    const tier = payload.tier;
+
+    // Ánh xạ tên hạng thành tiếng Việt thân thiện
+    const tierMap = {
+      'GUEST': 'Khách hàng',
+      'MEMBER': 'Khách hàng thân thiết',
+      'VIP': 'Khách VIP'
+    };
+    const rawTier = payload.tier;
+    const tier = tierMap[rawTier] || rawTier;
     const totalSpent = payload.totalSpent;
+    const totalOrders = payload.totalOrders || 0;
+    const upgradeDate = payload.occurredAt || new Date().toISOString();
 
     await this.notificationService.createNotification({
       userId,
       userEmail,
       channel: 'IN_APP',
       title: `Chúc mừng bạn lên hạng ${tier}!`,
-      body: `Bạn đã đạt hạng ${tier} với tổng chi tiêu ${totalSpent}đ.`,
+      body: `Bạn đã đạt hạng ${tier} với tổng chi tiêu ${new Intl.NumberFormat("vi-VN").format(Number(totalSpent))}đ và ${totalOrders} đơn hàng đã mua.`,
       referenceType: 'TIER',
       referenceId: userId,
       data: {
         tier,
+        rawTier,
         totalSpent,
+        totalOrders,
         customerName,
-        upgradeDate: new Date().toISOString(),
+        upgradeDate,
       },
     });
 
@@ -474,19 +486,28 @@ export class EventsService {
         userEmail,
         channel: 'EMAIL',
         title: `Chúc mừng bạn lên hạng ${tier}!`,
-        body: `Bạn đã đạt hạng ${tier} với tổng chi tiêu ${totalSpent}đ.`,
+        body: `Bạn đã đạt hạng ${tier} với tổng chi tiêu ${new Intl.NumberFormat("vi-VN").format(Number(totalSpent))}đ và ${totalOrders} đơn hàng đã mua.`,
         referenceType: 'TIER',
         referenceId: userId,
         data: {
           tier,
+          rawTier,
           totalSpent,
+          totalOrders,
           customerName,
-          upgradeDate: new Date().toISOString(),
+          upgradeDate,
         },
       });
 
       try {
-        await this.emailService.sendTierUpgraded(userEmail, tier, String(totalSpent), customerName);
+        await this.emailService.sendTierUpgraded(
+          userEmail,
+          tier,
+          new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(Number(totalSpent)),
+          customerName,
+          totalOrders,
+          upgradeDate
+        );
         await this.notificationService.updateNotificationStatusById(
           emailNotification.id,
           'SENT',

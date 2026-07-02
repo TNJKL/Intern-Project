@@ -37,7 +37,9 @@ public class TierUpdateEventListener {
             if (event.getUserId() != null) {
                 customerTierService.onOrderCompleted(
                         event.getUserId(),
-                        event.getTotalAmount()
+                        event.getTotalAmount(),
+                        event.getUserEmail(),
+                        event.getUserName()
                 );
                 log.info("Updated tier for user {} after order {} completed",
                         event.getUserId(), event.getOrderCode());

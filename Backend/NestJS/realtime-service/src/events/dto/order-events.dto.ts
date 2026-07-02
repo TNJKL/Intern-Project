@@ -65,6 +65,7 @@ export interface TierUpdateEventPayload {
   userName?: string;
   tier: string;
   totalSpent: string | number;
+  totalOrders?: number;
   occurredAt?: string;
   timestamp?: string;
 }

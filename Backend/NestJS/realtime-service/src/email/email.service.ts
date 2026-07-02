@@ -99,12 +99,26 @@ export class EmailService {
     tier: string,
     totalSpent: string,
     customerName: string,
+    totalOrders: number,
+    upgradeDate?: string,
   ): Promise<void> {
+    const formattedDate = upgradeDate
+      ? new Date(upgradeDate).toLocaleDateString('vi-VN', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        })
+      : new Date().toLocaleDateString('vi-VN', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        });
+
     await this.send({
       to: email,
       subject: `Chúc mừng bạn lên hạng ${tier}!`,
       template: 'tier-upgraded',
-      context: { tier, totalSpent, customerName },
+      context: { tier, totalSpent, totalOrders, customerName, upgradeDate: formattedDate },
     });
   }
 
