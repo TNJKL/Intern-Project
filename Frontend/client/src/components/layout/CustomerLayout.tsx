@@ -114,7 +114,7 @@ export function CustomerLayout({ children, initialUser }: CustomerLayoutProps) {
   return (
     <SocketProvider>
       <div className="min-h-screen flex flex-col relative overflow-x-hidden bg-background text-foreground transition-colors duration-500">
-        <header className="fixed top-0 left-0 right-0 z-40 bg-background/90 backdrop-blur-md border-b border-gray-100/10 shadow-sm transition-colors duration-500">
+        <header className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-md border-b border-gray-100/10 shadow-sm transition-colors duration-500">
           <Navbar initialUser={initialUser} />
         </header>
         {/* FloatingNav: pill trên đầu (md+) hoặc tab bar dưới cùng (< md) */}

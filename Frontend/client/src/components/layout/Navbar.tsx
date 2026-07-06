@@ -12,6 +12,7 @@ import { signOut, useSession } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { apiClient } from "@/lib/api";
 
 import { User as UserType } from "@/types/user";
 import { createPortal } from "react-dom";
@@ -40,6 +41,23 @@ export function Navbar({ initialUser }: NavbarProps) {
 
   const [preset, setPreset] = useState<"espresso" | "matcha" | "berry">("espresso");
   const [steamEffect, setSteamEffect] = useState(false);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await apiClient.get("/categories");
+        if (res.data?.success && res.data?.data) {
+          setCategories(res.data.data.slice(0, 8));
+        }
+      } catch (error) {
+        console.error("Lỗi khi tải danh mục sản phẩm:", error);
+      }
+    };
+    if (isMounted) {
+      fetchCategories();
+    }
+  }, [isMounted]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -111,13 +129,97 @@ export function Navbar({ initialUser }: NavbarProps) {
       <div className="hidden lg:flex items-center gap-1">
         {navItems.filter(item => item.id !== 'account').map((item) => {
           const isActive = activeId === item.id;
+
+          if (item.id === "menu") {
+            return (
+              <div key={item.id} className="relative group py-2">
+                <Link
+                  href={item.href}
+                  onClick={() => setActiveId(item.id)}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition-all duration-200 relative",
+                    isActive
+                      ? "bg-primary text-white shadow-md shadow-primary/20"
+                      : "text-gray-500 hover:text-coffee-dark hover:bg-gray-100"
+                  )}
+                >
+                  <item.icon className="w-4 h-4" />
+                  {item.label}
+                </Link>
+                {/* Category Dropdown */}
+                {categories.length > 0 && (
+                  <div className="absolute top-full left-0 mt-1 min-w-[200px] bg-[#fcf9f2] border border-[#855823]/15 rounded-md shadow-lg p-1.5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                    {categories.map((cat) => (
+                      <Link
+                        key={cat.id}
+                        href={`/menu?category=${cat.id}`}
+                        className="block px-4 py-2 text-[11px] font-black text-gray-600 hover:text-white hover:bg-primary rounded-md transition-all uppercase tracking-wider"
+                      >
+                        {cat.name}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          if (item.id === "orders") {
+            return (
+              <div key={item.id} className="relative group py-2">
+                <Link
+                  href={item.href}
+                  onClick={() => setActiveId(item.id)}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition-all duration-200 relative",
+                    isActive
+                      ? "bg-primary text-white shadow-md shadow-primary/20"
+                      : "text-gray-500 hover:text-coffee-dark hover:bg-gray-100"
+                  )}
+                >
+                  <item.icon className="w-4 h-4" />
+                  {item.label}
+                  {pendingPayment && (
+                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-amber-500 text-[8px] font-black text-white items-center justify-center border border-white">
+                        {pendingPayment.totalPendingCount}
+                      </span>
+                    </span>
+                  )}
+                </Link>
+                {/* Orders Dropdown */}
+                <div className="absolute top-full left-0 mt-1 min-w-[220px] bg-[#fcf9f2] border border-[#855823]/15 rounded-md shadow-lg p-1.5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                  <Link
+                    href="/orders?tab=active"
+                    className="block px-4 py-2 text-[11px] font-black text-gray-600 hover:text-white hover:bg-primary rounded-md transition-all uppercase tracking-wider"
+                  >
+                    Đang giao
+                  </Link>
+                  <Link
+                    href="/orders?tab=history"
+                    className="block px-4 py-2 text-[11px] font-black text-gray-600 hover:text-white hover:bg-primary rounded-md transition-all uppercase tracking-wider"
+                  >
+                    Lịch sử mua hàng
+                  </Link>
+                  <Link
+                    href="/orders?tab=transactions"
+                    className="block px-4 py-2 text-[11px] font-black text-gray-600 hover:text-white hover:bg-primary rounded-md transition-all uppercase tracking-wider"
+                  >
+                    Lịch sử thanh toán VNPAY
+                  </Link>
+                </div>
+              </div>
+            );
+          }
+
           return (
             <Link
               key={item.id}
               href={item.href}
               onClick={() => setActiveId(item.id)}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all duration-200 relative",
+                "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition-all duration-200 relative",
                 isActive
                   ? "bg-primary text-white shadow-md shadow-primary/20"
                   : "text-gray-500 hover:text-coffee-dark hover:bg-gray-100"
@@ -125,14 +227,6 @@ export function Navbar({ initialUser }: NavbarProps) {
             >
               <item.icon className="w-4 h-4" />
               {item.label}
-              {item.id === "orders" && pendingPayment && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-amber-500 text-[8px] font-black text-white items-center justify-center border border-white">
-                    {pendingPayment.totalPendingCount}
-                  </span>
-                </span>
-              )}
             </Link>
           );
         })}
@@ -150,9 +244,9 @@ export function Navbar({ initialUser }: NavbarProps) {
                 <div className="flex items-center gap-1 sm:gap-3">
                   <Link
                     href="/profile"
-                    className="flex items-center gap-0 sm:gap-2 p-1 sm:px-4 sm:py-2 bg-primary/5 border border-primary/10 text-gray-800 rounded-full hover:bg-primary/10 transition-all group"
+                    className="flex items-center gap-0 sm:gap-2 p-1 sm:px-4 sm:py-2 bg-primary/5 border border-primary/10 text-gray-800 rounded-md hover:bg-primary/10 transition-all group"
                   >
-                    <div className="w-7 h-7 bg-primary text-white rounded-full flex items-center justify-center text-[10px] font-black shadow-sm group-hover:scale-110 transition-transform shrink-0">
+                    <div className="w-7 h-7 bg-primary text-white rounded-md flex items-center justify-center text-[10px] font-black shadow-sm group-hover:scale-110 transition-transform shrink-0">
                       {((displayUser as any).fullName || (displayUser as any).name || (displayUser as any).userName || 'U').charAt(0).toUpperCase()}
                     </div>
                     <span className="hidden sm:block text-xs sm:text-sm font-bold truncate max-w-[80px] sm:max-w-[120px]">
@@ -163,7 +257,7 @@ export function Navbar({ initialUser }: NavbarProps) {
                   {displayUser.role === 'ADMIN' && (
                     <a
                       href="http://localhost:5173/admin/dashboard"
-                      className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-coffee-dark text-white text-[9px] sm:text-[10px] font-black uppercase tracking-widest rounded-full hover:bg-primary transition-all shadow-md active:scale-95 animate-pulse"
+                      className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-coffee-dark text-white text-[9px] sm:text-[10px] font-black uppercase tracking-widest rounded-md hover:bg-primary transition-all shadow-md active:scale-95 animate-pulse"
                     >
                       <LayoutDashboard className="w-3 h-3" />
                       <span className="hidden xs:block">Quản trị</span>
@@ -189,13 +283,13 @@ export function Navbar({ initialUser }: NavbarProps) {
         ) : isMounted ? (
           <Link
             href="/login"
-            className="flex items-center gap-1.5 px-4 sm:px-6 py-2 sm:py-2.5 bg-coffee-dark text-white text-xs sm:text-sm font-bold rounded-full hover:bg-primary transition-all shadow-lg shadow-coffee-dark/10 active:scale-95 shrink-0"
+            className="flex items-center gap-1.5 px-4 sm:px-6 py-2 sm:py-2.5 bg-coffee-dark text-white text-xs sm:text-sm font-bold rounded-md hover:bg-primary transition-all shadow-lg shadow-coffee-dark/10 active:scale-95 shrink-0"
           >
             <User className="w-4 h-4" />
             <span>Đăng nhập</span>
           </Link>
         ) : (
-          <div className="w-20 sm:w-32 h-8 sm:h-10 bg-gray-50 animate-pulse rounded-full border border-gray-100"></div>
+          <div className="w-20 sm:w-32 h-8 sm:h-10 bg-gray-50 animate-pulse rounded-md border border-gray-100"></div>
         )}
 
         <div className="h-8 w-[1px] bg-gray-100 mx-1 hidden sm:block"></div>

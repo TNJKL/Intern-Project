@@ -2,6 +2,7 @@ import Image from "next/image";
 import { ArrowRight, Coffee } from "lucide-react";
 import Link from "next/link";
 import { Category } from "@/types/category";
+import { CategorySkeleton } from "@/components/skeletons/CategorySkeleton";
 
 interface CategoriesProps {
   categories: Category[];
@@ -22,15 +23,15 @@ export function Categories({ categories }: CategoriesProps) {
           {displayCategories.length > 0 ? (
             displayCategories.map((cat) => {
               const hasImage = !!cat.imageUrl;
-              
+
               return (
                 <Link
                   key={cat.id}
                   href={`/menu?category=${cat.id}`}
-                  className="group flex flex-col items-center p-6 bg-secondary rounded-[32px] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500"
+                  className="group flex flex-col items-center p-6 bg-[#f5ede2] border border-[#855823]/10 rounded-md shadow-xs hover:shadow-md hover:-translate-y-1 hover:border-[#855823]/25 transition-all duration-500"
                 >
                   {/* Image Container */}
-                  <div className="w-20 h-20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-500 overflow-hidden">
+                  <div className="w-20 h-20 bg-white/40 border border-[#855823]/5 rounded-md p-2 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-500 overflow-hidden shrink-0">
                     {hasImage ? (
                       <div className="relative w-full h-full">
                         <Image
@@ -53,10 +54,9 @@ export function Categories({ categories }: CategoriesProps) {
               );
             })
           ) : (
-            <div className="col-span-full py-20 bg-white/50 rounded-[40px] border border-dashed border-gray-200 flex flex-col items-center justify-center text-center">
-              <Coffee className="w-12 h-12 text-gray-200 mb-4" />
-              <h3 className="text-lg font-bold text-gray-800">Đang cập nhật danh mục</h3>
-            </div>
+            Array.from({ length: 6 }).map((_, i) => (
+              <CategorySkeleton key={i} />
+            ))
           )}
         </div>
       </div>

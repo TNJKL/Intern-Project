@@ -22,16 +22,16 @@ export const ProductCard = ({ product, index, categories }: ProductCardProps) =>
       layout
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="bg-white rounded-[24px] p-3 shadow-sm border border-gray-100 hover:shadow-xl hover:shadow-primary/5 transition-all duration-500 group flex flex-col h-full cursor-pointer relative"
+      className="bg-[#f5ede2] rounded-md p-3 shadow-xs border border-[#855823]/10 hover:border-[#855823]/25 hover:shadow-md transition-all duration-500 group flex flex-col h-full cursor-pointer relative"
       onClick={() => router.push(`/product/${product.slug || product.id}`)}
     >
-      <div className="relative aspect-square rounded-[20px] overflow-hidden mb-3 bg-gray-50">
+      <div className="relative aspect-square bg-white/40 border border-[#855823]/5 rounded-md overflow-hidden mb-3">
         <SafeImage
           src={product.imageUrl || ""}
           alt={product.name}
           fill
           priority={index < 10}
-          className="object-cover transition-transform duration-700 group-hover:scale-110"
+          className="object-contain p-2 transition-transform duration-700 group-hover:scale-110"
           sizes="(max-width: 768px) 50vw, 20vw"
           fallback={
             <div className="flex flex-col items-center justify-center h-full text-primary/20">
@@ -40,7 +40,7 @@ export const ProductCard = ({ product, index, categories }: ProductCardProps) =>
             </div>
           }
         />
-        <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-md px-2 py-1 rounded-xl flex items-center gap-1 shadow-sm border border-black/5">
+        <div className="absolute top-2 right-2 bg-white/95 backdrop-blur-sm px-2 py-1 rounded-md flex items-center gap-1 shadow-sm border border-black/5">
           <Star className="w-3 h-3 text-orange-400 fill-current" />
           <span className="text-[10px] font-black">4.9</span>
         </div>
@@ -62,7 +62,7 @@ export const ProductCard = ({ product, index, categories }: ProductCardProps) =>
               : (product.price || 0).toLocaleString('vi-VN')
             )}đ
           </span>
-          <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
+          <div className="w-10 h-10 rounded-md bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
             <Plus className="w-5 h-5" />
           </div>
         </div>

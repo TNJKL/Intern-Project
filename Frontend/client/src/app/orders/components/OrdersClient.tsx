@@ -7,6 +7,7 @@ import { ChevronLeft, Package, Clock, CheckCircle2, Truck, Coffee, ArrowRight, X
 import { motion, AnimatePresence } from "framer-motion";
 import { orderService, OrderDetail } from "@/services/order.service";
 import { OrderDetailModal } from "./OrderDetailModal";
+import { OrdersSkeleton } from "./OrdersSkeleton";
 import { apiClient } from "@/lib/api";
 import { paymentService, PaymentDetail } from "@/services/payment.service";
 import toast from "react-hot-toast";
@@ -160,14 +161,7 @@ export default function OrdersClient({ initialOrders, isServerError, initialTab 
   }, [activeTab, paymentPage]);
 
   if (isLoading) {
-    return (
-      <div className="w-full min-h-screen bg-secondary/30 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-10 h-10 text-primary animate-spin" />
-          <span className="text-sm font-bold text-gray-500 uppercase tracking-widest">Đang tải đơn hàng...</span>
-        </div>
-      </div>
-    );
+    return <OrdersSkeleton />;
   }
 
   const filteredOrders = orders.filter((order) => {
@@ -336,10 +330,25 @@ export default function OrdersClient({ initialOrders, isServerError, initialTab 
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="py-20 flex flex-col items-center justify-center gap-3 bg-white rounded-xl shadow-sm border border-primary/5"
+                  className="bg-white rounded-md shadow-xs border border-gray-150 p-4 sm:p-6 animate-pulse"
                 >
-                  <div className="w-8 h-8 border-3 border-primary/20 border-t-primary rounded-full animate-spin" />
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Đang tải lịch sử giao dịch...</span>
+                  <div className="h-6 bg-gray-200/80 w-1/4 rounded mb-6" />
+                  <div className="space-y-4">
+                    <div className="flex gap-4 border-b border-gray-100 pb-3">
+                      <div className="h-4 bg-gray-200/60 w-1/4 rounded" />
+                      <div className="h-4 bg-gray-200/60 w-1/4 rounded" />
+                      <div className="h-4 bg-gray-200/60 w-1/4 rounded" />
+                      <div className="h-4 bg-gray-200/60 w-1/4 rounded" />
+                    </div>
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className="flex gap-4 py-1.5">
+                        <div className="h-4 bg-gray-200/40 w-1/4 rounded" />
+                        <div className="h-4 bg-gray-200/40 w-1/4 rounded" />
+                        <div className="h-4 bg-gray-200/40 w-1/4 rounded" />
+                        <div className="h-4 bg-gray-200/40 w-1/4 rounded" />
+                      </div>
+                    ))}
+                  </div>
                 </motion.div>
               ) : payments.length === 0 ? (
                 <motion.div

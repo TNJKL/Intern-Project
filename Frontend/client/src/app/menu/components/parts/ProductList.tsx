@@ -5,6 +5,7 @@ import { Search, Loader2 } from "lucide-react";
 import { Product } from "@/types/product";
 import { Category } from "@/types/category";
 import { ProductCard } from "./ProductCard";
+import { ProductCardSkeleton } from "@/components/skeletons/ProductCardSkeleton";
 
 interface ProductListProps {
   products: Product[];
@@ -66,15 +67,21 @@ export const ProductList = ({
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 my-8">
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-5 lg:gap-6">
-        {products.map((product, index) => (
-          <div key={product.id} className="h-full flex flex-col">
-            <ProductCard
-              product={product}
-              index={index}
-              categories={categories}
-            />
-          </div>
-        ))}
+        {isLoading && products.length === 0 ? (
+          Array.from({ length: 10 }).map((_, i) => (
+            <ProductCardSkeleton key={i} />
+          ))
+        ) : (
+          products.map((product, index) => (
+            <div key={product.id} className="h-full flex flex-col">
+              <ProductCard
+                product={product}
+                index={index}
+                categories={categories}
+              />
+            </div>
+          ))
+        )}
       </div>
 
       {/* Loading State Bottom */}

@@ -6,6 +6,7 @@ import { Star, Plus, Coffee } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Product, ProductVariant } from "@/types/product";
 import { Category } from "@/types/category";
+import { ProductCardSkeleton } from "@/components/skeletons/ProductCardSkeleton";
 
 interface FeaturedProductListProps {
   products: Product[];
@@ -40,8 +41,8 @@ export function FeaturedProductList({ products = [], categories = [] }: Featured
                 className="group h-full"
               >
                 <Link href={`/product/${product.slug || product.id}`} className="block h-full">
-                  <div className="bg-secondary p-3 md:p-4 rounded-[28px] hover:shadow-[0_10px_30px_-10px_rgba(60,42,33,0.08)] transition-all duration-500 border border-transparent hover:border-primary/5 relative flex flex-col h-full">
-                    <div className="relative aspect-square mb-4 rounded-2xl overflow-hidden flex items-center justify-center shrink-0">
+                  <div className="bg-[#f5ede2] p-3 md:p-4 rounded-md border border-[#855823]/10 hover:border-[#855823]/25 hover:shadow-md transition-all duration-500 relative flex flex-col h-full">
+                    <div className="relative aspect-square mb-4 bg-white/40 border border-[#855823]/5 rounded-md overflow-hidden flex items-center justify-center shrink-0">
                       <SafeImage
                         src={product.imageUrl || ""}
                         alt={product.name}
@@ -56,7 +57,7 @@ export function FeaturedProductList({ products = [], categories = [] }: Featured
                           </div>
                         }
                       />
-                      <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center gap-1 border border-black/5 shadow-sm">
+                      <div className="absolute top-2 right-2 bg-white/95 backdrop-blur-sm px-2 py-1 rounded-md flex items-center gap-1 border border-black/5 shadow-sm">
                         <Star className="w-3 h-3 text-orange-400 fill-current" />
                         <span className="text-[10px] font-black">4.9</span>
                       </div>
@@ -87,10 +88,9 @@ export function FeaturedProductList({ products = [], categories = [] }: Featured
               </motion.div>
             )
           }) : (
-            <div className="col-span-full py-16 text-center">
-              <Coffee className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-              <p className="text-gray-500 font-medium">Chưa có sản phẩm nào được hiển thị.</p>
-            </div>
+            Array.from({ length: 10 }).map((_, i) => (
+              <ProductCardSkeleton key={i} />
+            ))
           )}
         </AnimatePresence>
       </div>

@@ -25,6 +25,10 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
   const addItem = useCartStore(state => state.addItem);
 
   useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, []);
+
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (toppingDropdownRef.current && !toppingDropdownRef.current.contains(event.target as Node)) {
         setIsToppingDropdownOpen(false);

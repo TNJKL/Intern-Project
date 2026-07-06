@@ -80,7 +80,7 @@ app:
         exact-match: true
         methods:
           - GET
-        max-requests: 120
+        max-requests: 500
         window-seconds: 60
       - name: products-create
         pattern: /api/v1/products

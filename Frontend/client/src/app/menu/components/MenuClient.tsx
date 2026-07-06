@@ -47,7 +47,7 @@ export default function MenuClient({ initialProducts, initialCategories }: MenuC
       </div>
 
       {/* 2. Phần Thanh Công cụ & Danh mục Bộ lọc (Sticky - Ghim chặt trên cùng khi cuộn trang) */}
-      <div className="sticky top-0 z-40 bg-[#fdf3eb]/80 backdrop-blur-md border-b border-[#91461e]/5 transition-all duration-300 shadow-[0_4px_30px_-20px_rgba(145,70,30,0.05)]">
+      <div className="sticky top-[72px] z-30 bg-[#fdf3eb]/80 backdrop-blur-md border-b border-[#91461e]/5 transition-all duration-300 shadow-[0_4px_30px_-20px_rgba(145,70,30,0.05)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 space-y-3 sm:space-y-4">
 
           {/* Ô Tìm Kiếm và Bộ Sắp Xếp hàng ngang */}
