@@ -36,13 +36,11 @@ export function CustomerLayout({ children, initialUser }: CustomerLayoutProps) {
 
     if (status === "authenticated" && session) {
       const customUser = session.user as any;
-      const currentStoreUser = useAuthStore.getState().user;
       
-      // Chỉ đồng bộ nếu store chưa có user hoặc tài khoản đăng nhập khác đi
-      if (!currentStoreUser || currentStoreUser.email !== customUser.email) {
-        dispatch(setCredentials({ user: customUser, accessToken: session.accessToken }));
-        setUser(customUser);
-      }
+      // Luôn luôn đồng bộ dữ liệu phiên mới xuống Redux và Zustand store
+      // nhằm đảm bảo khôi phục thông tin xác thực sau khi người dùng reload trang (F5)
+      dispatch(setCredentials({ user: customUser, accessToken: session.accessToken }));
+      setUser(customUser);
     } else if (status === "unauthenticated") {
       dispatch(clearCredentials());
       clearUser();

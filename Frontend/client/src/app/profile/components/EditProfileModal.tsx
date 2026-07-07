@@ -12,9 +12,10 @@ interface EditProfileModalProps {
   open: boolean;
   onClose: () => void;
   user: any;
+  onSaveSuccess?: (updatedUser: any) => void;
 }
 
-const EditProfileModal: React.FC<EditProfileModalProps> = ({ open, onClose, user }) => {
+const EditProfileModal: React.FC<EditProfileModalProps> = ({ open, onClose, user, onSaveSuccess }) => {
   const router = useRouter();
   const [form, setForm] = useState({ fullName: '', email: '', phone: '' });
   const [isSaving, setIsSaving] = useState(false);
@@ -45,6 +46,11 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ open, onClose, user
       
       // Cập nhật client state
       setUser(updatedUser);
+      
+      // Gọi callback để đồng bộ toàn diện ở component cha
+      if (onSaveSuccess) {
+        await onSaveSuccess(updatedUser);
+      }
       
       // Làm mới dữ liệu SSR
       router.refresh();

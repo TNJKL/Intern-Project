@@ -32,6 +32,7 @@ interface ChatAreaProps {
   formatMsgTime: (createdAt: any) => string;
   getMessageDateString: (msg: MessageData) => string;
   formatSeparatorDate: (dateStr: string) => string;
+  isHistoryLoaded: boolean;
 }
 
 export const ChatArea: React.FC<ChatAreaProps> = ({
@@ -52,6 +53,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   formatMsgTime,
   getMessageDateString,
   formatSeparatorDate,
+  isHistoryLoaded,
 }) => {
   return (
     <Col span={16} className="h-full flex flex-col">
@@ -80,7 +82,27 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           {/* Chat Body */}
           <Card variant="borderless" className="flex-1 shadow-sm mb-2 overflow-y-auto overflow-x-hidden bg-[#fdfaf5]/30">
             <div className="flex flex-col gap-4">
-              {allMessages.length === 0 ? (
+              {!isHistoryLoaded ? (
+                // Skeleton Chat Messages
+                <div className="flex flex-col gap-4 animate-pulse py-2">
+                  <div className="flex flex-col gap-1 max-w-xs self-start items-start">
+                    <div className="h-10 w-[180px] bg-gray-200/60 rounded-2xl rounded-bl-none shadow-sm border border-gray-100/50"></div>
+                    <div className="h-3 w-10 bg-gray-200/50 rounded mt-1"></div>
+                  </div>
+                  <div className="flex flex-col gap-1 max-w-xs self-end items-end">
+                    <div className="h-10 w-[140px] bg-[#8c6239]/10 rounded-2xl rounded-br-none shadow-sm border border-[#8c6239]/5"></div>
+                    <div className="h-3 w-8 bg-gray-200/50 rounded mt-1"></div>
+                  </div>
+                  <div className="flex flex-col gap-1 max-w-xs self-start items-start">
+                    <div className="h-12 w-[210px] bg-gray-200/60 rounded-2xl rounded-bl-none shadow-sm border border-gray-100/50"></div>
+                    <div className="h-3 w-12 bg-gray-200/50 rounded mt-1"></div>
+                  </div>
+                  <div className="flex flex-col gap-1 max-w-xs self-end items-end">
+                    <div className="h-10 w-[150px] bg-[#8c6239]/10 rounded-2xl rounded-br-none shadow-sm border border-[#8c6239]/5"></div>
+                    <div className="h-3 w-8 bg-gray-200/50 rounded mt-1"></div>
+                  </div>
+                </div>
+              ) : allMessages.length === 0 ? (
                 <div className="text-center text-gray-400 font-medium py-8">
                   Gửi tin nhắn để bắt đầu cuộc trò chuyện.
                 </div>

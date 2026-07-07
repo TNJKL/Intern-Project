@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Row } from 'antd';
 import { apiClient } from '../../lib/api';
 import { auth, db } from '../../lib/firebase';
@@ -13,7 +13,8 @@ import {
   updateDoc,
   addDoc,
   serverTimestamp,
-  writeBatch
+  writeBatch,
+  limitToLast
 } from 'firebase/firestore';
 import { useAuthStore } from '../../store/zustand/useAuthStore';
 import { RoomList } from './RoomList';
@@ -153,7 +154,8 @@ const ChatWindow: React.FC = () => {
     // Subscribe to messages subcollection
     const messagesQuery = query(
       collection(db, 'chatRooms', activeRoomId, 'messages'),
-      orderBy('createdAt', 'asc')
+      orderBy('createdAt', 'asc'),
+      limitToLast(50)
     );
 
     const unsubscribeMessages = onSnapshot(messagesQuery, (snapshot) => {
@@ -480,7 +482,7 @@ const ChatWindow: React.FC = () => {
     return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
-  const allMessages = (() => {
+  const allMessages = useMemo(() => {
     const list: MessageData[] = [];
     const seenIds = new Set<string>();
 
@@ -505,7 +507,7 @@ const ChatWindow: React.FC = () => {
       }
     }
     return list;
-  })();
+  }, [postgresMessages, messages]);
 
   return (
     <div className="h-full min-h-[500px] flex flex-col">
@@ -549,6 +551,7 @@ const ChatWindow: React.FC = () => {
           formatMsgTime={formatMsgTime}
           getMessageDateString={getMessageDateString}
           formatSeparatorDate={formatSeparatorDate}
+          isHistoryLoaded={isHistoryLoaded}
         />
       </Row>
     </div>

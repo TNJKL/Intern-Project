@@ -22,11 +22,11 @@ export const apiClient = axios.create({
 });
 
 let isRefreshing = false;
-let failedQueue: Array<{ resolve: () => void; reject: (err: any) => void }> = [];
+let failedQueue: Array<{ resolve: (token: string | null) => void; reject: (err: any) => void }> = [];
 let lastRefreshTime = 0;
 
-const processQueue = (error: any) => {
-  failedQueue.forEach((prom) => (error ? prom.reject(error) : prom.resolve()));
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach((prom) => (error ? prom.reject(error) : prom.resolve(token)));
   failedQueue = [];
 };
 
@@ -111,15 +111,21 @@ apiClient.interceptors.response.use(
     if (currentToken && currentToken !== tokenSent) {
       console.log('[Client API] Token has been refreshed by another tab. Retrying original request.');
       originalRequest._retry = true;
+      if (originalRequest.headers) {
+        originalRequest.headers.Authorization = `Bearer ${currentToken}`;
+      }
       return apiClient(originalRequest);
     }
 
     // Nếu đang có một tiến trình refresh token khác đang chạy -> Xếp hàng đợi
     if (isRefreshing) {
-      return new Promise<void>((resolve, reject) => {
+      return new Promise<string | null>((resolve, reject) => {
         failedQueue.push({ resolve, reject });
       })
-        .then(() => {
+        .then((newToken) => {
+          if (newToken && originalRequest.headers) {
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          }
           return apiClient(originalRequest);
         })
         .catch((err) => Promise.reject(err));
@@ -145,10 +151,16 @@ apiClient.interceptors.response.use(
         // Cập nhật Redux store để các component re-render với token mới
         const { updateAccessToken } = await import('../store/redux/authSlice');
         store.dispatch(updateAccessToken({ accessToken: newToken, ...(newUser ? { user: newUser } : {}) }));
+        
+        // Đồng bộ thông tin cá nhân mới của user vào Zustand Store
+        if (newUser) {
+          const { useAuthStore } = await import('../store/zustand/useAuthStore');
+          useAuthStore.getState().setUser(newUser);
+        }
       }
 
       lastRefreshTime = Date.now(); // Cập nhật thời điểm refresh thành công
-      processQueue(null);
+      processQueue(null, newToken);
       return apiClient(originalRequest);
     } catch (refreshError) {
       // Kiểm tra xem có phải lỗi do refresh token đã được sử dụng bởi tab khác hay không
@@ -158,21 +170,55 @@ apiClient.interceptors.response.use(
 
       if (isReplayedToken) {
         console.log('[Client API] Refresh token already used by another tab. Waiting for cookie sync and retrying...');
-        // Chờ 1.5 giây để tab khác hoàn tất việc ghi cookie mới
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-        processQueue(null);
+        
+        // Polling nhanh mỗi 100ms trong tối đa 1.5s để chờ cookie đồng bộ từ tab khác
+        let checkInterval = 100;
+        let maxWait = 1500;
+        let waited = 0;
+        const initialCookie = originalRequest._lastRefreshedBefore || '';
+        
+        while (waited < maxWait) {
+          await new Promise((resolve) => setTimeout(resolve, checkInterval));
+          waited += checkInterval;
+          const newCookieVal = Cookies.get('lastRefreshedToken') || '';
+          if (newCookieVal && newCookieVal !== initialCookie) {
+            console.log(`[Client API] Cookie synced after ${waited}ms.`);
+            break;
+          }
+        }
+        
+        const finalToken = Cookies.get('lastRefreshedToken') || '';
+        if (originalRequest.headers && finalToken) {
+          originalRequest.headers.Authorization = `Bearer ${finalToken}`;
+        }
+        processQueue(null, finalToken);
         return apiClient(originalRequest);
       }
 
-      // Đối với các lỗi khác, kiểm tra xem có tab nào khác vừa mới refresh thành công hay không
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      const lastRefreshedAfter = Cookies.get('lastRefreshedToken') || '';
-      const wasRefreshedByOther = lastRefreshedAfter && lastRefreshedAfter !== originalRequest._lastRefreshedBefore;
+      // Đối với các lỗi khác, kiểm tra nhanh (polling) xem có tab nào khác vừa mới refresh thành công hay không
+      let checkInterval = 100;
+      let maxWait = 1000;
+      let waited = 0;
+      const initialCookie = originalRequest._lastRefreshedBefore || '';
+      let wasRefreshedByOther = false;
+      
+      while (waited < maxWait) {
+        await new Promise((resolve) => setTimeout(resolve, checkInterval));
+        waited += checkInterval;
+        const lastRefreshedAfter = Cookies.get('lastRefreshedToken') || '';
+        if (lastRefreshedAfter && lastRefreshedAfter !== initialCookie) {
+          wasRefreshedByOther = true;
+          break;
+        }
+      }
 
       if (wasRefreshedByOther) {
         console.log('[Client API] Another tab has successfully refreshed the token. Syncing and retrying.');
-        processQueue(null);
+        const finalToken = Cookies.get('lastRefreshedToken') || '';
+        if (originalRequest.headers && finalToken) {
+          originalRequest.headers.Authorization = `Bearer ${finalToken}`;
+        }
+        processQueue(null, finalToken);
         return apiClient(originalRequest);
       }
 
@@ -205,7 +251,18 @@ apiClient.interceptors.response.use(
       const isAuthFailure = failStatus === 401 || failStatus === 403 || failStatus === 400;
 
       if (isAuthFailure && isRefreshEndpoint) {
+        // Báo cho backend thu hồi token/session trên server trước khi xóa ở client
+        try {
+          await axios.post('/api/v1/auth/logout', {}, { withCredentials: true });
+        } catch (e) {
+          console.warn('[Client API] Failed to call backend logout on refresh failure', e);
+        }
+
         store.dispatch(clearCredentials());
+        try {
+          const { useAuthStore } = await import('../store/zustand/useAuthStore');
+          useAuthStore.getState().clearUser();
+        } catch { }
         try {
           await signOut({ redirect: false });
         } catch { }

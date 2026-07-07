@@ -12,7 +12,7 @@ interface AddressDeleteConfirmModalProps {
   onClose: () => void;
   user: UserType;
   addressToDeleteId: string | null;
-  onDeleteSuccess: (updatedUser: UserType) => void;
+  onDeleteSuccess: (updatedUser: UserType) => Promise<void> | void;
 }
 
 export function AddressDeleteConfirmModal({
@@ -39,7 +39,7 @@ export function AddressDeleteConfirmModal({
 
       const res = await apiClient.put("/users/me", { addresses: currentAddresses });
       if (res.data?.success && res.data?.data) {
-        onDeleteSuccess(res.data.data);
+        await onDeleteSuccess(res.data.data);
         onClose();
         toast.success("Đã xóa địa chỉ thành công!");
       } else {

@@ -11,7 +11,7 @@ interface AddressModalProps {
   onClose: () => void;
   user: UserType;
   editingAddress: any | null;
-  onSaveSuccess: (updatedUser: UserType) => void;
+  onSaveSuccess: (updatedUser: UserType) => Promise<void> | void;
 }
 
 export function AddressModal({
@@ -87,7 +87,7 @@ export function AddressModal({
 
       const res = await apiClient.put("/users/me", { addresses: currentAddresses });
       if (res.data?.success && res.data?.data) {
-        onSaveSuccess(res.data.data);
+        await onSaveSuccess(res.data.data);
         onClose();
         toast.success("Đã cập nhật địa chỉ thành công!");
       } else {

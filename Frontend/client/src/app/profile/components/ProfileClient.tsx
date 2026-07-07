@@ -14,6 +14,9 @@ import { InfoRow } from "./InfoRow";
 import { StatsSection } from "./StatsSection";
 import { AddressModal } from "./AddressModal";
 import { AddressDeleteConfirmModal } from "./AddressDeleteConfirmModal";
+import { useSession } from "next-auth/react";
+import { useAppDispatch } from "@/store/redux/hooks";
+import { setCredentials } from "@/store/redux/authSlice";
 
 interface ProfileClientProps {
   initialUser: UserType | null;
@@ -27,6 +30,8 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   const { setUser: setAuthUser } = useAuthStore();
+  const { data: session, update } = useSession();
+  const dispatch = useAppDispatch();
 
   // Address Modal States
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
@@ -55,9 +60,20 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
     setIsAddressModalOpen(true);
   };
 
-  const handleUserUpdate = (updatedUser: UserType) => {
+  const handleUserUpdate = async (updatedUser: UserType) => {
     setUser(updatedUser);
     setAuthUser(updatedUser);
+
+    // 1. Đồng bộ lên Redux store để các component dùng Redux (Navbar, ChatWidget...) cập nhật ngay
+    dispatch(setCredentials({
+      user: updatedUser,
+      accessToken: session?.accessToken || ""
+    }));
+
+    // 2. Gọi cập nhật NextAuth session cookie ở Client-side
+    if (update) {
+      await update({ user: updatedUser });
+    }
   };
 
   useEffect(() => {
@@ -313,7 +329,12 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
       </div>
 
       {/* Hộp thoại chức năng */}
-      <EditProfileModal open={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} user={user} />
+      <EditProfileModal 
+        open={isEditModalOpen} 
+        onClose={() => setIsEditModalOpen(false)} 
+        user={user} 
+        onSaveSuccess={handleUserUpdate} 
+      />
       <ChangePasswordModal open={isPasswordModalOpen} onClose={() => setIsPasswordModalOpen(false)} />
 
       {/* Modal Thêm/Sửa Địa chỉ */}

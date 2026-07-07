@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { MessageCircle, X, Send, User, ChevronUp, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppSelector } from '../../store/redux/hooks';
@@ -80,6 +80,13 @@ export function ChatWidget() {
   const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(true);
   const prevUnreadCountRef = useRef(0);
+  const [chatError, setChatError] = useState<string | null>(null);
+
+  const isOpenRef = useRef(isOpen);
+  const isFirstScrollRef = useRef(true);
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+  }, [isOpen]);
 
   const playNotificationSound = () => {
     try {
@@ -175,6 +182,7 @@ export function ChatWidget() {
   useEffect(() => {
     setIsFirebaseAuthed(false);
     setChatRoomId(null);
+    setChatError(null);
     setMessages([]);
     setPostgresMessages([]);
     setIsHistoryLoaded(false);
@@ -274,32 +282,26 @@ export function ChatWidget() {
       });
 
       if (hasNewAdminMsg && !isFirstLoad) {
-        if (!isOpen || !document.hasFocus()) {
+        if (!isOpenRef.current || !document.hasFocus()) {
           playNotificationSound();
           triggerTitleFlash();
         }
       }
       isFirstLoad = false;
 
-      // Auto scroll and mark seen only if the widget is actually open
-      if (isOpen) {
+      // Auto scroll only if the widget is actually open
+      if (isOpenRef.current) {
         setTimeout(() => {
-          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+          const scrollBehavior = isFirstScrollRef.current ? 'auto' : 'smooth';
+          messagesEndRef.current?.scrollIntoView({ behavior: scrollBehavior });
+          if (isFirstScrollRef.current) {
+            isFirstScrollRef.current = false;
+          }
         }, 100);
-
-        // 2. Mark Admin messages as seen
-        const unreadAdminMsgs = snapshot.docs.filter(
-          d => d.data().senderId === 'admin' && !d.data().isSeen
-        );
-
-        if (unreadAdminMsgs.length > 0) {
-          const batch = writeBatch(db);
-          unreadAdminMsgs.forEach((docSnap) => {
-            batch.update(docSnap.ref, { isSeen: true });
-          });
-          batch.commit().catch(err => console.error("Error marking seen:", err));
-        }
       }
+    }, (error) => {
+      console.error("[ChatWidget] Error subscribing to messages:", error);
+      setChatError("Lỗi đồng bộ tin nhắn trực tiếp (Permission Denied).");
     });
 
     // 3. Subscribe to Chat Room document for Admin typing indicator & metadata
@@ -310,13 +312,44 @@ export function ChatWidget() {
         setAssignedName(data.assignedName || null);
         setRoomStatus(data.status || 'unassigned');
       }
+    }, (error) => {
+      console.error("[ChatWidget] Error subscribing to room document:", error);
+      setChatError("Lỗi kết nối phòng chat (Permission Denied).");
     });
 
     return () => {
       unsubscribeMessages();
       unsubscribeRoom();
     };
-  }, [isFirebaseAuthed, chatRoomId, isOpen]);
+  }, [isFirebaseAuthed, chatRoomId]);
+
+  // Mark admin messages as seen and scroll to bottom when widget is opened or new messages arrive
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Đánh dấu lần cuộn đầu tiên khi mở Widget để dùng cuộn tức thời
+    isFirstScrollRef.current = true;
+
+    // Auto scroll to bottom
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+    }, 50);
+
+    if (!isFirebaseAuthed || !chatRoomId || messages.length === 0) return;
+
+    const unreadAdminMsgs = messages.filter(
+      m => m.senderId === 'admin' && !m.isSeen
+    );
+
+    if (unreadAdminMsgs.length > 0) {
+      const batch = writeBatch(db);
+      unreadAdminMsgs.forEach((msg) => {
+        const msgDocRef = doc(db, 'chatRooms', chatRoomId, 'messages', msg.id);
+        batch.update(msgDocRef, { isSeen: true });
+      });
+      batch.commit().catch(err => console.error("Error marking admin messages as seen:", err));
+    }
+  }, [isOpen, messages, isFirebaseAuthed, chatRoomId]);
 
   // Load archived chat history from Postgres ONCE when the room is first authenticated.
   // We only load it once (when isHistoryLoaded first becomes true and Firestore has 0 msgs).
@@ -366,7 +399,7 @@ export function ChatWidget() {
 
     if (!isFirebaseAuthed || !chatRoomId) return;
 
-    const currentUserId = isAuthenticated && user?.id ? user.id : `guest_${guestEmail.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const currentUserId = auth.currentUser?.uid || (guestEmail ? `guest_${guestEmail.replace(/[^a-zA-Z0-9]/g, '_')}` : 'unknown');
 
     if (!isLocalTypingRef.current) {
       isLocalTypingRef.current = true;
@@ -394,7 +427,7 @@ export function ChatWidget() {
     e.preventDefault();
     if (!message.trim() || !isFirebaseAuthed || !chatRoomId) return;
 
-    const senderId = isAuthenticated && user?.id ? user.id : `guest_${guestEmail.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const senderId = auth.currentUser?.uid || (guestEmail ? `guest_${guestEmail.replace(/[^a-zA-Z0-9]/g, '_')}` : 'unknown');
     const senderName = isAuthenticated && user?.fullName ? user.fullName : `Guest (${guestEmail})`;
     const textToSend = message.trim();
     setMessage("");
@@ -444,7 +477,7 @@ export function ChatWidget() {
     // Collapse quick replies list on select to overlay message area smoothly
     setShowQuickReplies(false);
 
-    const senderId = isAuthenticated && user?.id ? user.id : `guest_${guestEmail.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const senderId = auth.currentUser?.uid || (guestEmail ? `guest_${guestEmail.replace(/[^a-zA-Z0-9]/g, '_')}` : 'unknown');
     const senderName = isAuthenticated && user?.fullName ? user.fullName : `Guest (${guestEmail})`;
 
     try {
@@ -490,7 +523,7 @@ export function ChatWidget() {
 
   const unreadCount = messages.filter((m) => m.senderId === 'admin' && !m.isSeen).length;
 
-  const allMessages = (() => {
+  const allMessages = useMemo(() => {
     const list: MessageData[] = [];
     const seenIds = new Set<string>();
 
@@ -515,7 +548,7 @@ export function ChatWidget() {
       }
     }
     return list;
-  })();
+  }, [postgresMessages, messages]);
 
   return (
     <div className="fixed bottom-[96px] right-3 lg:bottom-8 lg:right-8 z-[100]">
@@ -561,9 +594,24 @@ export function ChatWidget() {
             {/* Chat Body */}
             <div className="flex-1 p-4 sm:p-6 overflow-y-auto bg-[#fdfaf5]/50 flex flex-col gap-4">
               {loading ? (
-                <div className="flex-1 flex flex-col items-center justify-center space-y-2">
-                  <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                  <span className="text-xs text-gray-400 font-medium">Đang kết nối...</span>
+                // Skeleton Loading Messages
+                <div className="flex-1 flex flex-col gap-4 animate-pulse">
+                  <div className="flex flex-col gap-1 max-w-[85%] self-start items-start">
+                    <div className="h-10 w-[180px] bg-gray-200/60 rounded-2xl rounded-bl-none shadow-sm border border-gray-100/50"></div>
+                    <div className="h-3 w-10 bg-gray-200/50 rounded mt-1"></div>
+                  </div>
+                  <div className="flex flex-col gap-1 max-w-[85%] self-end items-end">
+                    <div className="h-10 w-[140px] bg-primary/10 rounded-2xl rounded-br-none shadow-sm border border-primary/5"></div>
+                    <div className="h-3 w-8 bg-gray-200/50 rounded mt-1"></div>
+                  </div>
+                  <div className="flex flex-col gap-1 max-w-[85%] self-start items-start">
+                    <div className="h-14 w-[220px] bg-gray-200/60 rounded-2xl rounded-bl-none shadow-sm border border-gray-100/50"></div>
+                    <div className="h-3 w-12 bg-gray-200/50 rounded mt-1"></div>
+                  </div>
+                  <div className="flex flex-col gap-1 max-w-[85%] self-end items-end">
+                    <div className="h-10 w-[160px] bg-primary/10 rounded-2xl rounded-br-none shadow-sm border border-primary/5"></div>
+                    <div className="h-3 w-8 bg-gray-200/50 rounded mt-1"></div>
+                  </div>
                 </div>
               ) : !isAuthenticated && !guestEmail ? (
                 // Guest Login Screen
@@ -602,6 +650,15 @@ export function ChatWidget() {
                       </p>
                     </div>
                   </div>
+
+                  {chatError && (
+                    <div className="w-full flex items-center justify-center my-2">
+                      <div className="bg-red-50 border border-red-200 text-red-600 text-[10px] px-3.5 py-2.5 rounded-xl font-bold uppercase tracking-wider text-center leading-normal shadow-sm">
+                        ⚠️ {chatError}<br />
+                        <span className="text-[8px] opacity-75 font-medium lowercase">Vui lòng liên hệ Admin hoặc tạo tài khoản mới để reset phòng chat</span>
+                      </div>
+                    </div>
+                  )}
 
                   {(() => {
                     let lastDateStr = '';

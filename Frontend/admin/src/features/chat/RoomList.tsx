@@ -108,8 +108,18 @@ export const RoomList: React.FC<RoomListProps> = ({
 
       <Card variant="borderless" className="flex-1 shadow-sm overflow-y-auto overflow-x-hidden" styles={{ body: { padding: 0 } }}>
         {loadingRooms ? (
-          <div className="flex items-center justify-center p-8">
-            <Spin tip="Đang tải danh sách phòng chat..." />
+          // Skeleton Room List Items
+          <div className="flex flex-col gap-4 p-4 animate-pulse">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-center gap-3 py-3 border-b border-gray-100/60">
+                <div className="w-8 h-8 rounded-full bg-gray-200 shrink-0"></div>
+                <div className="flex-1 min-w-0">
+                  <div className="h-3.5 bg-gray-200 rounded w-[45%]"></div>
+                  <div className="h-3 bg-gray-150 rounded w-[75%] mt-2.5"></div>
+                </div>
+                <div className="w-8 h-3 bg-gray-200 rounded shrink-0 self-start mt-0.5"></div>
+              </div>
+            ))}
           </div>
         ) : filteredRooms.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-8 text-gray-400">

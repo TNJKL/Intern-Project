@@ -172,7 +172,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
 
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
+      // ── Xử lý khi client gọi update() để đồng bộ thông tin thay đổi ─────────
+      if (trigger === "update" && session?.user) {
+        console.log('[JWT] 🔄 Nhận tín hiệu update từ client. Cập nhật profile mới.');
+        return {
+          ...token,
+          profile: {
+            ...token.profile,
+            ...session.user
+          }
+        };
+      }
+
       // Đọc cookie browser hiện tại (an toàn, bỏ qua nếu không trong request context)
       let cookieAccessToken: string | undefined;
       let cookieRefreshToken: string | undefined;
