@@ -21,6 +21,7 @@ export interface OrderEventPayload {
   // ORDER_CREATED / ORDER_COMPLETED fields
   items?: OrderItemPayload[];
   totalAmount?: string | number;
+  discountAmount?: string | number;
   // timestamp từ occurredAt
   occurredAt?: string;
   timestamp?: string; // alias fallback

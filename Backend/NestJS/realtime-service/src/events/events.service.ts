@@ -206,14 +206,37 @@ export class EventsService {
           customerName,
           items: payload.items,
           totalAmount: payload.totalAmount,
+          discountAmount: payload.discountAmount,
         },
       });
 
       try {
+        const formatMoney = (amount: number | string | undefined): string => {
+          if (amount === undefined || amount === null) return '';
+          const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+          if (isNaN(num)) return String(amount);
+          return num.toLocaleString('vi-VN') + ' đ';
+        };
+
+        const formattedItems = payload.items?.map(item => ({
+          ...item,
+          unitPrice: formatMoney(item.unitPrice),
+          subtotal: formatMoney(item.subtotal),
+          toppings: item.toppings?.map(t => ({
+            ...t,
+            unitPrice: formatMoney(t.unitPrice)
+          }))
+        })) || [];
+
+        const formattedTotalAmount = formatMoney(payload.totalAmount);
+        const discountVal = typeof payload.discountAmount === 'string' ? parseFloat(payload.discountAmount) : (payload.discountAmount || 0);
+        const formattedDiscount = discountVal > 0 ? formatMoney(discountVal) : null;
+
         await this.emailService.sendOrderConfirmation(userEmail, payload.orderCode, {
           customerName,
-          items: payload.items,
-          totalAmount: payload.totalAmount,
+          items: formattedItems,
+          totalAmount: formattedTotalAmount,
+          discountAmount: formattedDiscount,
         });
         // Chỉ update EMAIL notification (dùng ID cụ thể, không dùng referenceId chung)
         await this.notificationService.updateNotificationStatusById(

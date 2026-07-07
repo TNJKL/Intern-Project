@@ -41,6 +41,7 @@ public class OrderEventListener {
                 .userName(order.getUserName())
                 .userPhone(order.getUserPhone())
                 .totalAmount(order.getTotalAmount())
+                .discountAmount(order.getDiscountAmount())
                 .paymentMethod(order.getPaymentMethod())
                 .paymentDeadline(order.getPaymentDeadline())
                 .items(items)

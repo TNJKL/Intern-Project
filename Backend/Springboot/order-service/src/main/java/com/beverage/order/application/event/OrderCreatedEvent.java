@@ -17,6 +17,7 @@ public class OrderCreatedEvent extends OrderEventWrapper {
     private String userName;
     private String userPhone;
     private BigDecimal totalAmount;
+    private BigDecimal discountAmount;
     private List<OrderItemEventDto> items;
     private String paymentMethod;
     private Instant paymentDeadline;
@@ -90,6 +91,14 @@ public class OrderCreatedEvent extends OrderEventWrapper {
         this.totalAmount = totalAmount;
     }
 
+    public BigDecimal getDiscountAmount() {
+        return discountAmount;
+    }
+
+    public void setDiscountAmount(BigDecimal discountAmount) {
+        this.discountAmount = discountAmount;
+    }
+
     public List<OrderItemEventDto> getItems() {
         return items;
     }
@@ -127,6 +136,7 @@ public class OrderCreatedEvent extends OrderEventWrapper {
         private String userName;
         private String userPhone;
         private BigDecimal totalAmount;
+        private BigDecimal discountAmount;
         private List<OrderItemEventDto> items;
         private String paymentMethod;
         private Instant paymentDeadline;
@@ -172,6 +182,11 @@ public class OrderCreatedEvent extends OrderEventWrapper {
             return this;
         }
 
+        public OrderCreatedEventBuilder discountAmount(BigDecimal discountAmount) {
+            this.discountAmount = discountAmount;
+            return this;
+        }
+
         public OrderCreatedEventBuilder items(List<OrderItemEventDto> items) {
             this.items = items;
             return this;
@@ -202,6 +217,7 @@ public class OrderCreatedEvent extends OrderEventWrapper {
             event.setUserName(this.userName);
             event.setUserPhone(this.userPhone);
             event.setTotalAmount(this.totalAmount);
+            event.setDiscountAmount(this.discountAmount);
             event.setItems(this.items);
             event.setPaymentMethod(this.paymentMethod);
             event.setPaymentDeadline(this.paymentDeadline);
