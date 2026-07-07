@@ -24,7 +24,7 @@ import { join } from 'path';
         defaults: {
           from: config.get<string>(
             'MAIL_FROM',
-            '"Beverage Shop" <noreply@beverage.shop>',
+            '"Brewtra Coffee" <noreply@brewtra.coffee>',
           ),
         },
         template: {
