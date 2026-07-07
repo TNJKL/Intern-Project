@@ -80,14 +80,14 @@ export default function ProductImageGallery({
       {/* Main Image View */}
       <div
         onClick={openLightbox}
-        className="group relative aspect-square rounded-xl bg-white border border-gray-100 flex items-center justify-center overflow-hidden cursor-zoom-in shadow-sm hover:shadow-md transition-all duration-300"
+        className="group relative aspect-square rounded-xl bg-secondary flex items-center justify-center overflow-hidden cursor-zoom-in transition-all duration-300"
       >
         <SafeImage
           src={activeImage}
           alt={name}
           fill
           priority
-          className="object-cover transition-transform duration-500 group-hover:scale-105"
+          className="object-contain p-4 transition-transform duration-500 group-hover:scale-105"
           sizes="(max-width: 1024px) 100vw, (max-width: 1280px) 380px, 450px"
           fallback={
             <div className="flex flex-col items-center justify-center text-gray-200 w-full h-full bg-gray-50">

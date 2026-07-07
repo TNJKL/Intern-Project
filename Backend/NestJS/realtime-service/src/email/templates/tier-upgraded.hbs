@@ -1,90 +1,125 @@
 <!DOCTYPE html>
 <html>
-
 <head>
   <meta charset="utf-8">
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f5f5f5;
-      margin: 0;
-      padding: 20px;
-    }
-
-    .container {
-      background: white;
-      border-radius: 8px;
-      padding: 30px;
-      max-width: 600px;
-      margin: 0 auto;
-    }
-
-    .header {
-      text-align: center;
-      border-bottom: 2px solid #FFD700;
-      padding-bottom: 20px;
-    }
-
-    .header h1 {
-      color: #FFD700;
-      margin: 0;
-      text-shadow: 1px 1px 2px #333;
-    }
-
-    .tier-badge {
-      background: linear-gradient(135deg, #FFD700, #FFA500);
-      color: white;
-      font-size: 36px;
-      font-weight: bold;
-      text-align: center;
-      padding: 20px;
-      border-radius: 8px;
-      margin: 20px 0;
-    }
-
-    .content {
-      padding: 20px 0;
-    }
-
-    .stats {
-      background: #f0f8ff;
-      border-radius: 8px;
-      padding: 15px;
-      margin: 15px 0;
-    }
-
-    .footer {
-      text-align: center;
-      color: #888;
-      font-size: 12px;
-      margin-top: 20px;
-    }
-  </style>
+  <title>Brewtra Coffee - Thông báo thăng hạng thành viên</title>
 </head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f6f6f6; margin: 0; padding: 40px 10px; color: #3c2a21;">
+  <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 650px; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 1px solid #e2d8cf; overflow: hidden;">
+    
+    <!-- HEADER BAR -->
+    <tr>
+      <td style="padding: 20px 30px; border-bottom: 1px solid #eef2f5; border-top: 4px solid #FFD700;">
+        <table width="100%" border="0" cellpadding="0" cellspacing="0">
+          <tr>
+            <!-- Left Logo -->
+            <td valign="middle">
+              <table border="0" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="background-color: #8c6239; border-radius: 50%; width: 32px; height: 32px; text-align: center; color: #ffffff; font-weight: bold; font-size: 18px; line-height: 32px;">B</td>
+                  <td style="padding-left: 10px; font-size: 20px; font-weight: bold; color: #2b1b17; letter-spacing: 0.5px; font-family: 'Georgia', serif;">Brewtra Coffee</td>
+                </tr>
+              </table>
+            </td>
+            <!-- Right Navigation -->
+            <td align="right" valign="middle" style="font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">
+              <a href="http://localhost:3000" style="color: #8c6239; text-decoration: none;">Trang chủ</a>
+              <span style="color: #ccc; padding: 0 8px;">|</span>
+              <a href="http://localhost:3000/menu" style="color: #8c6239; text-decoration: none;">Thực đơn</a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
 
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>Beverage Shop</h1>
-      <p>Thông báo thăng hạng thành viên</p>
-    </div>
-    <div class="content">
-      <p>Xin chúc mừng <strong>{{customerName}}</strong>!</p>
-      <div class="tier-badge">{{tier}}</div>
-      <p>Bạn đã chính thức được nâng cấp lên hạng thành viên <strong>{{tier}}</strong>!</p>
-      <div class="stats">
-        <p><strong>Tổng chi tiêu tích lũy:</strong> {{totalSpent}}</p>
-        <p><strong>Tổng số đơn hàng đã mua:</strong> {{totalOrders}} đơn</p>
-        <p><strong>Ngày thăng hạng:</strong> {{upgradeDate}}</p>
-      </div>
-      <p>Cảm ơn bạn đã tin tưởng và đồng hành cùng <strong>Beverage Shop</strong>. Chúng tôi sẽ tiếp tục mang đến những
-        ưu đãi và trải nghiệm tốt nhất cho bạn.</p>
-      <p>Trân trọng,<br><strong>Beverage Shop</strong></p>
-    </div>
-    <div class="footer">
-      <p>Email này được gửi tự động. Vui lòng không trả lời email này.</p>
-    </div>
-  </div>
+    <!-- BIG NEWSLETTER TITLE -->
+    <tr>
+      <td align="center" style="padding: 25px 30px 15px 30px;">
+        <span style="font-size: 11px; font-weight: 800; letter-spacing: 3px; color: #FFA500; text-transform: uppercase; display: block; margin-bottom: 5px;">Hội viên ưu tú</span>
+        <h1 style="margin: 0; font-family: 'Georgia', serif; font-size: 28px; font-weight: bold; color: #2b1b17; letter-spacing: 1px; text-transform: uppercase;">Thăng hạng thành viên</h1>
+        <div style="width: 60px; height: 2px; background-color: #FFD700; margin-top: 15px;"></div>
+      </td>
+    </tr>
+
+    <!-- HERO IMAGE BANNER -->
+    <tr>
+      <td style="padding: 10px 30px 25px 30px;">
+        <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&auto=format&fit=crop&q=80" alt="Brewtra Golden Coffee" width="100%" style="display: block; border-radius: 8px; border: 1px solid #e2d8cf; max-height: 220px; object-fit: cover;" />
+      </td>
+    </tr>
+
+    <!-- TWO COLUMN CONTENT WORKSPACE -->
+    <tr>
+      <td style="padding: 10px 30px 35px 30px;">
+        <table width="100%" border="0" cellpadding="0" cellspacing="0">
+          <tr>
+            <!-- LEFT COLUMN (Main Story) -->
+            <td width="64%" valign="top">
+              <h2 style="font-family: 'Georgia', serif; font-size: 18px; color: #2b1b17; margin: 0 0 10px 0;">Chào {{customerName}},</h2>
+              <p style="font-size: 13.5px; color: #666; line-height: 1.6; margin: 0 0 20px 0;">Chúng tôi vô cùng trân quý sự đồng hành của bạn cùng Brewtra Coffee trong thời gian qua. Xin chúc mừng bạn đã chính thức nâng cấp hạng thành viên mới!</p>
+              
+              <!-- Stats table header -->
+              <h3 style="font-family: 'Georgia', serif; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; color: #2b1b17; margin: 25px 0 10px 0; border-bottom: 2px solid #8c6239; padding-bottom: 6px;">Thống kê hoạt động</h3>
+              
+              <!-- Stats list -->
+              <table width="100%" border="0" cellpadding="0" cellspacing="0" style="font-size: 13px; line-height: 2;">
+                <tr style="border-bottom: 1px solid #eef2f5;">
+                  <td style="padding: 8px 0; color: #777;">Hạng thành viên mới:</td>
+                  <td style="padding: 8px 0; text-align: right; font-weight: bold; color: #8c6239;">{{tier}}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eef2f5;">
+                  <td style="padding: 8px 0; color: #777;">Tổng chi tiêu tích lũy:</td>
+                  <td style="padding: 8px 0; text-align: right; font-weight: bold; color: #2b1b17;">{{totalSpent}}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eef2f5;">
+                  <td style="padding: 8px 0; color: #777;">Số đơn hàng đã mua:</td>
+                  <td style="padding: 8px 0; text-align: right; font-weight: bold; color: #2b1b17;">{{totalOrders}} đơn</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #777;">Ngày thăng hạng:</td>
+                  <td style="padding: 8px 0; text-align: right; font-weight: bold; color: #2b1b17;">{{upgradeDate}}</td>
+                </tr>
+              </table>
+            </td>
+
+            <!-- GAP DIVIDER -->
+            <td width="5%"></td>
+
+            <!-- RIGHT COLUMN (Sidebar) -->
+            <td width="31%" valign="top" style="background-color: #faf6f0; border: 1px solid #efe8de; border-radius: 8px; padding: 18px 14px; text-align: center;">
+              
+              <!-- STATUS BADGE -->
+              <span style="display: inline-block; background-color: #FFD700; color: #2b1b17; padding: 4px 10px; border-radius: 4px; font-size: 9px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">Thăng hạng</span>
+              
+              <!-- Sidebar Image -->
+              <img src="https://images.unsplash.com/photo-1507133750040-4a8f57021571?w=150&auto=format&fit=crop&q=80" alt="Espresso Cup" width="100%" style="display: block; border-radius: 4px; margin-bottom: 12px; border: 1px solid #efe8de;" />
+              
+              <!-- Sidebar Header -->
+              <h4 style="font-family: 'Georgia', serif; font-size: 12.5px; color: #2b1b17; margin: 0 0 6px 0; text-transform: uppercase; letter-spacing: 0.5px;">Hạng mới</h4>
+              
+              <!-- Order Code text -->
+              <p style="font-size: 18px; font-weight: bold; color: #8c6239; margin: 0 0 16px 0; word-break: break-all; text-transform: uppercase;">{{tier}}</p>
+              
+              <div style="border-top: 1px solid #efe8de; margin-bottom: 12px; padding-top: 12px;">
+                <h4 style="font-family: 'Georgia', serif; font-size: 11.5px; color: #2b1b17; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 0.5px;">Ưu đãi</h4>
+                <p style="font-size: 11px; color: #777; line-height: 1.4; margin: 0 0 12px 0;">Đặc quyền ưu đãi của hạng thành viên mới đã được kích hoạt và tự động áp dụng khi đặt món nước tiếp theo!</p>
+                <a href="http://localhost:3000/profile" style="display: inline-block; background-color: #2b1b17; color: #ffffff; padding: 8px 12px; border-radius: 4px; font-size: 10px; font-weight: bold; text-decoration: none; text-transform: uppercase; letter-spacing: 0.5px;">Hồ sơ của tôi</a>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- FOOTER SIGNATURE -->
+    <tr>
+      <td style="padding: 25px 30px; background-color: #faf6f0; border-top: 1px solid #efe8de; text-align: center; font-size: 12px; color: #88746e;">
+        <p style="margin: 0 0 6px 0; font-weight: bold; color: #2b1b17; text-transform: uppercase; letter-spacing: 1px;">Brewtra Coffee Shop</p>
+        <p style="margin: 0 0 16px 0;">Liên hệ: support@brewtra.coffee | Hotline: 1900-xxxx</p>
+        <p style="margin: 0; font-size: 10px; color: #a08c87; border-top: 1px solid #efe8de; padding-top: 16px; line-height: 1.5;">Email này được gửi tự động từ hệ thống của Brewtra. Vui lòng không trả lời email này.</p>
+      </td>
+    </tr>
+
+  </table>
 </body>
-
 </html>
