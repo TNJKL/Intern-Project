@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Ticket, Copy, Check, Sparkles, Clock, ArrowRight, RefreshCw } from "lucide-react";
+import { Ticket, Copy, Check, Sparkles, Clock, ArrowRight, RefreshCw, Lock, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import { voucherService } from "@/services/voucher.service";
 import type { Voucher } from "@/services/voucher.service";
@@ -22,14 +22,27 @@ export default function OffersClient({ initialVouchers = [] }: { initialVouchers
   const subTotal = cartItems.reduce((total, item) => total + (item.unitPrice * item.quantity), 0);
 
   const checkVoucherTierEligibility = (voucher: Voucher) => {
-    const tier = voucher.applicableTier || 'ALL';
-    if (tier === 'ALL') return { eligible: true };
+    const requiredTier = (voucher.applicableTier || 'ALL').toUpperCase();
+    if (requiredTier === 'ALL') return { eligible: true };
     if (!user) return { eligible: false, reason: 'LOGIN_REQUIRED', message: 'Yêu cầu đăng nhập' };
 
+    const TIER_LEVELS: Record<string, number> = {
+      'GUEST': 0,
+      'MEMBER': 1,
+      'VIP': 2
+    };
+
     const userTier = (user.tier || 'MEMBER').toUpperCase();
-    if (tier === 'VIP' && userTier !== 'VIP') {
-      return { eligible: false, reason: 'VIP_REQUIRED', message: 'Dành cho VIP' };
+    const userLevel = TIER_LEVELS[userTier] ?? 0;
+    const requiredLevel = TIER_LEVELS[requiredTier] ?? 0;
+
+    if (userLevel < requiredLevel) {
+      if (requiredTier === 'VIP') {
+        return { eligible: false, reason: 'VIP_REQUIRED', message: 'Dành cho VIP' };
+      }
+      return { eligible: false, reason: 'MEMBER_REQUIRED', message: 'Dành cho hội viên' };
     }
+
     return { eligible: true };
   };
 
@@ -52,7 +65,7 @@ export default function OffersClient({ initialVouchers = [] }: { initialVouchers
 
   useEffect(() => {
     fetchVouchers();
-  }, [user]);
+  }, [user?.id, user?.tier]);
 
   const handleCopy = (code: string) => {
     navigator.clipboard.writeText(code);
@@ -68,17 +81,8 @@ export default function OffersClient({ initialVouchers = [] }: { initialVouchers
     toast.success(`Đã áp dụng nhanh mã ${code} vào giỏ hàng!`);
   };
 
-  // Lọc voucher theo hạng thành viên
+  // Lọc voucher theo hạng thành viên (Không giấu nữa mà hiển thị hết để kích thích nâng hạng)
   const filteredVouchers = vouchers.filter(v => {
-    const tier = v.applicableTier || 'ALL';
-    if (!user) {
-      if (tier !== 'ALL') return false;
-    } else {
-      const userTier = (user.tier || 'MEMBER').toUpperCase();
-      if (userTier === 'MEMBER' && tier === 'VIP') {
-        return false;
-      }
-    }
     if (filterType === 'ALL') return true;
     return v.discountType === filterType;
   });
@@ -223,45 +227,72 @@ export default function OffersClient({ initialVouchers = [] }: { initialVouchers
                     const remainingUsage = v.maxUsageCount - v.currentUsageCount;
                     const progress = (v.currentUsageCount / v.maxUsageCount) * 100;
                     const tierEligibility = checkVoucherTierEligibility(v);
+                    const showLockOverlay = !tierEligibility.eligible;
+                    const isCartInsufficient = tierEligibility.eligible && subTotal > 0 && !isEligible;
+                    const isVoucherReady = tierEligibility.eligible && (subTotal === 0 || isEligible);
 
                     return (
                       <motion.div
                         key={v.id}
                         initial={{ opacity: 0, scale: 0.98 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        whileHover={tierEligibility.eligible ? { y: -2 } : {}}
+                        whileHover={isVoucherReady ? { y: -3, boxShadow: "0 12px 28px -5px rgba(0, 0, 0, 0.08), 0 8px 12px -6px rgba(0, 0, 0, 0.08)" } : {}}
                         transition={{ duration: 0.2 }}
-                        className={`relative bg-white rounded-xl md:rounded-2xl shadow-sm border overflow-hidden flex min-h-[145px] sm:min-h-[160px] group transition-all ${!tierEligibility.eligible
-                          ? 'border-gray-200 bg-gray-50/50 opacity-70'
-                          : v.applicableTier === 'VIP'
-                            ? 'border-amber-200 hover:border-amber-300 shadow-sm shadow-amber-50/30'
-                            : v.applicableTier === 'MEMBER'
-                              ? 'border-primary/20 hover:border-primary/40'
-                              : 'border-gray-100 hover:border-primary/20'
-                          }`}
+                        className={`relative bg-white rounded-2xl shadow-sm border overflow-hidden flex min-h-[145px] sm:min-h-[160px] group transition-all ${
+                          showLockOverlay
+                            ? 'border-gray-200 bg-gray-50/50 opacity-70 grayscale-[40%] shadow-inner'
+                            : isCartInsufficient
+                              ? 'border-dashed border-orange-300 bg-orange-50/5 hover:border-orange-400'
+                              : v.applicableTier === 'VIP'
+                                ? 'border-amber-300 hover:border-amber-400 bg-gradient-to-r from-amber-50/10 to-white shadow-md shadow-amber-50/10'
+                                : v.applicableTier === 'MEMBER'
+                                  ? 'border-primary/30 hover:border-primary/50 bg-gradient-to-r from-primary/5 to-white shadow-sm'
+                                  : 'border-emerald-200 hover:border-emerald-300 bg-gradient-to-r from-emerald-50/10 to-white shadow-sm'
+                        }`}
                       >
-                        {/* Định vị lại vị trí đục lỗ vé chuẩn theo chiều ngang (Sử dụng 90px cố định thay vì %) */}
-                        <div className={`absolute -top-2 left-[85px] sm:left-[105px] -translate-x-1/2 w-3.5 h-3.5 bg-secondary/30 rounded-full border z-10 ${v.applicableTier === 'VIP' ? 'border-amber-200' : v.applicableTier === 'MEMBER' ? 'border-primary/20' : 'border-gray-200'
-                          }`}></div>
-                        <div className={`absolute -bottom-2 left-[85px] sm:left-[105px] -translate-x-1/2 w-3.5 h-3.5 bg-secondary/30 rounded-full border z-10 ${v.applicableTier === 'VIP' ? 'border-amber-200' : v.applicableTier === 'MEMBER' ? 'border-primary/20' : 'border-gray-200'
-                          }`}></div>
+                        {/* Răng cưa khuyết cổ điển ở cạnh trái (Mép ngoài cuống vé) */}
+                        <div className="absolute left-0 top-0 bottom-0 w-2 flex flex-col justify-around items-center z-20 py-2 select-none pointer-events-none">
+                          {[...Array(5)].map((_, i) => (
+                            <div key={i} className="w-2.5 h-2.5 bg-secondary/30 rounded-full -ml-[5px]" />
+                          ))}
+                        </div>
 
-                        {/* Đường kẻ đứt phân đoạn cuống vé */}
-                        <div className="absolute top-0 bottom-0 left-[85px] sm:left-[105px] border-l border-dashed border-gray-100 z-0"></div>
+                        {/* Răng cưa khuyết cổ điển ở cạnh phải */}
+                        <div className="absolute right-0 top-0 bottom-0 w-2 flex flex-col justify-around items-center z-20 py-2 select-none pointer-events-none">
+                          {[...Array(5)].map((_, i) => (
+                            <div key={i} className="w-2.5 h-2.5 bg-secondary/30 rounded-full -mr-[5px]" />
+                          ))}
+                        </div>
+
+                        {/* Định vị lại vị trí đục lỗ vé chuẩn theo chiều ngang (Đục lỗ khuyết thực sự - bỏ border) */}
+                        <div className="absolute -top-[9px] left-[85px] sm:left-[105px] -translate-x-1/2 w-4.5 h-4.5 bg-secondary/30 rounded-full z-20"></div>
+                        <div className="absolute -bottom-[9px] left-[85px] sm:left-[105px] -translate-x-1/2 w-4.5 h-4.5 bg-secondary/30 rounded-full z-20"></div>
+
+                        {/* Đường kẻ đứt phân đoạn cuống vé nét rõ hơn */}
+                        <div className="absolute top-0 bottom-0 left-[85px] sm:left-[105px] border-l-2 border-dashed border-gray-100 z-10"></div>
 
                         {/* CỘT TRÁI (Cuống vé): Tách cứng chiều rộng bằng pixel tĩnh để chữ số không bị bóp nghẹt */}
-                        <div className={`w-[85px] sm:w-[105px] shrink-0 flex flex-col items-center justify-center p-2 relative select-none text-white ${v.applicableTier === 'VIP'
-                          ? 'bg-gradient-to-br from-[#c8a97e] to-[#8c6b3f]'
-                          : v.applicableTier === 'MEMBER'
-                            ? 'bg-gradient-to-br from-primary to-accent'
-                            : 'bg-gradient-to-br from-primary to-coffee-dark'
-                          }`}>
-                          <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-white/80 mb-0.5 sm:mb-1">
-                            {!tierEligibility.eligible ? 'ĐẶC QUYỀN' : 'GIẢM'}
+                        <div className={`w-[85px] sm:w-[105px] shrink-0 flex flex-col items-center justify-center p-2 relative select-none text-white overflow-hidden ${
+                          showLockOverlay
+                            ? 'bg-gradient-to-br from-gray-400 to-gray-500'
+                            : isCartInsufficient
+                              ? 'bg-gradient-to-br from-orange-400 to-orange-600'
+                              : v.applicableTier === 'VIP'
+                                ? 'bg-gradient-to-br from-[#c8a97e] to-[#8c6b3f]'
+                                : v.applicableTier === 'MEMBER'
+                                  ? 'bg-gradient-to-br from-primary to-accent'
+                                  : 'bg-gradient-to-br from-emerald-500 to-teal-600'
+                        }`}>
+                          
+                          {/* Đường viền nét đứt phong cách vintage quanh cuống vé */}
+                          <div className="absolute inset-1 sm:inset-1.5 border border-dashed border-white/20 rounded-lg pointer-events-none"></div>
+
+                          <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-white/80 mb-0.5 sm:mb-1 relative z-10">
+                            {showLockOverlay ? 'ĐẶC QUYỀN' : isCartInsufficient ? 'CẦN THÊM' : 'GIẢM'}
                           </p>
 
                           {/* Co giãn cỡ chữ linh động dựa trên độ dài chuỗi giá trị giảm giá */}
-                          <span className={`font-black tracking-tighter text-white leading-none text-center ${v.discountType === 'PERCENTAGE'
+                          <span className={`font-black tracking-tighter text-white leading-none text-center relative z-10 drop-shadow-sm ${v.discountType === 'PERCENTAGE'
                             ? 'text-2xl sm:text-3xl'
                             : v.discountValue >= 100000 ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl'
                             }`}>
@@ -269,15 +300,18 @@ export default function OffersClient({ initialVouchers = [] }: { initialVouchers
                           </span>
 
                           {v.discountType === 'PERCENTAGE' && v.maxDiscountAmount && (
-                            <p className="text-[8px] font-bold text-white/90 mt-1.5 text-center truncate max-w-[75px]">
+                            <p className="text-[8px] font-bold text-white/90 mt-1.5 text-center truncate max-w-[75px] relative z-10">
                               Tối đa {(v.maxDiscountAmount / 1000).toLocaleString('vi-VN')}k
                             </p>
                           )}
                         </div>
 
                         {/* CỘT PHẢI: Nội dung chi tiết */}
-                        <div className="flex-1 p-3.5 sm:p-4 pl-4 sm:pl-5 flex flex-col justify-between bg-white z-10 overflow-hidden">
-                          <div>
+                        <div className="flex-1 p-3.5 sm:p-4 pl-5 sm:pl-6 flex flex-col justify-between bg-white z-10 overflow-hidden relative">
+                          {/* Thêm hoa văn trang trí nhẹ ở góc phải để tăng tính cổ điển của thẻ quà tặng */}
+                          <div className="absolute top-0 right-0 w-16 h-16 bg-[radial-gradient(circle_at_top_right,#FAF8F5_40%,transparent_41%)] opacity-70 pointer-events-none"></div>
+
+                          <div className="relative z-10">
                             {/* Khối huy hiệu đầu thẻ */}
                             <div className="flex items-center justify-between gap-1 mb-1.5">
                               <div className="flex items-center gap-1 min-w-0">
@@ -287,18 +321,21 @@ export default function OffersClient({ initialVouchers = [] }: { initialVouchers
                                 </span>
                               </div>
                               <div className="flex gap-1 items-center shrink-0">
-                                {v.applicableTier && v.applicableTier !== 'ALL' && (
-                                  <span className={`text-[8px] sm:text-[9px] font-black uppercase px-1.5 py-0.5 rounded tracking-wider border ${v.applicableTier === 'VIP'
-                                    ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                    : 'bg-[#FAF8F5] text-primary border-primary/20'
-                                    }`}>
-                                    {v.applicableTier === 'VIP' ? '★ VIP' : '● MEM'}
+                                {showLockOverlay ? (
+                                  <span className={`text-[8px] sm:text-[9px] font-black uppercase px-2 py-0.5 rounded-full tracking-wider border shadow-sm ${
+                                    v.applicableTier === 'VIP'
+                                      ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                      : 'bg-[#FAF8F5] text-primary border-primary/20'
+                                  }`}>
+                                    {v.applicableTier === 'VIP' ? '★ VIP ONLY' : '● MEMBER ONLY'}
                                   </span>
-                                )}
-                                {subTotal > 0 && (
-                                  <span className={`text-[8px] sm:text-[9px] font-black uppercase px-1.5 py-0.5 rounded tracking-wider border ${isEligible ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-500 border-red-200'
-                                    }`}>
-                                    {isEligible ? 'Đủ ĐK' : 'Thiếu đk'}
+                                ) : isCartInsufficient ? (
+                                  <span className="text-[8px] sm:text-[9px] font-black uppercase px-2 py-0.5 rounded-full tracking-wider border shadow-sm bg-orange-50 text-orange-600 border-orange-200 select-none">
+                                    THIẾU ĐK ĐƠN
+                                  </span>
+                                ) : (
+                                  <span className="text-[8px] sm:text-[9px] font-black uppercase px-2 py-0.5 rounded-full tracking-wider border shadow-sm bg-green-50 text-green-700 border-green-200 flex items-center gap-0.5 select-none">
+                                    <Check className="w-2.5 h-2.5" /> SẴN SÀNG
                                   </span>
                                 )}
                               </div>
@@ -319,29 +356,37 @@ export default function OffersClient({ initialVouchers = [] }: { initialVouchers
                                 </>
                               )}
                             </p>
+
+                            {/* Khối cảnh báo điều kiện mua thêm (UX Cải tiến) */}
+                            {isCartInsufficient && (
+                              <div className="mt-1 flex items-center gap-1.5 text-[10px] text-orange-600 font-extrabold bg-orange-50/60 px-2.5 py-1.5 rounded-lg border border-orange-100/50">
+                                <AlertCircle className="w-3.5 h-3.5 shrink-0 animate-pulse" />
+                                <span>Mua thêm <span className="text-orange-700 underline font-black">{(v.minOrderAmount - subTotal).toLocaleString('vi-VN')}đ</span> để dùng</span>
+                              </div>
+                            )}
                           </div>
 
                           {/* Khối thanh tiến độ & Nút tương tác bottom */}
-                          <div className="border-t border-gray-50 pt-2">
+                          <div className="border-t border-gray-50 pt-2 relative z-10">
                             {/* Thanh phần trăm sử dụng */}
                             <div className="mb-2">
                               <div className="flex justify-between text-[9px] text-gray-400 font-bold mb-0.5">
                                 <span>Đã dùng {progress.toFixed(0)}%</span>
                                 <span>Còn {remainingUsage} lượt</span>
                               </div>
-                              <div className="w-full h-1 bg-gray-50 rounded-full overflow-hidden">
+                              <div className="w-full h-1.5 bg-gray-50 rounded-full overflow-hidden">
                                 <div className="h-full bg-gradient-to-r from-primary to-[#d37533] rounded-full" style={{ width: `${progress}%` }}></div>
                               </div>
                             </div>
 
                             {/* Cụm nút bấm hành động */}
                             <div className="flex items-center gap-1.5">
-                              {tierEligibility.eligible ? (
+                              {isVoucherReady ? (
                                 <>
                                   {/* Ô mã code kèm tính năng click-to-copy */}
                                   <button
                                     onClick={() => handleCopy(v.code)}
-                                    className={`flex-1 flex items-center justify-between px-2.5 py-1.5 md:py-2 rounded-lg border border-dashed text-left transition-all cursor-pointer group/code min-w-0 ${isCopied ? 'border-green-500 bg-green-50/20' : 'border-primary/20 bg-[#FAF8F5]'
+                                    className={`flex-1 flex items-center justify-between px-2.5 py-1.5 md:py-2 rounded-lg border border-dashed text-left transition-all cursor-pointer group/code min-w-0 ${isCopied ? 'border-green-500 bg-green-50/20' : 'border-primary/20 bg-[#FAF8F5] hover:bg-[#F3EFE9]'
                                       }`}
                                   >
                                     <span className="font-extrabold text-xs text-gray-800 tracking-wider uppercase select-all truncate mr-1">{v.code}</span>
@@ -367,17 +412,47 @@ export default function OffersClient({ initialVouchers = [] }: { initialVouchers
                                     </button>
                                   )}
                                 </>
+                              ) : isCartInsufficient ? (
+                                <>
+                                  {/* Vẫn cho copy mã kể cả khi chưa đủ tiền đơn */}
+                                  <button
+                                    onClick={() => handleCopy(v.code)}
+                                    className={`flex-1 flex items-center justify-between px-2.5 py-1.5 md:py-2 rounded-lg border border-dashed text-left transition-all cursor-pointer group/code min-w-0 ${isCopied ? 'border-green-500 bg-green-50/20' : 'border-orange-200 bg-[#FAF8F5] hover:bg-[#F3EFE9]'
+                                      }`}
+                                  >
+                                    <span className="font-extrabold text-xs text-gray-800 tracking-wider uppercase select-all truncate mr-1">{v.code}</span>
+                                    <span className="shrink-0">
+                                      {isCopied ? (
+                                        <span className="text-green-600 text-[10px] font-extrabold flex items-center gap-0.5">
+                                          <Check className="w-3 h-3" /> Chép xong
+                                        </span>
+                                      ) : (
+                                        <Copy className="w-3 h-3 text-orange-500/70 group-hover/code:text-orange-600" />
+                                      )}
+                                    </span>
+                                  </button>
+                                  
+                                  {/* Nút gợi ý mua thêm */}
+                                  <button
+                                    onClick={() => {
+                                      toast.success("Hãy chọn thêm món nước uống thơm ngon để đủ điều kiện áp dụng nhé!");
+                                    }}
+                                    className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 md:py-2 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all flex items-center gap-0.5 shadow-sm active:scale-95 shrink-0"
+                                  >
+                                    Mua thêm
+                                  </button>
+                                </>
                               ) : tierEligibility.reason === 'LOGIN_REQUIRED' ? (
                                 <Link
                                   href="/login"
-                                  className="w-full bg-primary/10 hover:bg-primary/20 text-primary py-1.5 md:py-2 rounded-lg text-[11px] font-black uppercase tracking-wider text-center transition-all flex items-center justify-center gap-1"
+                                  className="w-full bg-primary/10 hover:bg-primary/20 text-primary py-2 rounded-lg text-[11px] font-black uppercase tracking-wider text-center transition-all flex items-center justify-center gap-1 active:scale-95"
                                 >
-                                  <span>Đăng nhập để nhận</span>
-                                  <ArrowRight className="w-3 h-3" />
+                                  <span>Đăng nhập để nhận ưu đãi</span>
+                                  <ArrowRight className="w-3.5 h-3.5" />
                                 </Link>
                               ) : (
-                                <div className="w-full bg-gray-50 text-gray-400 py-1.5 md:py-2 rounded-lg text-[11px] font-black uppercase tracking-wider text-center flex items-center justify-center border border-gray-100 select-none">
-                                  <span>Chỉ dành cho hội viên VIP</span>
+                                <div className="w-full bg-gray-100 text-gray-400 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider text-center flex items-center justify-center border border-gray-200 select-none gap-1">
+                                  <span>Cần nâng hạng hội viên lên {v.applicableTier}</span>
                                 </div>
                               )}
                             </div>

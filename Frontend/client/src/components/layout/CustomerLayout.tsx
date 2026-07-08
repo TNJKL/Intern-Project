@@ -14,6 +14,7 @@ import { useSession, signOut } from "next-auth/react";
 import { SocketProvider } from "@/components/providers/SocketProvider";
 
 import { User } from "@/types/user";
+import { orderService } from "@/services/order.service";
 
 interface CustomerLayoutProps {
   children: React.ReactNode;
@@ -22,7 +23,7 @@ interface CustomerLayoutProps {
 
 export function CustomerLayout({ children, initialUser }: CustomerLayoutProps) {
   const pathname = usePathname();
-  const { setUser, clearUser } = useAuthStore();
+  const { user, setUser, clearUser } = useAuthStore();
   const _hasHydrated = useAuthStore((s) => s._hasHydrated);
   const clearCart = useCartStore((s) => s.clearCart);
   const dispatch = useAppDispatch();
@@ -37,15 +38,45 @@ export function CustomerLayout({ children, initialUser }: CustomerLayoutProps) {
     if (status === "authenticated" && session) {
       const customUser = session.user as any;
       
-      // Luôn luôn đồng bộ dữ liệu phiên mới xuống Redux và Zustand store
-      // nhằm đảm bảo khôi phục thông tin xác thực sau khi người dùng reload trang (F5)
-      dispatch(setCredentials({ user: customUser, accessToken: session.accessToken }));
-      setUser(customUser);
+      // Kiểm tra xem thông tin cá nhân cốt lõi trong store có khác biệt so với NextAuth session không
+      const hasProfileChanged = !user || 
+        user.id !== customUser.id ||
+        user.fullName !== customUser.fullName ||
+        user.email !== customUser.email ||
+        user.phone !== customUser.phone ||
+        user.avatarUrl !== customUser.avatarUrl;
+
+      // Kiểm tra xem store đã được đồng bộ hạng hội viên thực tế chưa
+      const hasTierSyncRequired = !user || !user.tier;
+
+      if (hasProfileChanged || hasTierSyncRequired) {
+        // Đồng bộ dữ liệu phiên mới xuống Redux
+        dispatch(setCredentials({ user: customUser, accessToken: session.accessToken }));
+
+        if (hasTierSyncRequired) {
+          // Gọi API lấy hạng thành viên thực tế từ Backend nếu chưa có
+          orderService.getMyTier()
+            .then((res) => {
+              if (res.success && res.data) {
+                setUser({ ...customUser, tier: res.data.tier });
+              } else {
+                setUser(customUser);
+              }
+            })
+            .catch((err) => {
+              console.warn("[CustomerLayout] Lỗi đồng bộ user tier:", err);
+              setUser(customUser);
+            });
+        } else {
+          // Nếu đã có tier và chỉ thay đổi thông tin cá nhân khác, giữ nguyên tier cũ trong store để không gọi lại API
+          setUser({ ...customUser, tier: user.tier });
+        }
+      }
     } else if (status === "unauthenticated") {
       dispatch(clearCredentials());
       clearUser();
     }
-  }, [session, status, dispatch, setUser, clearUser, _hasHydrated]);
+  }, [session, status, dispatch, setUser, clearUser, _hasHydrated, user]);
 
   // NOTE: Silent Refresh đã được xử lý tự động bởi Middleware (proxy.ts).
   // KHÔNG gọi refresh ở đây để tránh RTR (Refresh Token Rotation) conflict.

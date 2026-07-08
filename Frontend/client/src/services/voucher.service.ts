@@ -133,8 +133,22 @@ export const FALLBACK_VOUCHERS: Voucher[] = [
 export const voucherService = {
   getVouchers: async (): Promise<ApiResponse<Voucher[]>> => {
     try {
-      // Gọi qua API route public của Next.js (được tạo để sử dụng guestToken)
-      // Dùng trực tiếp axios thay vì apiClient để tránh interceptor bắt 403 và log out
+      // 1. Thử gọi trực tiếp bằng apiClient nếu người dùng đã đăng nhập (Axios tự động kèm token người dùng)
+      const { useAuthStore } = await import('../store/zustand/useAuthStore');
+      const user = useAuthStore.getState().user;
+      
+      if (user) {
+        const response = await apiClient.get<ApiResponse<Voucher[]>>('/admin/vouchers?size=100');
+        if (response.data && response.data.success) {
+          return response.data;
+        }
+      }
+    } catch (error) {
+      console.warn("[Voucher Service] Authenticated request failed, falling back to public guest token proxy:", error);
+    }
+
+    try {
+      // 2. Nếu chưa đăng nhập hoặc API trên lỗi, gọi qua API route public của Next.js (dùng guestToken)
       const response = await axios.get<ApiResponse<Voucher[]>>('/api/public/vouchers?size=100');
       return response.data;
     } catch (error) {

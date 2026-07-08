@@ -18,7 +18,7 @@ export async function getGuestAccessToken(): Promise<string | null> {
 
     try {
         // 1. Thử đăng nhập bằng tài khoản khách hệ thống
-        const loginRes = await fetch(`${BACKEND_URL}/api/v1/auth/login`, {
+        let loginRes = await fetch(`${BACKEND_URL}/api/v1/auth/login`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json', 
@@ -26,6 +26,34 @@ export async function getGuestAccessToken(): Promise<string | null> {
             },
             body: JSON.stringify(credentials)
         });
+        
+        if (!loginRes.ok) {
+            console.log('[Guest Auth] System guest user not found, auto-registering...');
+            const registerRes = await fetch(`${BACKEND_URL}/api/v1/auth/register`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'ngrok-skip-browser-warning': '69420'
+                },
+                body: JSON.stringify({
+                    email: credentials.email,
+                    password: credentials.password,
+                    fullName: 'Guest System User',
+                    phone: '0123456789'
+                })
+            });
+
+            if (registerRes.ok) {
+                loginRes = await fetch(`${BACKEND_URL}/api/v1/auth/login`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        'ngrok-skip-browser-warning': '69420'
+                    },
+                    body: JSON.stringify(credentials)
+                });
+            }
+        }
         
         if (loginRes.ok) {
             const data = await loginRes.json();
