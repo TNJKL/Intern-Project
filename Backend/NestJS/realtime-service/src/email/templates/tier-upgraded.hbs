@@ -2,7 +2,27 @@
 <html>
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brewtra Coffee - Thông báo thăng hạng thành viên</title>
+  <style>
+    @media only screen and (max-width: 599px) {
+      .col-main {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-bottom: 25px !important;
+      }
+      .col-sidebar {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+      .body-padding {
+        padding: 20px 15px 25px 15px !important;
+      }
+      .hero-img {
+        max-height: none !important;
+      }
+    }
+  </style>
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f6f6f6; margin: 0; padding: 40px 10px; color: #3c2a21;">
   <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 650px; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 1px solid #e2d8cf; overflow: hidden;">
@@ -44,17 +64,23 @@
     <!-- HERO IMAGE BANNER -->
     <tr>
       <td style="padding: 10px 30px 25px 30px;">
-        <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&auto=format&fit=crop&q=80" alt="Brewtra Golden Coffee" width="100%" style="display: block; border-radius: 8px; border: 1px solid #e2d8cf; max-height: 220px; object-fit: cover;" />
+        <img class="hero-img" src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&auto=format&fit=crop&q=80" alt="Brewtra Golden Coffee" width="100%" style="display: block; border-radius: 8px; border: 1px solid #e2d8cf; max-height: 220px; object-fit: cover;" />
       </td>
     </tr>
 
     <!-- TWO COLUMN CONTENT WORKSPACE -->
     <tr>
-      <td style="padding: 10px 30px 35px 30px;">
+      <td class="body-padding" style="padding: 10px 30px 35px 30px;">
+        <!--[if mso]>
         <table width="100%" border="0" cellpadding="0" cellspacing="0">
+        <tr>
+        <td width="370" valign="top">
+        <![endif]-->
+        
+        <!-- LEFT COLUMN (Main Story) -->
+        <table align="left" border="0" cellpadding="0" cellspacing="0" class="col-main" style="width: 100%; max-width: 370px; margin-bottom: 20px;">
           <tr>
-            <!-- LEFT COLUMN (Main Story) -->
-            <td width="64%" valign="top">
+            <td valign="top">
               <h2 style="font-family: 'Georgia', serif; font-size: 18px; color: #2b1b17; margin: 0 0 10px 0;">Chào {{customerName}},</h2>
               <p style="font-size: 13.5px; color: #666; line-height: 1.6; margin: 0 0 20px 0;">Chúng tôi vô cùng trân quý sự đồng hành của bạn cùng Brewtra Coffee trong thời gian qua. Xin chúc mừng bạn đã chính thức nâng cấp hạng thành viên mới!</p>
               
@@ -81,13 +107,19 @@
                 </tr>
               </table>
             </td>
+          </tr>
+        </table>
+        
+        <!--[if mso]>
+        </td>
+        <td width="20"></td>
+        <td width="200" valign="top">
+        <![endif]-->
 
-            <!-- GAP DIVIDER -->
-            <td width="5%"></td>
-
-            <!-- RIGHT COLUMN (Sidebar) -->
-            <td width="31%" valign="top" style="background-color: #faf6f0; border: 1px solid #efe8de; border-radius: 8px; padding: 18px 14px; text-align: center;">
-              
+        <!-- RIGHT COLUMN (Sidebar) -->
+        <table align="right" border="0" cellpadding="0" cellspacing="0" class="col-sidebar" style="width: 100%; max-width: 200px; background-color: #faf6f0; border: 1px solid #efe8de; border-radius: 8px; padding: 18px 14px; text-align: center;">
+          <tr>
+            <td valign="top">
               <!-- STATUS BADGE -->
               <span style="display: inline-block; background-color: #FFD700; color: #2b1b17; padding: 4px 10px; border-radius: 4px; font-size: 9px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">Thăng hạng</span>
               
@@ -108,6 +140,12 @@
             </td>
           </tr>
         </table>
+        
+        <!--[if mso]>
+        </td>
+        </tr>
+        </table>
+        <![endif]-->
       </td>
     </tr>
 
