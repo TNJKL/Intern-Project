@@ -116,10 +116,10 @@ export default function CheckoutSummary({
                     onApplyVoucherSelect(v.code);
                   }}
                   className={`w-full flex items-center justify-between p-2.5 rounded-xl border text-left transition-all text-xs ${isSelected
-                      ? 'border-primary bg-primary/5'
-                      : isDisabled
-                        ? 'border-gray-100 opacity-40 cursor-not-allowed bg-gray-50/20'
-                        : 'border-gray-200/60 hover:border-primary/30 bg-gray-50/40'
+                    ? 'border-primary bg-primary/5'
+                    : isDisabled
+                      ? 'border-gray-100 opacity-40 cursor-not-allowed bg-gray-50/20'
+                      : 'border-gray-200/60 hover:border-primary/30 bg-gray-50/40'
                     }`}
                 >
                   <div className="min-w-0 flex-1 pr-2">

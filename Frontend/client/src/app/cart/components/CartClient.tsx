@@ -3,23 +3,15 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Minus, Plus, Trash2, ArrowRight, Ticket, ChevronLeft, ShoppingBag } from "lucide-react";
+import { Minus, Plus, Trash2, ArrowRight, ChevronLeft, ShoppingBag } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCartStore } from "@/store/zustand/useCartStore";
 import { useAuthStore } from "@/store/zustand/useAuthStore";
-import { voucherService } from "@/services/voucher.service";
-import type { Voucher, ValidateVoucherResult } from "@/services/voucher.service";
-import toast from "react-hot-toast";
 
 export default function CartClient() {
   const { items: cartItems, updateQuantity, removeItem } = useCartStore();
   const { user } = useAuthStore();
 
-  const [voucherCode, setVoucherCode] = useState("");
-  const [appliedVoucher, setAppliedVoucher] = useState<ValidateVoucherResult | null>(null);
-  const [vouchers, setVouchers] = useState<Voucher[]>([]);
-  const [isValidating, setIsValidating] = useState(false);
-  const [suggestedVoucher, setSuggestedVoucher] = useState("");
   const [mounted, setMounted] = useState(false);
 
   // Tính toán tạm tính
@@ -27,187 +19,9 @@ export default function CartClient() {
 
   useEffect(() => {
     setMounted(true);
+  }, []);
 
-    // Tải danh sách voucher để gợi ý mã thực tế đang có hiệu lực
-    voucherService.getVouchers()
-      .then(res => {
-        if (res.success && res.data && res.data.length > 0) {
-          // Lọc voucher theo hạng người dùng:
-          // - Vãng lai chỉ thấy ALL
-          // - MEMBER chỉ thấy ALL và MEMBER
-          // - VIP thấy tất cả
-          const filteredData = res.data.filter(v => {
-            const tier = v.applicableTier || 'ALL';
-            if (!user) {
-              if (tier !== 'ALL') return false;
-            } else {
-              const userTier = (user.tier || 'MEMBER').toUpperCase();
-              if (userTier === 'MEMBER' && tier === 'VIP') return false;
-            }
-            return true;
-          });
-          setVouchers(filteredData);
-          const now = new Date();
-          const active = filteredData.find(v => {
-            const validFrom = new Date(v.validFrom);
-            const validUntil = v.validUntil ? new Date(v.validUntil) : null;
-            const hasStarted = now >= validFrom;
-            const hasNotExpired = !validUntil || now <= validUntil;
-            const hasUsageLeft = v.currentUsageCount < v.maxUsageCount;
-            return v.isActive && hasStarted && hasNotExpired && hasUsageLeft;
-          });
-          if (active) {
-            setSuggestedVoucher(active.code);
-          } else {
-            setSuggestedVoucher("");
-          }
-        } else {
-          setVouchers([]);
-          setSuggestedVoucher("");
-        }
-      })
-      .catch(err => {
-        console.warn("Không thể tải gợi ý voucher từ server:", err?.message || err);
-        setVouchers([]);
-        setSuggestedVoucher("");
-      });
-  }, [user]);
-
-  // Kiểm tra điều kiện hạng thành viên áp dụng của voucher
-  const checkVoucherEligibility = (code: string): { eligible: boolean; message?: string } => {
-    const voucherInfo = vouchers.find(v => v.code.toUpperCase() === code.toUpperCase());
-    if (!voucherInfo) return { eligible: true };
-    const tier = voucherInfo.applicableTier || 'ALL';
-    if (tier === 'ALL') return { eligible: true };
-    if (!user) return { eligible: false, message: "Mã giảm giá này chỉ dành cho thành viên. Vui lòng đăng nhập!" };
-    const userTier = (user.tier || 'MEMBER').toUpperCase();
-    if (tier === 'VIP' && userTier !== 'VIP') {
-      return { eligible: false, message: "Mã giảm giá này chỉ dành cho thành viên VIP!" };
-    }
-    return { eligible: true };
-  };
-
-  // Tự động quản lý voucher (khôi phục & cập nhật theo giỏ hàng)
-  useEffect(() => {
-    if (!mounted) return;
-
-    const savedVoucherCode = localStorage.getItem('brewtra_applied_voucher');
-
-    // TH1: Có voucher lưu trữ nhưng chưa được áp dụng vào state, và giỏ hàng đã có sản phẩm
-    if (savedVoucherCode && !appliedVoucher && subTotal > 0) {
-      if (vouchers.length > 0) {
-        const eligibility = checkVoucherEligibility(savedVoucherCode);
-        if (!eligibility.eligible) {
-          localStorage.removeItem('brewtra_applied_voucher');
-          setAppliedVoucher(null);
-          return;
-        }
-      }
-
-      setVoucherCode(savedVoucherCode);
-      voucherService.validateVoucher(savedVoucherCode, subTotal)
-        .then(res => {
-          if (res.success && res.data && res.data.valid) {
-            setAppliedVoucher(res.data);
-          } else {
-            localStorage.removeItem('brewtra_applied_voucher');
-          }
-        })
-        .catch(() => {
-          localStorage.removeItem('brewtra_applied_voucher');
-        });
-    }
-
-    // TH2: Đã có voucher trong state, cần tự động cập nhật lại khi subTotal thay đổi
-    if (appliedVoucher && subTotal > 0) {
-      if (vouchers.length > 0) {
-        const eligibility = checkVoucherEligibility(appliedVoucher.code);
-        if (!eligibility.eligible) {
-          localStorage.removeItem('brewtra_applied_voucher');
-          setAppliedVoucher(null);
-          return;
-        }
-      }
-
-      voucherService.validateVoucher(appliedVoucher.code, subTotal)
-        .then(res => {
-          if (res.success && res.data) {
-            setAppliedVoucher(res.data);
-            if (!res.data.valid) {
-              localStorage.removeItem('brewtra_applied_voucher');
-            } else {
-              localStorage.setItem('brewtra_applied_voucher', res.data.code);
-            }
-          }
-        })
-        .catch(() => {
-          setAppliedVoucher(null);
-          localStorage.removeItem('brewtra_applied_voucher');
-        });
-    }
-
-    // TH3: Giỏ hàng trống
-    if (appliedVoucher && subTotal === 0) {
-      setAppliedVoucher(null);
-      localStorage.removeItem('brewtra_applied_voucher');
-    }
-  }, [subTotal, mounted, vouchers]);
-
-  // Áp dụng voucher
-  const handleApplyVoucher = async () => {
-    if (!voucherCode.trim()) {
-      toast.error("Vui lòng nhập mã giảm giá!");
-      return;
-    }
-
-    const code = voucherCode.trim().toUpperCase();
-    const eligibility = checkVoucherEligibility(code);
-    if (!eligibility.eligible) {
-      toast.error(eligibility.message || "Bạn không đủ điều kiện sử dụng mã giảm giá này!");
-      setAppliedVoucher(null);
-      localStorage.removeItem('brewtra_applied_voucher');
-      return;
-    }
-
-    setIsValidating(true);
-    try {
-      const res = await voucherService.validateVoucher(code, subTotal);
-      if (res.success && res.data) {
-        const result = res.data;
-        setAppliedVoucher(result);
-
-        if (result.valid) {
-          localStorage.setItem('brewtra_applied_voucher', result.code);
-          toast.success(`Áp dụng mã ${result.code} thành công!`);
-        } else {
-          toast.error(result.message || "Mã giảm giá không hợp lệ.");
-          localStorage.removeItem('brewtra_applied_voucher');
-        }
-      } else {
-        toast.error(res.message || "Mã giảm giá không hợp lệ.");
-        setAppliedVoucher(null);
-        localStorage.removeItem('brewtra_applied_voucher');
-      }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Mã giảm giá không hợp lệ hoặc đã hết hạn.");
-      setAppliedVoucher(null);
-      localStorage.removeItem('brewtra_applied_voucher');
-    } finally {
-      setIsValidating(false);
-    }
-  };
-
-  // Gỡ voucher
-  const handleRemoveVoucher = () => {
-    setAppliedVoucher(null);
-    setVoucherCode("");
-    localStorage.removeItem('brewtra_applied_voucher');
-    toast.success("Đã gỡ mã giảm giá");
-  };
-
-  // Tính toán số tiền được giảm từ backend trả về
-  const discountAmount = appliedVoucher && appliedVoucher.valid ? (appliedVoucher.discountAmount || 0) : 0;
-  const total = Math.max(0, subTotal - discountAmount);
+  const total = subTotal;
 
   if (!mounted) return <div className="min-h-screen bg-[#fcf9f2]"></div>;
 
@@ -324,48 +138,7 @@ export default function CartClient() {
               <div className="bg-white rounded-2xl md:rounded-3xl p-5 md:p-6 shadow-sm lg:sticky lg:top-24">
                 <h3 className="text-base md:text-lg font-black text-gray-800 uppercase mb-4 md:mb-6">Tóm tắt đơn hàng</h3>
 
-                {/* Mã giảm giá */}
-                <div className="mb-5 md:mb-6">
-                  <div className="flex gap-2 relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
-                      <Ticket className="w-4 h-4" />
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="Nhập mã giảm giá..."
-                      value={voucherCode}
-                      onChange={(e) => setVoucherCode(e.target.value)}
-                      className="flex-1 bg-gray-50 border border-gray-100 text-gray-800 text-xs md:text-sm font-bold rounded-xl pl-9 pr-3 py-2.5 md:py-3 outline-none focus:bg-white focus:border-primary/50 transition-all uppercase placeholder:normal-case placeholder:font-medium min-w-0"
-                    />
-                    <button
-                      onClick={handleApplyVoucher}
-                      className="bg-gray-800 text-white px-3.5 py-2 md:px-4 md:py-2 rounded-xl font-bold text-xs md:text-sm hover:bg-black transition-colors shrink-0"
-                    >
-                      Áp dụng
-                    </button>
-                  </div>
-                  {appliedVoucher && !appliedVoucher.valid && (
-                    <p className="text-red-500 text-xs font-bold mt-2 ml-1 leading-relaxed">
-                      ⚠ {appliedVoucher.message}
-                    </p>
-                  )}
-                  {appliedVoucher && appliedVoucher.valid && (
-                    <div className="flex justify-between items-center mt-2 ml-1 gap-2">
-                      <p className="text-green-600 text-xs font-bold flex items-center gap-1 min-w-0">
-                        <span className="shrink-0">✓</span>
-                        <span className="truncate">{appliedVoucher.message || `Áp dụng thành công mã: ${appliedVoucher.code}`}</span>
-                      </p>
-                      <button
-                        onClick={handleRemoveVoucher}
-                        className="text-xs text-red-500 hover:text-red-700 font-bold underline cursor-pointer shrink-0"
-                      >
-                        Gỡ
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-3.5 text-xs md:text-sm font-medium text-gray-500 border-t border-gray-100 pt-4 md:pt-6 mb-4 md:mb-6">
+                <div className="space-y-3.5 text-xs md:text-sm font-medium text-gray-500 mb-4 md:mb-6">
                   <div className="flex justify-between">
                     <span>Tạm tính</span>
                     <span className="text-gray-800 font-bold">{subTotal.toLocaleString('vi-VN')}đ</span>
@@ -374,12 +147,6 @@ export default function CartClient() {
                     <span>Phí giao hàng</span>
                     <span className="text-gray-800 font-bold">Chưa tính</span>
                   </div>
-                  {appliedVoucher && appliedVoucher.valid && (
-                    <div className="flex justify-between text-green-600">
-                      <span className="truncate mr-2">Khuyến mãi ({appliedVoucher.code})</span>
-                      <span className="font-bold shrink-0">-{discountAmount.toLocaleString('vi-VN')}đ</span>
-                    </div>
-                  )}
                 </div>
 
                 <div className="border-t border-gray-100 pt-4 md:pt-6 mb-6 md:mb-8">
@@ -396,10 +163,6 @@ export default function CartClient() {
                   Tiến hành thanh toán
                   <ArrowRight className="w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform" />
                 </Link>
-
-                {suggestedVoucher && (
-                  <p className="text-center text-[11px] md:text-xs text-gray-400 mt-4">Gợi ý mã: <strong className="text-gray-600 cursor-pointer hover:underline" onClick={() => setVoucherCode(suggestedVoucher)}>{suggestedVoucher}</strong></p>
-                )}
               </div>
             </div>
 
