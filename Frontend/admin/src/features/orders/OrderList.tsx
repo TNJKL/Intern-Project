@@ -81,10 +81,10 @@ const OrderList: React.FC = () => {
 
   // Phân loại đơn hàng sau khi đã qua bộ lọc Tìm kiếm & Ngày
   const activeOrders = filteredOrders.filter(
-    (o: Order) => o.status !== 'COMPLETED' && o.status !== 'CANCELLED'
+    (o: Order) => o.status !== 'COMPLETED' && o.status !== 'CANCELLED' && o.status !== 'BOOMED'
   );
   const historyOrders = filteredOrders.filter(
-    (o: Order) => o.status === 'COMPLETED' || o.status === 'CANCELLED'
+    (o: Order) => o.status === 'COMPLETED' || o.status === 'CANCELLED' || o.status === 'BOOMED'
   );
 
   const displayOrders = activeTab === 'active' ? activeOrders : historyOrders;
@@ -131,6 +131,13 @@ const OrderList: React.FC = () => {
             </Tag>
           );
         }
+        if (s === 'BOOMED') {
+          return (
+            <Tag className="font-extrabold rounded-lg px-3 py-1 text-xs border-none bg-red-50 text-red-700">
+              ĐƠN BỊ BOM
+            </Tag>
+          );
+        }
         return (
           <Select
             value={s}
@@ -145,6 +152,7 @@ const OrderList: React.FC = () => {
               { value: 'PREPARING', label: 'ĐANG PHA CHẾ' },
               { value: 'DELIVERING', label: 'ĐANG GIAO' },
               { value: 'COMPLETED', label: 'HOÀN THÀNH' },
+              { value: 'BOOMED', label: 'ĐƠN BỊ BOM' },
               { value: 'CANCELLED', label: 'ĐÃ HỦY' },
             ]}
           />

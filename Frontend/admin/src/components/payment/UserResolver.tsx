@@ -8,9 +8,14 @@ const { Text } = Typography;
 interface UserResolverProps {
   userId?: string;
   fallbackText?: string;
+  showEmail?: boolean;
 }
 
-export const UserResolver: React.FC<UserResolverProps> = ({ userId, fallbackText = 'Khách vãng lai' }) => {
+export const UserResolver: React.FC<UserResolverProps> = ({ 
+  userId, 
+  fallbackText = 'Khách vãng lai', 
+  showEmail = true 
+}) => {
   const { data: userRes, isLoading, error } = useQuery({
     queryKey: ['users', userId],
     queryFn: () => userService.getUserById(userId!),
@@ -38,7 +43,7 @@ export const UserResolver: React.FC<UserResolverProps> = ({ userId, fallbackText
   return (
     <Tooltip title={`ID: ${userId} | SĐT: ${user.phone || 'Không có'}`}>
       <span className="font-semibold text-gray-800">{user.fullName || user.email || 'Không tên'}</span>
-      {user.email && <div className="text-[10px] text-gray-400 font-normal leading-tight">{user.email}</div>}
+      {showEmail && user.email && <div className="text-[10px] text-gray-400 font-normal leading-tight">{user.email}</div>}
     </Tooltip>
   );
 };

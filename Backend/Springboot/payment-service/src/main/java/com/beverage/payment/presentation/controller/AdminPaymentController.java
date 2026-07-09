@@ -70,16 +70,18 @@ public class AdminPaymentController {
     public ResponseEntity<ApiResponse<List<Refund>>> getAllRefunds(
             @RequestParam(required = false) UUID paymentId,
             @RequestParam(required = false) UUID orderId,
+            @RequestParam(required = false) String orderCode,
             @RequestParam(required = false) UUID userId,
             @RequestParam(required = false) RefundStatus status,
             @RequestParam(required = false) UUID requestedBy,
+            @RequestParam(required = false) String recipientType,
             @RequestParam(required = false) Instant createdFrom,
             @RequestParam(required = false) Instant createdTo,
             @PageableDefault(size = 10, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable
     ) {
-        log.info("Admin fetching refund logs with pagination and filters");
+        log.info("Admin fetching refund logs with pagination and filters: orderCode={}, recipientType={}", orderCode, recipientType);
         Page<Refund> page = refundUseCase.getRefunds(
-                paymentId, orderId, userId, status, requestedBy, createdFrom, createdTo, pageable
+                paymentId, orderId, orderCode, userId, status, requestedBy, recipientType, createdFrom, createdTo, pageable
         );
         return ResponseEntity.ok(ApiResponse.paged(page.getContent(), "Lấy danh sách hoàn tiền thành công", page));
     }

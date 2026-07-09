@@ -17,6 +17,7 @@ public class Refund {
     private UUID id;
     private UUID paymentId;
     private UUID orderId;
+    private String orderCode;
     private UUID userId;
     private BigDecimal amount;
     private String reason;
@@ -24,6 +25,9 @@ public class Refund {
     private String transactionId;
     private UUID requestedBy;
     private Instant processedAt;
+    private String recipientType;
+    private String shipperName;
+    private String shipperPhone;
     private Instant createdAt;
     private Instant updatedAt;
 }

@@ -108,7 +108,7 @@ const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({ orderId, isOpen, 
                   }
                 }}
                 loading={updateStatusMutation.isPending}
-                disabled={order.status === 'CANCELLED' || order.status === 'COMPLETED'}
+                disabled={order.status === 'CANCELLED' || order.status === 'COMPLETED' || order.status === 'BOOMED'}
                 style={{ width: 170, fontWeight: 'bold' }}
                 className="font-bold text-sm"
                 options={[
@@ -117,6 +117,7 @@ const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({ orderId, isOpen, 
                   { value: 'PREPARING', label: 'ĐANG PHA CHẾ' },
                   { value: 'DELIVERING', label: 'ĐANG GIAO' },
                   { value: 'COMPLETED', label: 'HOÀN THÀNH' },
+                  { value: 'BOOMED', label: 'ĐƠN BỊ BOM' },
                   { value: 'CANCELLED', label: 'ĐÃ HỦY' },
                 ]}
               />

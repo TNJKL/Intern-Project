@@ -28,6 +28,9 @@ public class RefundEntity {
     @Column(name = "order_id", nullable = false)
     private UUID orderId;
 
+    @Column(name = "order_code", length = 30)
+    private String orderCode;
+
     @Column(name = "user_id", nullable = true)
     private UUID userId;
 
@@ -50,6 +53,15 @@ public class RefundEntity {
     @Column(name = "processed_at")
     private Instant processedAt;
 
+    @Column(name = "recipient_type", length = 30)
+    private String recipientType;
+
+    @Column(name = "shipper_name", length = 100)
+    private String shipperName;
+
+    @Column(name = "shipper_phone", length = 30)
+    private String shipperPhone;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -68,6 +80,9 @@ public class RefundEntity {
         if (status == null) {
             status = RefundStatus.PENDING;
         }
+        if (recipientType == null) {
+            recipientType = "CUSTOMER";
+        }
     }
 
     @PreUpdate
@@ -80,6 +95,7 @@ public class RefundEntity {
                 .id(id)
                 .paymentId(paymentId)
                 .orderId(orderId)
+                .orderCode(orderCode)
                 .userId(userId)
                 .amount(amount)
                 .reason(reason)
@@ -87,6 +103,9 @@ public class RefundEntity {
                 .transactionId(transactionId)
                 .requestedBy(requestedBy)
                 .processedAt(processedAt)
+                .recipientType(recipientType)
+                .shipperName(shipperName)
+                .shipperPhone(shipperPhone)
                 .createdAt(createdAt)
                 .updatedAt(updatedAt)
                 .build();
@@ -98,6 +117,7 @@ public class RefundEntity {
                 .id(domain.getId())
                 .paymentId(domain.getPaymentId())
                 .orderId(domain.getOrderId())
+                .orderCode(domain.getOrderCode())
                 .userId(domain.getUserId())
                 .amount(domain.getAmount())
                 .reason(domain.getReason())
@@ -105,6 +125,9 @@ public class RefundEntity {
                 .transactionId(domain.getTransactionId())
                 .requestedBy(domain.getRequestedBy())
                 .processedAt(domain.getProcessedAt())
+                .recipientType(domain.getRecipientType())
+                .shipperName(domain.getShipperName())
+                .shipperPhone(domain.getShipperPhone())
                 .createdAt(domain.getCreatedAt())
                 .updatedAt(domain.getUpdatedAt())
                 .build();

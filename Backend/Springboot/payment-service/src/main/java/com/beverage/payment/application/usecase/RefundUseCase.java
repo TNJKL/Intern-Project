@@ -19,9 +19,11 @@ public interface RefundUseCase {
     Page<Refund> getRefunds(
             UUID paymentId,
             UUID orderId,
+            String orderCode,
             UUID userId,
             RefundStatus status,
             UUID requestedBy,
+            String recipientType,
             Instant createdFrom,
             Instant createdTo,
             Pageable pageable

@@ -71,8 +71,8 @@ public class RefundUseCaseImpl implements RefundUseCase {
         PaymentEntity payment = paymentRepository.findByIdWithLock(paymentId)
                 .orElseThrow(() -> new PaymentNotFoundException("Payment record not found for id: " + paymentId));
 
-        if (payment.getStatus() != PaymentStatus.SUCCESS) {
-            throw new BusinessException("Cannot refund a payment that is not successful.");
+        if (payment.getStatus() != PaymentStatus.SUCCESS && payment.getStatus() != PaymentStatus.PAID_BY_SHIPPER) {
+            throw new BusinessException("Cannot refund a payment that is not successful or paid by shipper.");
         }
 
         // Validate refund amount is not greater than paid amount
@@ -92,13 +92,17 @@ public class RefundUseCaseImpl implements RefundUseCase {
         RefundEntity refund = RefundEntity.builder()
                 .paymentId(paymentId)
                 .orderId(payment.getOrderId())
+                .orderCode(payment.getOrderCode())
                 .userId(payment.getUserId())
                 .amount(request.getAmount())
                 .reason(request.getReason())
-                .status(RefundStatus.COMPLETED) // Mock completion for VNPay sandbox
+                .status(RefundStatus.COMPLETED) // Mock completion for VNPay sandbox / COD manual refund
                 .requestedBy(adminId)
                 .processedAt(Instant.now())
                 .transactionId(UUID.randomUUID().toString()) // Mock external transaction ID
+                .recipientType(request.getRecipientType() != null ? request.getRecipientType() : "CUSTOMER")
+                .shipperName(request.getShipperName())
+                .shipperPhone(request.getShipperPhone())
                 .build();
 
         refundRepository.save(refund);
@@ -150,22 +154,26 @@ public class RefundUseCaseImpl implements RefundUseCase {
     public Page<Refund> getRefunds(
             UUID paymentId,
             UUID orderId,
+            String orderCode,
             UUID userId,
             RefundStatus status,
             UUID requestedBy,
+            String recipientType,
             Instant createdFrom,
             Instant createdTo,
             Pageable pageable
     ) {
-        log.info("Searching refunds with filters: paymentId={}, orderId={}, userId={}, status={}, requestedBy={}",
-                paymentId, orderId, userId, status, requestedBy);
+        log.info("Searching refunds with filters: paymentId={}, orderId={}, orderCode={}, userId={}, status={}, requestedBy={}, recipientType={}",
+                paymentId, orderId, orderCode, userId, status, requestedBy, recipientType);
 
         Specification<RefundEntity> spec = Specification
                 .where(RefundSpecifications.withPaymentId(paymentId))
                 .and(RefundSpecifications.withOrderId(orderId))
+                .and(RefundSpecifications.withOrderCode(orderCode))
                 .and(RefundSpecifications.withUserId(userId))
                 .and(RefundSpecifications.withStatus(status))
                 .and(RefundSpecifications.withRequestedBy(requestedBy))
+                .and(RefundSpecifications.withRecipientType(recipientType))
                 .and(RefundSpecifications.createdFrom(createdFrom))
                 .and(RefundSpecifications.createdTo(createdTo));
 

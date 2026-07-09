@@ -10,6 +10,7 @@ interface RefundModalProps {
   maxAmount: number;
   isOpen: boolean;
   isFixedAmount?: boolean;
+  recipientType?: 'CUSTOMER' | 'SHIPPER';
   onClose: () => void;
   onSuccess?: () => void;
 }
@@ -20,6 +21,7 @@ export const RefundModal: React.FC<RefundModalProps> = ({
   maxAmount,
   isOpen,
   isFixedAmount = false,
+  recipientType = 'CUSTOMER',
   onClose,
   onSuccess,
 }) => {
@@ -31,18 +33,42 @@ export const RefundModal: React.FC<RefundModalProps> = ({
     if (isOpen) {
       form.setFieldsValue({
         amount: maxAmount,
-        reasonSelect: isFixedAmount
-          ? 'Hoàn tiền cho đơn hàng đã bị hủy'
-          : 'Khách hàng yêu cầu hủy đơn',
+        reasonSelect: recipientType === 'SHIPPER'
+          ? 'Hoàn trả tiền ứng cho Shipper do đơn hàng bị bom'
+          : (isFixedAmount
+            ? 'Hoàn tiền cho đơn hàng đã bị hủy'
+            : 'Khách hàng yêu cầu hủy đơn'),
         customReason: '',
+        shipperName: '',
+        shipperPhone: '',
       });
       setIsOtherReason(false);
     }
-  }, [isOpen, maxAmount, form, isFixedAmount]);
+  }, [isOpen, maxAmount, form, isFixedAmount, recipientType]);
 
   const refundMutation = useMutation({
-    mutationFn: ({ pId, amount, reason }: { pId: string; amount: number; reason: string }) =>
-      paymentService.refundPayment(pId, { amount, reason }),
+    mutationFn: ({
+      pId,
+      amount,
+      reason,
+      recipientType,
+      shipperName,
+      shipperPhone,
+    }: {
+      pId: string;
+      amount: number;
+      reason: string;
+      recipientType?: 'CUSTOMER' | 'SHIPPER';
+      shipperName?: string;
+      shipperPhone?: string;
+    }) =>
+      paymentService.refundPayment(pId, {
+        amount,
+        reason,
+        recipientType,
+        shipperName,
+        shipperPhone,
+      }),
     onSuccess: (res) => {
       if (res.success) {
         message.success('Đã thực hiện hoàn tiền thành công');
@@ -71,6 +97,9 @@ export const RefundModal: React.FC<RefundModalProps> = ({
       pId: paymentId,
       amount: values.amount,
       reason: finalReason,
+      recipientType,
+      shipperName: values.shipperName,
+      shipperPhone: values.shipperPhone,
     });
   };
 
@@ -78,7 +107,7 @@ export const RefundModal: React.FC<RefundModalProps> = ({
     <Modal
       title={
         <div className="font-black text-gray-800 uppercase tracking-wide text-sm border-b border-gray-100 pb-3">
-          Yêu cầu hoàn tiền — Đơn {orderCode}
+          {recipientType === 'SHIPPER' ? 'Hoàn tiền ứng cho Shipper' : 'Yêu cầu hoàn tiền'} — Đơn {orderCode}
         </div>
       }
       open={isOpen}
@@ -93,6 +122,31 @@ export const RefundModal: React.FC<RefundModalProps> = ({
         onFinish={handleSubmit}
         className="pt-4 space-y-4"
       >
+        {recipientType === 'SHIPPER' && (
+          <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 space-y-4 mb-4">
+            <h4 className="font-extrabold text-orange-800 text-xs uppercase tracking-wider">Thông tin Shipper nhận tiền ứng</h4>
+            
+            <Form.Item
+              label={<span className="font-bold text-gray-600 text-xs uppercase tracking-wider">Tên Shipper</span>}
+              name="shipperName"
+              rules={[{ required: true, message: 'Vui lòng nhập tên Shipper' }]}
+            >
+              <Input placeholder="Ví dụ: Nguyễn Văn A (AhaMove)" className="rounded-xl py-1.5" />
+            </Form.Item>
+
+            <Form.Item
+              label={<span className="font-bold text-gray-600 text-xs uppercase tracking-wider">Số điện thoại Shipper</span>}
+              name="shipperPhone"
+              rules={[
+                { required: true, message: 'Vui lòng nhập số điện thoại Shipper' },
+                { pattern: /^(0[3|5|7|8|9])+([0-9]{8})$/, message: 'Số điện thoại không hợp lệ (định dạng Việt Nam)' }
+              ]}
+            >
+              <Input placeholder="Ví dụ: 0901234567" className="rounded-xl py-1.5" />
+            </Form.Item>
+          </div>
+        )}
+
         <Form.Item
           label={<span className="font-bold text-gray-600 text-xs uppercase tracking-wider">Số tiền hoàn (đ)</span>}
           name="amount"
@@ -127,21 +181,27 @@ export const RefundModal: React.FC<RefundModalProps> = ({
             popupClassName="rounded-xl"
             onChange={(val) => setIsOtherReason(val === 'other')}
             options={
-              isFixedAmount
+              recipientType === 'SHIPPER'
                 ? [
-                  {
-                    value: 'Đơn hàng đã bị hủy nhưng nhận được thanh toán thành công',
-                    label: 'Đơn hàng đã bị hủy nhưng nhận được thanh toán thành công',
-                  },
+                  { value: 'Hoàn trả tiền ứng cho Shipper do đơn hàng bị bom', label: 'Hoàn trả tiền ứng cho Shipper do đơn hàng bị bom' },
+                  { value: 'Hoàn trả tiền ứng do cửa hàng chuẩn bị sai món', label: 'Hoàn trả tiền ứng do cửa hàng chuẩn bị sai món' },
                   { value: 'other', label: 'Lý do khác (Nhập thủ công)...' },
                 ]
-                : [
-                  { value: 'Khách hàng yêu cầu hủy đơn', label: 'Khách hàng yêu cầu hủy đơn' },
-                  { value: 'Hết nguyên liệu sản phẩm', label: 'Hết nguyên liệu sản phẩm' },
-                  { value: 'Không thể giao hàng / Sai địa chỉ', label: 'Không thể giao hàng / Sai địa chỉ' },
-                  { value: 'Giao dịch bị trùng lặp', label: 'Giao dịch bị trùng lặp' },
-                  { value: 'other', label: 'Lý do khác (Nhập thủ công)...' },
-                ]
+                : (isFixedAmount
+                  ? [
+                    {
+                      value: 'Đơn hàng đã bị hủy nhưng nhận được thanh toán thành công',
+                      label: 'Đơn hàng đã bị hủy nhưng nhận được thanh toán thành công',
+                    },
+                    { value: 'other', label: 'Lý do khác (Nhập thủ công)...' },
+                  ]
+                  : [
+                    { value: 'Khách hàng yêu cầu hủy đơn', label: 'Khách hàng yêu cầu hủy đơn' },
+                    { value: 'Hết nguyên liệu sản phẩm', label: 'Hết nguyên liệu sản phẩm' },
+                    { value: 'Không thể giao hàng / Sai địa chỉ', label: 'Không thể giao hàng / Sai địa chỉ' },
+                    { value: 'Giao dịch bị trùng lặp', label: 'Giao dịch bị trùng lặp' },
+                    { value: 'other', label: 'Lý do khác (Nhập thủ công)...' },
+                  ])
             }
           />
         </Form.Item>

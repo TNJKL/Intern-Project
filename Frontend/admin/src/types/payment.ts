@@ -1,4 +1,4 @@
-export type PaymentStatus = 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'FAILED' | 'EXPIRED';
+export type PaymentStatus = 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'FAILED' | 'EXPIRED' | 'REFUNDED' | 'PAID_BY_SHIPPER';
 export type RefundStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 export type PaymentMethod = 'COD' | 'VNPAY';
 
@@ -25,6 +25,7 @@ export interface Refund {
   id: string;
   paymentId: string;
   orderId: string;
+  orderCode?: string;
   userId?: string;
   amount: number;
   reason: string;
@@ -32,6 +33,9 @@ export interface Refund {
   transactionId?: string;
   requestedBy?: string;
   processedAt?: string;
+  recipientType?: string;
+  shipperName?: string;
+  shipperPhone?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -39,4 +43,7 @@ export interface Refund {
 export interface RefundCreateRequest {
   amount: number;
   reason: string;
+  recipientType?: 'CUSTOMER' | 'SHIPPER';
+  shipperName?: string;
+  shipperPhone?: string;
 }

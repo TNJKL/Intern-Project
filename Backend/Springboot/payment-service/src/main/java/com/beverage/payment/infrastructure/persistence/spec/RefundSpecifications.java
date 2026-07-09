@@ -59,4 +59,18 @@ public final class RefundSpecifications {
         }
         return (root, query, cb) -> cb.lessThanOrEqualTo(root.get("createdAt"), to);
     }
+
+    public static Specification<RefundEntity> withOrderCode(String orderCode) {
+        if (orderCode == null || orderCode.isBlank()) {
+            return Specification.where(null);
+        }
+        return (root, query, cb) -> cb.like(cb.lower(root.get("orderCode")), "%" + orderCode.trim().toLowerCase() + "%");
+    }
+
+    public static Specification<RefundEntity> withRecipientType(String recipientType) {
+        if (recipientType == null || recipientType.isBlank()) {
+            return Specification.where(null);
+        }
+        return (root, query, cb) -> cb.equal(root.get("recipientType"), recipientType.trim().toUpperCase());
+    }
 }

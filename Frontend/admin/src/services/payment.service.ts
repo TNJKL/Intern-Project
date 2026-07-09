@@ -37,9 +37,11 @@ export const paymentService = {
   getRefunds: async (params?: {
     paymentId?: string;
     orderId?: string;
+    orderCode?: string;
     userId?: string;
     status?: string;
     requestedBy?: string;
+    recipientType?: string;
     createdFrom?: string;
     createdTo?: string;
     page?: number;

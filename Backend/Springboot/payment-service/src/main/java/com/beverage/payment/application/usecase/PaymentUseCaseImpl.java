@@ -369,10 +369,19 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
                     log.info("Order is CANCELLED. Updated payment status to FAILED for payment id={}", payment.getId());
                 }
             }
-            // Nếu đơn hàng COD chuyển sang COMPLETED và thanh toán đang PENDING -> cập nhật thành SUCCESS
-            if ("COMPLETED".equals(orderStatus) 
+            // Nếu đơn hàng COD chuyển sang DELIVERING (Shipper lấy hàng đi giao và ứng tiền) -> cập nhật thành PAID_BY_SHIPPER
+            if ("DELIVERING".equals(orderStatus) 
                     && payment.getPaymentMethod() == PaymentMethod.COD 
                     && payment.getStatus() == PaymentStatus.PENDING) {
+                payment.setStatus(PaymentStatus.PAID_BY_SHIPPER);
+                payment.setPaidAt(Instant.now());
+                log.info("COD payment for orderId={} initialized by shipper delivery. Status set to PAID_BY_SHIPPER.", orderId);
+            }
+
+            // Nếu đơn hàng COD chuyển sang COMPLETED và thanh toán đang PENDING hoặc PAID_BY_SHIPPER -> cập nhật thành SUCCESS
+            if ("COMPLETED".equals(orderStatus) 
+                    && payment.getPaymentMethod() == PaymentMethod.COD 
+                    && (payment.getStatus() == PaymentStatus.PENDING || payment.getStatus() == PaymentStatus.PAID_BY_SHIPPER)) {
                 payment.setStatus(PaymentStatus.SUCCESS);
                 payment.setPaidAt(Instant.now());
                 log.info("COD payment for orderId={} completed successfully. Status set to SUCCESS.", orderId);

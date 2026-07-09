@@ -15,4 +15,8 @@ public class RefundCreateRequest {
 
     @NotBlank(message = "Reason must not be blank")
     private String reason;
+
+    private String recipientType; // CUSTOMER or SHIPPER
+    private String shipperName;
+    private String shipperPhone;
 }

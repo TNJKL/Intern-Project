@@ -25,7 +25,8 @@ class OrderStatusTest {
                 Arguments.of(OrderStatus.CONFIRMED, OrderStatus.PREPARING),
                 Arguments.of(OrderStatus.CONFIRMED, OrderStatus.CANCELLED),
                 Arguments.of(OrderStatus.PREPARING, OrderStatus.DELIVERING),
-                Arguments.of(OrderStatus.DELIVERING, OrderStatus.COMPLETED)
+                Arguments.of(OrderStatus.DELIVERING, OrderStatus.COMPLETED),
+                Arguments.of(OrderStatus.DELIVERING, OrderStatus.BOOMED)
             );
         }
 
@@ -58,12 +59,14 @@ class OrderStatusTest {
         }
 
         @Test
-        @DisplayName("Terminal states (COMPLETED, CANCELLED) should not transition to any state")
+        @DisplayName("Terminal states (COMPLETED, CANCELLED, BOOMED) should not transition to any state")
         void terminalStatesShouldNotTransition() {
             assertFalse(OrderStatus.COMPLETED.canTransitionTo(OrderStatus.PENDING));
             assertFalse(OrderStatus.COMPLETED.canTransitionTo(OrderStatus.CANCELLED));
             assertFalse(OrderStatus.CANCELLED.canTransitionTo(OrderStatus.PENDING));
             assertFalse(OrderStatus.CANCELLED.canTransitionTo(OrderStatus.COMPLETED));
+            assertFalse(OrderStatus.BOOMED.canTransitionTo(OrderStatus.PENDING));
+            assertFalse(OrderStatus.BOOMED.canTransitionTo(OrderStatus.COMPLETED));
         }
     }
 
@@ -81,6 +84,12 @@ class OrderStatusTest {
         @DisplayName("CANCELLED should be terminal")
         void cancelledShouldBeTerminal() {
             assertTrue(OrderStatus.CANCELLED.isTerminal());
+        }
+
+        @Test
+        @DisplayName("BOOMED should be terminal")
+        void boomedShouldBeTerminal() {
+            assertTrue(OrderStatus.BOOMED.isTerminal());
         }
 
         @Test
