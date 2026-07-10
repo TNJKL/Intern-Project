@@ -3,7 +3,6 @@ import { Quicksand } from "next/font/google";
 import "@/styles/globals.css";
 import { CustomerLayout } from "@/components/layout/CustomerLayout";
 import { Toaster } from "react-hot-toast";
-import { ReduxProvider } from "@/providers/ReduxProvider";
 
 const quicksand = Quicksand({
   subsets: ["latin", "vietnamese"],
@@ -37,12 +36,10 @@ export default async function RootLayout({
     <html lang="vi">
       <body className={`${quicksand.variable} font-sans antialiased`}>
         <SessionProvider session={session}>
-          <ReduxProvider>
-            <CustomerLayout initialUser={user}>
-              {children}
-            </CustomerLayout>
-            <Toaster position="top-right" />
-          </ReduxProvider>
+          <CustomerLayout initialUser={user}>
+            {children}
+          </CustomerLayout>
+          <Toaster position="top-right" />
         </SessionProvider>
       </body>
     </html>

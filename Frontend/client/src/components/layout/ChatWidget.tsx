@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { MessageCircle, X, Send, User, ChevronUp, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAppSelector } from '../../store/redux/hooks';
+import { useAuthStore } from '@/store/zustand/useAuthStore';
 import { apiClient } from '../../lib/api';
 import { auth, db } from '../../lib/firebase';
 import { signInWithCustomToken } from 'firebase/auth';
@@ -156,7 +156,7 @@ export function ChatWidget() {
     return new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const { isAuthenticated, accessToken, user } = useAppSelector((state) => state.auth);
+  const { isAuthenticated, accessToken, user } = useAuthStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isLocalTypingRef = useRef(false);

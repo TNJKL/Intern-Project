@@ -7,8 +7,6 @@ import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { useAuthStore } from "@/store/zustand/useAuthStore";
 import { useCartStore } from "@/store/zustand/useCartStore";
-import { useAppDispatch } from "@/store/redux/hooks";
-import { setCredentials, clearCredentials } from "@/store/redux/authSlice";
 import toast from "react-hot-toast";
 import { useSession, signOut } from "next-auth/react";
 import { SocketProvider } from "@/components/providers/SocketProvider";
@@ -26,57 +24,51 @@ export function CustomerLayout({ children, initialUser }: CustomerLayoutProps) {
   const { user, setUser, clearUser } = useAuthStore();
   const _hasHydrated = useAuthStore((s) => s._hasHydrated);
   const clearCart = useCartStore((s) => s.clearCart);
-  const dispatch = useAppDispatch();
   const { data: session, status } = useSession();
 
   const isAuthPage = pathname === "/login" || pathname === "/register";
 
-  // Đồng bộ dữ liệu NextAuth session xuống Redux và Zustand store
+  // Đồng bộ dữ liệu NextAuth session xuống Zustand store (bao gồm cả token xác thực)
   useEffect(() => {
     if (!_hasHydrated) return; // Đợi hydrate xong từ sessionStorage
 
     if (status === "authenticated" && session) {
       const customUser = session.user as any;
+      const accessToken = (session as any).accessToken;
       
-      // Kiểm tra xem thông tin cá nhân cốt lõi trong store có khác biệt so với NextAuth session không
-      const hasProfileChanged = !user || 
-        user.id !== customUser.id ||
-        user.fullName !== customUser.fullName ||
-        user.email !== customUser.email ||
-        user.phone !== customUser.phone ||
-        user.avatarUrl !== customUser.avatarUrl;
+      // Chỉ đồng bộ profile từ NextAuth sang Zustand nếu Zustand đang trống hoặc token xoay vòng.
+      // Điều này ngăn chặn việc NextAuth session cũ ghi đè ngược lại dữ liệu profile mới vừa cập nhật ở client.
+      const hasProfileChanged = !user || useAuthStore.getState().accessToken !== accessToken;
 
       // Kiểm tra xem store đã được đồng bộ hạng hội viên thực tế chưa
       const hasTierSyncRequired = !user || !user.tier;
 
       if (hasProfileChanged || hasTierSyncRequired) {
-        // Đồng bộ dữ liệu phiên mới xuống Redux
-        dispatch(setCredentials({ user: customUser, accessToken: session.accessToken }));
-
         if (hasTierSyncRequired) {
           // Gọi API lấy hạng thành viên thực tế từ Backend nếu chưa có
           orderService.getMyTier()
             .then((res) => {
               if (res.success && res.data) {
-                setUser({ ...customUser, tier: res.data.tier });
+                setUser({ ...customUser, tier: res.data.tier }, accessToken);
               } else {
-                setUser(customUser);
+                setUser(customUser, accessToken);
               }
             })
             .catch((err) => {
               console.warn("[CustomerLayout] Lỗi đồng bộ user tier:", err);
-              setUser(customUser);
+              setUser(customUser, accessToken);
             });
         } else {
           // Nếu đã có tier và chỉ thay đổi thông tin cá nhân khác, giữ nguyên tier cũ trong store để không gọi lại API
-          setUser({ ...customUser, tier: user.tier });
+          setUser({ ...customUser, tier: user.tier }, accessToken);
         }
       }
     } else if (status === "unauthenticated") {
-      dispatch(clearCredentials());
-      clearUser();
+      if (user || useAuthStore.getState().accessToken) {
+        clearUser();
+      }
     }
-  }, [session, status, dispatch, setUser, clearUser, _hasHydrated, user]);
+  }, [session, status, setUser, clearUser, _hasHydrated, user]);
 
   // NOTE: Silent Refresh đã được xử lý tự động bởi Middleware (proxy.ts).
   // KHÔNG gọi refresh ở đây để tránh RTR (Refresh Token Rotation) conflict.
@@ -92,8 +84,7 @@ export function CustomerLayout({ children, initialUser }: CustomerLayoutProps) {
     if (authDataParam) {
       try {
         const authData = JSON.parse(decodeURIComponent(authDataParam));
-        dispatch(setCredentials({ user: authData.user, accessToken: authData.accessToken }));
-        setUser(authData.user);
+        setUser(authData.user, authData.accessToken);
         toast.success(`Đã đồng bộ tài khoản: ${authData.user.fullName}`);
         window.history.replaceState({}, document.title, window.location.pathname);
       } catch (e) {
@@ -108,7 +99,6 @@ export function CustomerLayout({ children, initialUser }: CustomerLayoutProps) {
     }
 
     if (logoutParam === 'true') {
-      dispatch(clearCredentials());
       clearUser();
       clearCart();
       signOut({ redirect: false });
@@ -117,7 +107,7 @@ export function CustomerLayout({ children, initialUser }: CustomerLayoutProps) {
       const newUrl = window.location.pathname;
       window.history.replaceState({}, document.title, newUrl);
     }
-  }, [dispatch, setUser, clearUser, pathname]);
+  }, [setUser, clearUser, pathname]);
 
   // Khởi tạo và đồng bộ giao diện (Theme & Preset) từ localStorage để tránh nhấp nháy
   useEffect(() => {
@@ -134,6 +124,17 @@ export function CustomerLayout({ children, initialUser }: CustomerLayoutProps) {
     } else if (savedPreset === "berry") {
       document.documentElement.classList.add("preset-berry");
     }
+  }, []);
+
+  // Tự động đồng bộ hóa Zustand store giữa các tab thời gian thực khi localStorage thay đổi
+  useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'user-auth-storage') {
+        useAuthStore.persist.rehydrate();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   if (isAuthPage) {

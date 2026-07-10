@@ -8,8 +8,6 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 
 import { useAuthStore } from "@/store/zustand/useAuthStore";
-import { useAppDispatch } from "@/store/redux/hooks";
-import { setCredentials } from "@/store/redux/authSlice";
 import { signIn, getSession } from "next-auth/react";
 import Cookies from "js-cookie";
 import { useState, useEffect } from "react";
@@ -26,7 +24,6 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export default function LoginPage() {
     const router = useRouter();
     const { setUser } = useAuthStore();
-    const dispatch = useAppDispatch();
 
     const [loginApiError, setLoginApiError] = useState<string | null>(null);
     const [persistedError, setPersistedError] = useState<string | null>(null);
@@ -94,8 +91,7 @@ export default function LoginPage() {
                     Cookies.remove('adminLastRefreshedToken', { path: '/' });
                 }
 
-                dispatch(setCredentials({ user, accessToken }));
-                setUser(user);
+                setUser(user, accessToken);
 
                 if (role === 'ADMIN') {
                     const authData = encodeURIComponent(JSON.stringify({ user, accessToken }));

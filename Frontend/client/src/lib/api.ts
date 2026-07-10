@@ -1,6 +1,4 @@
 import axios from 'axios';
-import { store } from '../store/redux/store';
-import { clearCredentials } from '../store/redux/authSlice';
 import { signOut } from 'next-auth/react';
 import Cookies from 'js-cookie';
 
@@ -78,9 +76,10 @@ apiClient.interceptors.response.use(
     if (status === 401 || isExpired) {
       isAuthError = true;
     } else if (status === 403) {
-      // Dùng accessToken từ Redux store, nếu không có thì đọc từ cookie client
+      // Dùng accessToken từ Zustand store, nếu không có thì đọc từ cookie client
       // KHÔNG dùng adminAccessToken vì đây là Client App
-      const token = store.getState().auth.accessToken || Cookies.get(LAST_REFRESHED_KEY);
+      const { useAuthStore } = await import('../store/zustand/useAuthStore');
+      const token = useAuthStore.getState().accessToken || Cookies.get(LAST_REFRESHED_KEY);
       
       if (!token || isTokenExpired(token)) {
         isAuthError = true;
@@ -148,15 +147,10 @@ apiClient.interceptors.response.use(
       const newUser = responseData?.data?.user || responseData?.user;
       if (newToken) {
         Cookies.set('lastRefreshedToken', newToken, { path: '/' });
-        // Cập nhật Redux store để các component re-render với token mới
-        const { updateAccessToken } = await import('../store/redux/authSlice');
-        store.dispatch(updateAccessToken({ accessToken: newToken, ...(newUser ? { user: newUser } : {}) }));
-        
-        // Đồng bộ thông tin cá nhân mới của user vào Zustand Store
-        if (newUser) {
-          const { useAuthStore } = await import('../store/zustand/useAuthStore');
-          useAuthStore.getState().setUser(newUser);
-        }
+        // Đồng bộ thông tin cá nhân mới và token mới của user vào Zustand Store
+        const { useAuthStore } = await import('../store/zustand/useAuthStore');
+        const currentUser = useAuthStore.getState().user;
+        useAuthStore.getState().setUser(newUser || currentUser, newToken);
       }
 
       lastRefreshTime = Date.now(); // Cập nhật thời điểm refresh thành công
@@ -258,7 +252,6 @@ apiClient.interceptors.response.use(
           console.warn('[Client API] Failed to call backend logout on refresh failure', e);
         }
 
-        store.dispatch(clearCredentials());
         try {
           const { useAuthStore } = await import('../store/zustand/useAuthStore');
           useAuthStore.getState().clearUser();

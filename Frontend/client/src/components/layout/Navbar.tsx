@@ -4,8 +4,6 @@ import { Search, Menu, User, Coffee, ShoppingCart, LogOut, LayoutDashboard, X, H
 import Link from "next/link";
 import { useAuthStore } from "@/store/zustand/useAuthStore";
 import { useCartStore } from "@/store/zustand/useCartStore";
-import { useAppDispatch } from "@/store/redux/hooks";
-import { clearCredentials } from "@/store/redux/authSlice";
 import { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import { signOut, useSession } from "next-auth/react";
@@ -29,7 +27,6 @@ export function Navbar({ initialUser }: NavbarProps) {
   // Dùng useSession trực tiếp để tránh race condition với Redux store
   const { status } = useSession();
   const isAuthenticated = status === "authenticated";
-  const dispatch = useAppDispatch();
   const { pendingPayment } = useSocket();
   const [isMounted, setIsMounted] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -266,7 +263,6 @@ export function Navbar({ initialUser }: NavbarProps) {
 
                   <button
                     onClick={() => {
-                      dispatch(clearCredentials());
                       clearUser();
                       clearCart();
                       signOut({ callbackUrl: "/" });
@@ -459,7 +455,6 @@ export function Navbar({ initialUser }: NavbarProps) {
                       <button
                         onClick={() => {
                           setIsDrawerOpen(false);
-                          dispatch(clearCredentials());
                           clearUser();
                           clearCart();
                           signOut({ callbackUrl: "/" });

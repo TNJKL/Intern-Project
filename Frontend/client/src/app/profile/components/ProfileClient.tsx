@@ -15,8 +15,6 @@ import { StatsSection } from "./StatsSection";
 import { AddressModal } from "./AddressModal";
 import { AddressDeleteConfirmModal } from "./AddressDeleteConfirmModal";
 import { useSession } from "next-auth/react";
-import { useAppDispatch } from "@/store/redux/hooks";
-import { setCredentials } from "@/store/redux/authSlice";
 
 interface ProfileClientProps {
   initialUser: UserType | null;
@@ -31,7 +29,6 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
 
   const { setUser: setAuthUser } = useAuthStore();
   const { data: session, update } = useSession();
-  const dispatch = useAppDispatch();
 
   // Address Modal States
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
@@ -64,13 +61,7 @@ export default function ProfileClient({ initialUser, isServerError }: ProfileCli
     setUser(updatedUser);
     setAuthUser(updatedUser);
 
-    // 1. Đồng bộ lên Redux store để các component dùng Redux (Navbar, ChatWidget...) cập nhật ngay
-    dispatch(setCredentials({
-      user: updatedUser,
-      accessToken: session?.accessToken || ""
-    }));
-
-    // 2. Gọi cập nhật NextAuth session cookie ở Client-side
+    // 1. Gọi cập nhật NextAuth session cookie ở Client-side
     if (update) {
       await update({ user: updatedUser });
     }
